@@ -15,6 +15,10 @@ escolhe o modelo ideal para cada papel (ou deixa você escolher), executa sozinh
    O script mescla `settings-recomendado.json` em `~/.claude/settings.json` e faz backup antes.
 4. Para atualizar no futuro: dê push no repositório e rode `/plugin marketplace update jarvis-marketplace`.
 
+## Contêiner no desktop (recomendado)
+Ambiente Docker com PHP, MariaDB, SQLite, SQL Server opcional, Claude Code e Jarvis já instalados.
+Veja `container/LEIA-ME.md`.
+
 ## Modo nuvem / projeto (usar pelo celular, sem computador ligado)
 A sessão na nuvem do Claude Code (claude.ai/code ou app do Claude → Code) não carrega plugins,
 mas carrega a pasta `.claude/` do próprio repositório. Por isso existe o **modo projeto**:

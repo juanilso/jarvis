@@ -1,0 +1,52 @@
+# Ambiente de desenvolvimento do Jarvis: PHP + bancos + Claude Code, isolado do sistema do host.
+FROM ubuntu:24.04
+
+ARG PHP_VERSION=8.3
+ARG INSTALL_SQLSRV=false
+ENV DEBIAN_FRONTEND=noninteractive TZ=America/Sao_Paulo
+
+# Base + PHP (o PPA ondrej permite instalar outras versões depois, para casar com o cPanel)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl gnupg git unzip zip nano less sudo tzdata software-properties-common \
+      sqlite3 mariadb-client jq ripgrep \
+ && add-apt-repository -y ppa:ondrej/php && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      php${PHP_VERSION}-cli php${PHP_VERSION}-mysql php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-mbstring \
+      php${PHP_VERSION}-xml php${PHP_VERSION}-curl php${PHP_VERSION}-zip php${PHP_VERSION}-intl \
+      php${PHP_VERSION}-gd php${PHP_VERSION}-bcmath php${PHP_VERSION}-dev php-pear \
+ && rm -rf /var/lib/apt/lists/*
+
+# Composer
+RUN curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Node.js LTS + Claude Code
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs && rm -rf /var/lib/apt/lists/* \
+ && npm install -g @anthropic-ai/claude-code
+
+# (Opcional) Extensões PHP para SQL Server — habilite com INSTALL_SQLSRV=true
+RUN if [ "$INSTALL_SQLSRV" = "true" ]; then \
+      curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg && \
+      echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/24.04/prod noble main" > /etc/apt/sources.list.d/mssql.list && \
+      apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev && \
+      pecl install sqlsrv pdo_sqlsrv && \
+      echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION}/cli/conf.d/30-sqlsrv.ini && \
+      echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION}/cli/conf.d/30-pdo_sqlsrv.ini && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Usuário sem root (o modo autônomo do Claude Code não roda como root). Pode usar sudo DENTRO do contêiner.
+RUN useradd -m -s /bin/bash dev && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev
+
+# Jarvis embutido (copiado do repositório no momento do build)
+COPY --chown=dev:dev . /opt/jarvis
+RUN rm -rf /opt/jarvis/.git /opt/jarvis/container
+
+COPY --chown=dev:dev container/primeiro-uso.sh /usr/local/bin/primeiro-uso
+RUN chmod +x /usr/local/bin/primeiro-uso \
+ && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \
+ && echo '[ -f ~/.jarvis-ok ] || echo ">> Primeira vez? Rode: primeiro-uso"' >> /home/dev/.bashrc
+
+USER dev
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

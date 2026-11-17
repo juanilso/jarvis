@@ -1,0 +1,63 @@
+# Uso: dentro da pasta container/ ->  docker compose up -d --build
+#      depois                     ->  docker compose exec dev bash
+name: jarvis
+
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: container/Dockerfile
+      args:
+        PHP_VERSION: "8.3"        # ajuste para a versão do seu cPanel
+        INSTALL_SQLSRV: "false"   # "true" para extensões PHP de SQL Server
+    container_name: jarvis-dev
+    volumes:
+      - ${PROJETOS_DIR:-../../projetos}:/workspace   # pasta compartilhada com o PC (outras IAs/IDE enxergam)
+      - claude-config:/home/dev/.claude              # login e configurações do Claude persistem
+      - dev-home:/home/dev/.cache
+    ports:
+      - "8080:8080"   # php -S 0.0.0.0:8080 -t public  -> abra http://localhost:8080 no PC
+    environment:
+      DB_HOST: mariadb
+      DB_USER: dev
+      DB_PASS: dev
+      DB_NAME: dev
+    depends_on: [mariadb]
+    mem_limit: 4g
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:11
+    container_name: jarvis-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: dev
+      MARIADB_USER: dev
+      MARIADB_PASSWORD: dev
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    ports:
+      - "3307:3306"   # acesso pelo PC (HeidiSQL, DBeaver): localhost:3307
+    mem_limit: 1g
+    restart: unless-stopped
+
+  # SQL Server: só sobe quando pedir ->  docker compose --profile sqlserver up -d
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: jarvis-sqlserver
+    profiles: ["sqlserver"]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Dev@Local123"
+      MSSQL_PID: "Developer"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    ports:
+      - "1433:1433"
+    mem_limit: 2g
+
+volumes:
+  claude-config:
+  dev-home:
+  mariadb-data:
+  sqlserver-data:
