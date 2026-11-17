@@ -16,7 +16,7 @@ services:
       - claude-config:/home/dev/.claude              # login e configurações do Claude persistem
       - dev-home:/home/dev/.cache
     ports:
-      - "8080:8080"   # php -S 0.0.0.0:8080 -t public  -> abra http://localhost:8080 no PC
+      - "127.0.0.1:8080:8080"   # php -S 0.0.0.0:8080 -t public  -> abra http://localhost:8080 no PC
     environment:
       DB_HOST: mariadb
       DB_USER: dev
@@ -37,7 +37,7 @@ services:
     volumes:
       - mariadb-data:/var/lib/mysql
     ports:
-      - "3307:3306"   # acesso pelo PC (HeidiSQL, DBeaver): localhost:3307
+      - "127.0.0.1:3307:3306"   # acesso pelo PC (HeidiSQL, DBeaver): localhost:3307
     mem_limit: 1g
     restart: unless-stopped
 
@@ -53,7 +53,7 @@ services:
     volumes:
       - sqlserver-data:/var/opt/mssql
     ports:
-      - "1433:1433"
+      - "127.0.0.1:1433:1433"
     mem_limit: 2g
 
 volumes:
