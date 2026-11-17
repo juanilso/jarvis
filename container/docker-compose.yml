@@ -18,6 +18,7 @@ services:
     ports:
       - "127.0.0.1:8080:8080"   # php -S 0.0.0.0:8080 -t public  -> abra http://localhost:8080 no PC
     environment:
+      CLAUDE_CONFIG_DIR: /home/dev/.claude   # login, tema e plugins ficam no volume e sobrevivem a recriações
       DB_HOST: mariadb
       DB_USER: dev
       DB_PASS: dev
