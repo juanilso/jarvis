@@ -40,7 +40,9 @@ RUN if [ "$INSTALL_SQLSRV" = "true" ]; then \
     fi
 
 # Usuário sem root (o modo autônomo do Claude Code não roda como root). Pode usar sudo DENTRO do contêiner.
-RUN useradd -m -s /bin/bash dev && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev
+RUN useradd -m -s /bin/bash dev && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
+ # pastas dos volumes já pertencendo ao dev (senão o Docker cria como root e o login não é salvo)
+ && mkdir -p /home/dev/.claude /home/dev/.cache /workspace && chown -R dev:dev /home/dev /workspace
 
 # Jarvis embutido (copiado do repositório no momento do build)
 COPY --chown=dev:dev . /opt/jarvis
