@@ -6,9 +6,12 @@ argument-hint: <qualquer pedido, ex. "toca o projeto", "quero adicionar login", 
 Pedido: $ARGUMENTS
 
 Carregue a skill `orquestrador`. Depois, identifique a intenção e siga o fluxo correspondente
-(arquivos em `.claude/commands/`), sem pedir confirmação de qual fluxo usar:
+(arquivos em `commands/` deste plugin), sem pedir confirmação de qual fluxo usar:
 
-- Não existe `docs/PROJETO.md` OU pedido de criar algo novo → fluxo **novo**
+- Existe código mas não existe `docs/PROJETO.md` → fluxo **adotar** (antes de qualquer outra coisa)
+- Pasta vazia OU pedido de criar algo novo → fluxo **novo**
+- "corrigir", "erro", "bug", "não está funcionando" → crie UMA tarefa no backlog com o erro como critério
+  (primeiro um teste que reproduz o erro, depois a correção) e rode o fluxo **executar** só nela
 - "toca", "continua", "executa", "faz as próximas" → fluxo **executar**
 - mudança de escopo, nova funcionalidade, ajuste técnico, problema → fluxo **evoluir**
 - respostas a decisões ("D-001 A", "ok pode seguir") → fluxo **decidir**
