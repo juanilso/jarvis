@@ -5,11 +5,15 @@ ARG PHP_VERSION=8.3
 ARG INSTALL_SQLSRV=false
 ENV DEBIAN_FRONTEND=noninteractive TZ=America/Sao_Paulo
 
-# Base + PHP (o PPA ondrej permite instalar outras versões depois, para casar com o cPanel)
+# Repetir downloads que falharem (espelhos instáveis)
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries
+
+# Base + PHP. O PHP 8.3 vem do próprio Ubuntu 24.04 (não depende do PPA).
+# Outras versões (7.4, 8.1, 8.2, 8.4) usam o PPA ondrej/php automaticamente.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl gnupg git unzip zip nano less sudo tzdata software-properties-common \
       sqlite3 mariadb-client jq ripgrep \
- && add-apt-repository -y ppa:ondrej/php && apt-get update \
+ && if [ "$PHP_VERSION" != "8.3" ]; then add-apt-repository -y ppa:ondrej/php && apt-get update; fi \
  && apt-get install -y --no-install-recommends \
       php${PHP_VERSION}-cli php${PHP_VERSION}-mysql php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-mbstring \
       php${PHP_VERSION}-xml php${PHP_VERSION}-curl php${PHP_VERSION}-zip php${PHP_VERSION}-intl \
