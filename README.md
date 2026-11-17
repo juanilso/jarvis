@@ -15,6 +15,18 @@ escolhe o modelo ideal para cada papel (ou deixa você escolher), executa sozinh
    O script mescla `settings-recomendado.json` em `~/.claude/settings.json` e faz backup antes.
 4. Para atualizar no futuro: dê push no repositório e rode `/plugin marketplace update jarvis-marketplace`.
 
+## Modo nuvem / projeto (usar pelo celular, sem computador ligado)
+A sessão na nuvem do Claude Code (claude.ai/code ou app do Claude → Code) não carrega plugins,
+mas carrega a pasta `.claude/` do próprio repositório. Por isso existe o **modo projeto**:
+`projeto/.claude/` traz o Jarvis inteiro (agentes, comandos, skill, gancho e permissões).
+
+**Jeito mais fácil:** repositório-modelo `jarvis-template` → "Use this template" → novo projeto já com o Jarvis.
+**Manual:** `bash instalar-no-projeto.sh /caminho/do/projeto` e depois commit.
+
+No modo projeto, os comandos ficam sem prefixo: `/jarvis`, `/novo`, `/executar`, `/decidir`, `/evoluir`, `/modelos`, `/status`.
+Na nuvem, o Jarvis envia o trabalho para um branch próprio (nunca para `main`) e você aprova pelo Pull Request.
+Proteja o `main` no GitHub: Settings → Branches → Add rule → "Require a pull request before merging".
+
 ## Uso
 | Comando | O que faz |
 |---|---|

@@ -1,0 +1,102 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(zip:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git switch:*)",
+      "Bash(php -l:*)",
+      "Bash(php -v:*)",
+      "Bash(php -m:*)",
+      "Bash(php artisan test:*)",
+      "Bash(php artisan make:*)",
+      "Bash(php bin/:*)",
+      "Bash(php tests/:*)",
+      "Bash(composer install:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(composer validate:*)",
+      "Bash(composer test:*)",
+      "Bash(vendor/bin/phpunit:*)",
+      "Bash(vendor/bin/phpstan:*)",
+      "Bash(vendor/bin/php-cs-fixer:*)",
+      "Bash(./vendor/bin/phpunit:*)",
+      "Bash(./vendor/bin/phpstan:*)",
+      "Bash(sqlite3:*)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew lint:*)",
+      "Bash(./gradlew lintDebug:*)",
+      "Bash(./gradlew testDebugUnitTest:*)",
+      "Bash(./gradlew connectedDebugAndroidTest:*)",
+      "Bash(./gradlew dependencies:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(adb devices:*)",
+      "Bash(adb install:*)",
+      "Bash(adb logcat:*)",
+      "Bash(adb shell am:*)",
+      "Bash(git push -u origin claude/:*)",
+      "Bash(git push origin claude/:*)",
+      "Bash(git push:*)",
+      "Bash(apt-get install:*)",
+      "Bash(pecl install:*)",
+      "Bash(service mysql:*)",
+      "Bash(service mariadb:*)"
+    ],
+    "ask": [
+      "Bash(composer require:*)",
+      "Bash(composer update:*)",
+      "Bash(mysql:*)",
+      "Bash(sqlcmd:*)",
+      "Bash(php artisan migrate:*)",
+      "Bash(./gradlew assembleRelease:*)",
+      "Bash(./gradlew bundleRelease:*)"
+    ],
+    "deny": [
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(ftp:*)",
+      "Bash(sftp:*)",
+      "Bash(scp:*)",
+      "Bash(rsync:*)",
+      "Bash(ssh:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./keystore.properties)",
+      "Bash(git push origin main:*)",
+      "Bash(git push origin master:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

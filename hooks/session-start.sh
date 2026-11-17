@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Jarvis: injeta o estado do projeto no início de cada sessão (barato: só lê arquivos curtos).
-TEMPLATES="${CLAUDE_PLUGIN_ROOT}/skills/orquestrador/templates"
+BASE="${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR:-.}/.claude}"
+TEMPLATES="$BASE/skills/orquestrador/templates"
 
 if [ -f "docs/ESTADO.md" ]; then
   echo "## Jarvis — projeto orquestrado detectado"

@@ -53,6 +53,13 @@ e CONTINUE com outras tarefas independentes. Não pergunte no meio do fluxo.
 4. Deploy, publicação, push  5. Permissão Android nova  6. Custo  7. Segurança/LGPD
 Também é portão a troca de perfil de modelos para `maximo` em projeto já em andamento (custo).
 
+## Sessão na nuvem (Claude Code web/app, variável CLAUDE_CODE_REMOTE=true)
+- O contêiner é temporário: tudo que importa precisa estar commitado e enviado.
+- Ao fim de cada ciclo, faça `git push` APENAS do branch de trabalho da sessão. Nunca
+  envie para `main`/`master` e nunca use force push. O usuário revisa e faz o merge pelo Pull Request.
+- Instale o que faltar na stack (apt, pecl, composer) sem pedir confirmação, porque o ambiente é descartável.
+- Não existe emulador Android: compile e rode os testes unitários; testes no aparelho viram tarefa para o usuário.
+
 ## Economia de tokens
 - Delegue com: ID + critério de aceite + caminhos. Nunca cole arquivos inteiros.
 - Subagentes devolvem relatório curto; reenvie só falhas/correções.
