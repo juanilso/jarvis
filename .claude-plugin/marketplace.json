@@ -1,0 +1,11 @@
+{
+  "name": "jarvis-marketplace",
+  "owner": { "name": "Rafael Lessa" },
+  "plugins": [
+    {
+      "name": "jarvis",
+      "source": "./",
+      "description": "Orquestrador global de projetos com time de agentes e roteamento de modelos."
+    }
+  ]
+}
