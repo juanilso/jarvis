@@ -1,2 +1,4 @@
-.DS_Store
 *.bak.*
+.DS_Store
+.env
+.env.claude

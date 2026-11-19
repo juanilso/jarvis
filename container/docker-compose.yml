@@ -11,6 +11,9 @@ services:
         PHP_VERSION: "8.3"        # ajuste para a versão do seu cPanel
         INSTALL_SQLSRV: "false"   # "true" para extensões PHP de SQL Server
     container_name: jarvis-dev
+    env_file:
+      - path: .env.claude      # opcional: ANTHROPIC_API_KEY=sk-ant-... (uso por API em vez da assinatura)
+        required: false
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace   # pasta compartilhada com o PC (outras IAs/IDE enxergam)
       - claude-config:/home/dev/.claude              # login e configurações do Claude persistem
