@@ -49,8 +49,9 @@ services:
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace
       - claude-config:/home/dev/.claude
+      - dev-home:/home/dev/.cache          # modelo de transcrição fica salvo aqui
     depends_on: [dev]
-    mem_limit: 2g
+    mem_limit: 3g
     restart: unless-stopped
 
   mariadb:
