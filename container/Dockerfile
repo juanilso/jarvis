@@ -55,8 +55,8 @@ COPY --chown=dev:dev . /opt/jarvis
 RUN rm -rf /opt/jarvis/.git /opt/jarvis/container
 
 COPY --chown=dev:dev container/primeiro-uso.sh /usr/local/bin/primeiro-uso
-COPY --chown=dev:dev container/telegram-bot/bot.py /usr/local/bin/jarvis-telegram
-RUN chmod +x /usr/local/bin/primeiro-uso /usr/local/bin/jarvis-telegram \
+COPY --chown=dev:dev container/telegram-bot/ /opt/jarvis-bots/
+RUN chmod +x /usr/local/bin/primeiro-uso \
  && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \
  && echo '[ -f ~/.jarvis-ok ] || echo ">> Primeira vez? Rode: primeiro-uso"' >> /home/dev/.bashrc
 

@@ -67,3 +67,9 @@ Logs: `docker logs -f jarvis-telegram`. Só os chat IDs autorizados conseguem us
    → `tailscale serve --bg 8443` (mostra o endereço https://...ts.net)
 4. Instale o app Tailscale no PC/celular com a mesma conta e abra o endereço. Terminal: menu ☰ → Terminal → New Terminal → `jarvis-auto`.
 Sem Tailscale: `ssh -L 8443:localhost:8443 root@IP` e abra http://localhost:8443.
+
+## Página web do Jarvis (microfone e respostas faladas)
+Sobe junto com o acesso web: `docker compose --profile web up -d` (usa a mesma `PASSWORD`).
+Publique no Tailscale numa segunda porta: `tailscale serve --bg --https=8090 http://localhost:8090`
+→ abra `https://<sua-vps>.ts.net:8090`. Microfone: clique para gravar e clique de novo para enviar.
+Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.

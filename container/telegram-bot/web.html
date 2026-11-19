@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jarvis</title>
+<style>
+:root{--bg:#1b1b1d;--p:#252528;--b:#3a3a3e;--t:#ececec;--m:#9a9aa0;--a:#3b82f6;--ok:#4ade80;--er:#f87171;--wa:#fbbf24}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--t);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#app{display:flex;flex-direction:column;height:100%;max-width:900px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--b);background:var(--p)}
+header b{font-size:17px;margin-right:auto}
+select,button,textarea{font:inherit;color:var(--t);background:var(--bg);border:1px solid var(--b);border-radius:8px}
+select,button{padding:6px 10px;cursor:pointer}button:hover{border-color:var(--m)}
+#status{font-size:13px;color:var(--m);padding:6px 12px;border-bottom:1px solid var(--b)}
+#status.ocupado{color:var(--wa)}
+#log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:88%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+.eu{align-self:flex-end;background:var(--a);color:#fff}
+.jarvis{align-self:flex-start;background:var(--p);border:1px solid var(--b)}
+.ag{align-self:flex-start;font-size:13px;color:var(--m)}
+.ag.fim{color:var(--ok)}.ag.erro,.err{color:var(--er)}
+.sis{align-self:center;font-size:12px;color:var(--m)}
+.hora{font-size:11px;color:var(--m);margin-top:4px}
+pre{background:#111;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre;margin:6px 0}
+code{font-family:ui-monospace,Consolas,monospace;font-size:13px}
+audio{width:100%;margin-top:6px;height:36px}
+footer{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--b);background:var(--p);padding-bottom:max(10px,env(safe-area-inset-bottom))}
+textarea{flex:1;resize:none;padding:10px;height:44px;max-height:140px}
+#mic,#enviar{width:48px;height:44px;font-size:20px;padding:0}
+#mic.gravando{background:var(--er);border-color:var(--er);color:#fff;animation:p 1s infinite}
+@keyframes p{50%{opacity:.6}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <b>Jarvis</b>
+    <select id="projeto" title="Projeto"></select>
+    <select id="audio" title="Resposta em áudio">
+      <option value="auto">🔊 auto</option><option value="sempre">🔊 sempre</option><option value="nunca">🔇 nunca</option>
+    </select>
+    <button id="agentes" title="Avisos dos agentes">👥 on</button>
+    <button id="novo" title="Conversa nova neste projeto">🆕</button>
+    <button id="parar" title="Parar">⛔</button>
+  </header>
+  <div id="status">Carregando…</div>
+  <div id="log"></div>
+  <footer>
+    <button id="mic" title="Gravar áudio (clique para começar e para enviar)">🎙️</button>
+    <textarea id="texto" placeholder="Escreva a demanda ou use o microfone…"></textarea>
+    <button id="enviar" title="Enviar">➤</button>
+  </footer>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let ultimo = 0, agentesOn = true, gravador = null, pedacos = [], inicioGrav = 0, timerGrav = null;
+
+function esc(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+function formatar(t){
+  return esc(t).replace(/```(\w*)\n?([\s\S]*?)```/g,(m,l,c)=>`<pre><code>${c}</code></pre>`)
+               .replace(/`([^`\n]+)`/g,"<code>$1</code>");
+}
+function add(cls, html){
+  const d=document.createElement("div"); d.className=cls; d.innerHTML=html;
+  const log=$("log"); const perto=log.scrollHeight-log.scrollTop-log.clientHeight<120;
+  log.appendChild(d); if(perto) log.scrollTop=log.scrollHeight; return d;
+}
+async function api(caminho, corpo){
+  const r = await fetch(caminho, corpo===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(corpo)});
+  if(r.status===401){location.reload();return {}}
+  return r.json();
+}
+async function carregarEstado(){
+  const e = await api("/api/estado");
+  $("projeto").innerHTML = '<option value="">Escolha o projeto…</option>' +
+    e.projetos.map(p=>`<option ${p===e.projeto?"selected":""}>${esc(p)}</option>`).join("");
+  $("audio").value = e.audio; agentesOn = e.agentes; $("agentes").textContent = "👥 "+(agentesOn?"on":"off");
+  status(e.ocupado, e.pedido, e.projeto);
+}
+function status(ocupado, pedido, projeto){
+  const s=$("status");
+  s.className = ocupado?"ocupado":"";
+  s.textContent = ocupado ? `🔄 Trabalhando${pedido?": “"+pedido+"”":""}` : `💤 Livre · projeto: ${projeto||$("projeto").value||"nenhum"}`;
+}
+function mostrar(ev){
+  const h = `<div class="hora">${ev.hora}</div>`;
+  if(ev.tipo==="usuario") add("msg eu", esc(ev.texto)+h);
+  else if(ev.tipo==="agente_inicio") add("ag", `${ev.emoji} ${esc(ev.agente)} começou: ${esc(ev.descricao)}`);
+  else if(ev.tipo==="agente_fim") add("ag "+(ev.erro?"erro":"fim"), `${ev.emoji} ${esc(ev.agente)} ${ev.erro?"⚠️ terminou com erro":"✅ concluiu"} (${ev.segundos}s)`);
+  else if(ev.tipo==="erro") add("msg jarvis err", "⚠️ "+esc(ev.texto)+h);
+  else if(ev.tipo==="sistema") add("sis", esc(ev.texto));
+  else if(ev.tipo==="resposta"){
+    const custo = ev.custo ? `<div class="hora">💲 US$ ${Number(ev.custo).toFixed(4)}</div>` : "";
+    const d = add("msg jarvis", (ev.erro?"⚠️ ":"")+formatar(ev.texto)+custo+h);
+    if(ev.voz){
+      const a=document.createElement("audio"); a.controls=true; a.src=ev.voz; d.appendChild(a);
+      if(window._carregado) a.play().catch(()=>{});
+    }
+  }
+}
+async function poll(){
+  try{
+    const r = await api("/api/eventos?desde="+ultimo);
+    (r.eventos||[]).forEach(mostrar); ultimo = r.ultimo||ultimo;
+    status(r.ocupado);
+  }catch(e){}
+  window._carregado = true;
+  setTimeout(poll, 1500);
+}
+async function enviar(){
+  const t=$("texto").value.trim(); if(!t) return;
+  const r = await api("/api/mensagem",{texto:t});
+  if(r.erro) add("sis err", esc(r.erro)); else $("texto").value="";
+}
+$("enviar").onclick = enviar;
+$("texto").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); enviar(); } });
+$("projeto").onchange = async e=>{ await api("/api/config",{projeto:e.target.value}); add("sis","Projeto: "+esc(e.target.value)); carregarEstado(); };
+$("audio").onchange = e=>api("/api/config",{audio:e.target.value});
+$("agentes").onclick = async ()=>{ agentesOn=!agentesOn; await api("/api/config",{agentes:agentesOn}); $("agentes").textContent="👥 "+(agentesOn?"on":"off"); };
+$("novo").onclick = ()=>api("/api/novo",{});
+$("parar").onclick = ()=>api("/api/parar",{});
+
+$("mic").onclick = async ()=>{
+  if(gravador && gravador.state==="recording"){ gravador.stop(); return; }
+  if(!navigator.mediaDevices){ add("sis err","O microfone só funciona em HTTPS (Tailscale) ou localhost."); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const tipo = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
+    gravador = new MediaRecorder(stream,{mimeType:tipo}); pedacos=[];
+    gravador.ondataavailable = e=>pedacos.push(e.data);
+    gravador.onstop = async ()=>{
+      stream.getTracks().forEach(t=>t.stop()); clearInterval(timerGrav);
+      $("mic").classList.remove("gravando"); $("mic").textContent="🎙️";
+      const aviso = add("sis","🎙️ Transcrevendo…");
+      const r = await fetch("/api/audio",{method:"POST",headers:{"Content-Type":tipo},body:new Blob(pedacos,{type:tipo})});
+      const j = await r.json(); aviso.remove();
+      if(j.erro && !j.texto) add("sis err", esc(j.erro));
+      else if(j.erro) add("sis err", "Entendi “"+esc(j.texto)+"”, mas: "+esc(j.erro));
+    };
+    gravador.start(); inicioGrav=Date.now();
+    $("mic").classList.add("gravando");
+    timerGrav = setInterval(()=>{ $("mic").textContent = Math.floor((Date.now()-inicioGrav)/1000)+"s"; }, 500);
+  }catch(e){ add("sis err","Não consegui acessar o microfone: "+esc(e.message)); }
+};
+carregarEstado(); poll();
+</script>
+</body>
+</html>
