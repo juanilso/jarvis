@@ -10,6 +10,7 @@ services:
       args:
         PHP_VERSION: "8.3"        # ajuste para a versão do seu cPanel
         INSTALL_SQLSRV: "false"   # "true" para extensões PHP de SQL Server
+    image: jarvis-dev:latest
     container_name: jarvis-dev
     env_file:
       - path: .env.claude      # opcional: ANTHROPIC_API_KEY=sk-ant-... (uso por API em vez da assinatura)
@@ -28,6 +29,28 @@ services:
       DB_NAME: dev
     depends_on: [mariadb]
     mem_limit: 4g
+    restart: unless-stopped
+
+  # Bot do Telegram: só sobe quando pedir ->  docker compose --profile telegram up -d
+  telegram:
+    image: jarvis-dev:latest
+    container_name: jarvis-telegram
+    profiles: ["telegram"]
+    command: ["python3", "/usr/local/bin/jarvis-telegram"]
+    env_file:
+      - path: .env.claude
+        required: false
+    environment:
+      CLAUDE_CONFIG_DIR: /home/dev/.claude
+      DB_HOST: mariadb
+      DB_USER: dev
+      DB_PASS: dev
+      DB_NAME: dev
+    volumes:
+      - ${PROJETOS_DIR:-../../projetos}:/workspace
+      - claude-config:/home/dev/.claude
+    depends_on: [dev]
+    mem_limit: 2g
     restart: unless-stopped
 
   mariadb:

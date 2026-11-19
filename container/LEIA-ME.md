@@ -47,3 +47,12 @@ Dentro do contêiner:
 - Nunca coloque credenciais de produção, cPanel ou FTP dentro de `projetos/`.
 - As senhas acima são só para o ambiente local; não use em produção.
 - `git push` continua bloqueado para o Claude: você revisa e envia.
+
+## Telegram (controle pelo celular, funciona com API key ou gateway)
+1. No Telegram, fale com @BotFather → /newbot → copie o token.
+2. No `.env.claude` da VPS: `TELEGRAM_BOT_TOKEN=...` (deixe `TELEGRAM_CHAT_ID` vazio por enquanto).
+3. `docker compose build && docker compose --profile telegram up -d`
+4. Mande "oi" para o bot: ele responde com o seu chat ID. Coloque em `TELEGRAM_CHAT_ID=` e rode
+   `docker compose --profile telegram up -d` de novo.
+5. No bot: `/projetos` → `/projeto nome` → depois é só escrever as demandas.
+Logs: `docker logs -f jarvis-telegram`. Só os chat IDs autorizados conseguem usar o bot.
