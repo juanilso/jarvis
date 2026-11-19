@@ -58,3 +58,12 @@ Dentro do contêiner:
 Áudio: mande mensagem de voz (transcrição local). `/audio auto|sempre|nunca` controla a resposta falada.
 `/agentes on|off` liga/desliga os avisos de cada agente trabalhando.
 Logs: `docker logs -f jarvis-telegram`. Só os chat IDs autorizados conseguem usar o bot.
+
+## Acesso web (VS Code no navegador)
+1. No `.env.claude`: `PASSWORD=<senha forte>`.
+2. `docker compose build && docker compose --profile web up -d`
+3. Acesso privado com Tailscale (na VPS, como root):
+   `curl -fsSL https://tailscale.com/install.sh | sh` → `tailscale up` (abra o link e entre com sua conta)
+   → `tailscale serve --bg 8443` (mostra o endereço https://...ts.net)
+4. Instale o app Tailscale no PC/celular com a mesma conta e abra o endereço. Terminal: menu ☰ → Terminal → New Terminal → `jarvis-auto`.
+Sem Tailscale: `ssh -L 8443:localhost:8443 root@IP` e abra http://localhost:8443.

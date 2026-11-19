@@ -31,6 +31,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
  && apt-get install -y --no-install-recommends nodejs && rm -rf /var/lib/apt/lists/* \
  && npm install -g @anthropic-ai/claude-code
 
+# VS Code no navegador (acesso web)
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+
 # (Opcional) Extensões PHP para SQL Server — habilite com INSTALL_SQLSRV=true
 RUN if [ "$INSTALL_SQLSRV" = "true" ]; then \
       curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg && \
@@ -45,7 +48,7 @@ RUN if [ "$INSTALL_SQLSRV" = "true" ]; then \
 # Usuário sem root (o modo autônomo do Claude Code não roda como root). Pode usar sudo DENTRO do contêiner.
 RUN useradd -m -s /bin/bash dev && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
  # pastas dos volumes já pertencendo ao dev (senão o Docker cria como root e o login não é salvo)
- && mkdir -p /home/dev/.claude /home/dev/.cache /workspace && chown -R dev:dev /home/dev /workspace
+ && mkdir -p /home/dev/.claude /home/dev/.cache /home/dev/.local/share/code-server /workspace && chown -R dev:dev /home/dev /workspace
 
 # Jarvis embutido (copiado do repositório no momento do build)
 COPY --chown=dev:dev . /opt/jarvis

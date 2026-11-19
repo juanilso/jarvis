@@ -54,6 +54,33 @@ services:
     mem_limit: 3g
     restart: unless-stopped
 
+  # Acesso web (VS Code no navegador): docker compose --profile web up -d
+  # Abra pelo Tailscale (recomendado) ou túnel SSH. Senha: PASSWORD no .env.claude
+  web:
+    image: jarvis-dev:latest
+    container_name: jarvis-web
+    profiles: ["web"]
+    command: ["code-server", "--bind-addr", "0.0.0.0:8443", "--auth", "password", "--disable-telemetry", "/workspace"]
+    env_file:
+      - path: .env.claude
+        required: false
+    environment:
+      CLAUDE_CONFIG_DIR: /home/dev/.claude
+      DB_HOST: mariadb
+      DB_USER: dev
+      DB_PASS: dev
+      DB_NAME: dev
+    volumes:
+      - ${PROJETOS_DIR:-../../projetos}:/workspace
+      - claude-config:/home/dev/.claude
+      - dev-home:/home/dev/.cache
+      - code-server-data:/home/dev/.local/share/code-server
+    ports:
+      - "127.0.0.1:8443:8443"
+    depends_on: [dev]
+    mem_limit: 2g
+    restart: unless-stopped
+
   mariadb:
     image: mariadb:11
     container_name: jarvis-mariadb
@@ -86,6 +113,7 @@ services:
 
 volumes:
   claude-config:
+  code-server-data:
   dev-home:
   mariadb-data:
   sqlserver-data:
