@@ -37,7 +37,7 @@ main{display:grid;grid-template-columns:230px minmax(0,1fr) 270px;gap:12px;paddi
 @keyframes pl{50%{opacity:.35}}
 #centro{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0}
 #orbbox{display:flex;align-items:center;gap:14px;justify-content:center}
-#orb{width:340px;height:300px}
+#orb{width:380px;height:388px}
 #estadoOrb{font:12px var(--mono);letter-spacing:.2em;color:var(--c2);text-transform:uppercase;min-width:110px}
 #estadoOrb small{display:block;letter-spacing:.05em;color:var(--m);text-transform:none;font-size:12px;max-width:220px}
 #log{display:flex;flex-direction:column;gap:8px}
@@ -64,7 +64,7 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
   main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);overflow:auto}
   #agentes,#projeto{display:none}
   main.abrir #agentes,main.abrir #projeto{display:block}
-  #orb{width:230px;height:205px}
+  #orb{width:250px;height:255px}
   #btnPainel{display:inline-block}
   #centro{min-height:60vh}
 }
@@ -202,97 +202,73 @@ $("mic").onclick=async()=>{
   }catch(e){add("ev erro","Não consegui acessar o microfone: "+esc(e.message))}
 };
 
-/* ---------- holograma 3D: cérebro neural / rosto falando ---------- */
+/* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */
 const cv=$("orb"),g=cv.getContext("2d"),buf=new Uint8Array(128);
 function amp(an){if(!an)return 0;an.getByteFrequencyData(buf);let s=0;for(let i=0;i<buf.length;i++)s+=buf[i];return s/buf.length/255}
-const TAU=Math.PI*2,G=(x,s)=>Math.exp(-(x/s)*(x/s));
-/* rosto: grade em linhas de varredura sobre a superfície frontal da cabeça, com relevo e luz */
-function larg(y){const b=Math.sqrt(Math.max(0,1-(y/.95)**2));return .64*b*(y<0?1-.36*Math.pow(-y/.95,1.5):1)}
-function altura(x,y){const a=larg(y);if(a<=0)return -1;const q=1-(x/a)**2;if(q<0)return -1;
-  let z=.62*Math.sqrt(Math.max(0,1-(y/.95)**2))*Math.sqrt(q);
-  z+=.19*G(x,.065)*G(y+.03,.19)+.07*G(x,.085)*G(y+.17,.055);          /* nariz */
-  z-=.085*(G(x-.25,.11)+G(x+.25,.11))*G(y-.19,.07);                    /* órbitas */
-  z+=.035*(G(x-.25,.06)+G(x+.25,.06))*G(y-.19,.035);                   /* olhos */
-  z+=.05*G(y-.3,.045)*G(x,.4);                                          /* sobrancelhas */
-  z+=.05*G(Math.abs(x)-.32,.11)*G(y+.04,.13);                           /* maçãs */
-  z+=.045*G(x,.16)*G(y+.39,.035)+.05*G(x,.15)*G(y+.47,.04);             /* lábios */
-  z+=.05*G(x,.17)*G(y+.73,.08);                                          /* queixo */
-  return z}
-const FP=[];
-for(let y=.93;y>-.93;y-=.022){const a=larg(y);for(let x=-a;x<=a;x+=.019){const z=altura(x,y);if(z<0)continue;
-  const e=.01,nx=-(altura(x+e,y)-altura(x-e,y))/(2*e),ny=-(altura(x,y+e)-altura(x,y-e))/(2*e),nl=Math.hypot(nx,ny,1);
-  let luzR=Math.max(0,(-.35*nx+.45*ny+.82)/nl);
-  const olho=Math.min(G(x-.25,.075)*G(y-.19,.035)>.3?1:0+(G(x+.25,.075)*G(y-.19,.035)>.3?1:0),1);
-  const iris=olho&&Math.abs(Math.hypot(Math.abs(x)-.25,(y-.19)*1.6)-.03)<.012?1:0;
-  const linhaBoca=Math.abs(y+.43)<.011&&Math.abs(x)<.15;
-  FP.push([x,y,z,luzR,olho,iris,linhaBoca?1:0,y<-.43?G(x,.22)*Math.min(1,(-.43-y)/.25):0])}}
-const N=FP.length;
-const F=new Float32Array(N*3),sombra=new Float32Array(N),olhoP=new Uint8Array(N),irisP=new Uint8Array(N),bocaL=new Uint8Array(N),mand=new Float32Array(N);
-FP.forEach((p,i)=>{F[i*3]=p[0];F[i*3+1]=p[1];F[i*3+2]=p[2];sombra[i]=p[3];olhoP[i]=p[4];irisP[i]=p[5];bocaL[i]=p[6];mand[i]=p[7]});
-/* cérebro: dois hemisférios com giros + cerebelo, com sombreamento pela normal */
-const B=new Float32Array(N*3),Bl=new Float32Array(N);
-for(let i=0;i<N;i++){let x,y,z,nx,ny,nz;
-  if(i<N*.88){const lado=i%2?1:-1,u=Math.random()*TAU,v=Math.acos(2*Math.random()-1);
-    const dobra=1+.08*Math.sin(9*u+3*Math.sin(5*v))*Math.sin(7*v+u);
-    let sx=Math.sin(v)*Math.cos(u),sy=Math.cos(v),sz=Math.sin(v)*Math.sin(u);
-    if(sx*lado<-.15)sx=-.15*lado+(sx+.15*lado)*.25;
-    nx=sx;ny=sy;nz=sz;x=(lado*.33+sx*.36)*dobra;y=(sy*.52)*dobra+.05;z=(sz*.72)*dobra;if(y<-.25)y=-.25+(y+.25)*.5;
-    Bl[i]=.35+.65*Math.max(0,.5+.5*Math.sin(9*u+3*Math.sin(5*v))*Math.sin(7*v+u));   /* giros mais claros */
-  }else{const u=Math.random()*TAU,v=Math.acos(2*Math.random()-1),d=1+.06*Math.sin(16*v);
-    x=Math.sin(v)*Math.cos(u)*.42*d;y=-.42+Math.cos(v)*.17*d;z=-.42+Math.sin(v)*Math.sin(u)*.26*d;Bl[i]=.4+.6*Math.abs(Math.sin(16*v))}
-  B[i*3]=x;B[i*3+1]=y;B[i*3+2]=z}
-/* vizinhança para propagar sinapses no cérebro */
-const viz=[];{const cel=.09,h=new Map(),k=(a,b,c)=>a+","+b+","+c;
-  for(let i=0;i<N;i++){const c=k(Math.floor(B[i*3]/cel),Math.floor(B[i*3+1]/cel),Math.floor(B[i*3+2]/cel));(h.get(c)||h.set(c,[]).get(c)).push(i)}
-  for(let i=0;i<N;i++){const cx=Math.floor(B[i*3]/cel),cy=Math.floor(B[i*3+1]/cel),cz=Math.floor(B[i*3+2]/cel),l=[];
-    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(let c=-1;c<=1;c++)for(const j of h.get(k(cx+a,cy+b,cz+c))||[])if(j!==i)l.push(j);
-    viz.push(l.slice(0,6))}}
-const luz=new Float32Array(N);let ondas=[],morph=0,ultimoT=0,acumulo=0,rot=0;
-function onda(){ondas.push({f:[Math.floor(Math.random()*N)],vida:7})}
+const IW=560,IH=572,BOCA={x:308,y:339,meia:48},BASE={x:280,y:492};
+function carregar(src){const im=new Image();im.src=src;const o={im,ok:false,brilho:null,pts:[]};
+  im.onload=()=>{o.ok=true;
+    const c=document.createElement("canvas");c.width=IW;c.height=IH;const x=c.getContext("2d");x.filter="blur(7px)";x.drawImage(im,0,0);o.brilho=c;
+    const c2=document.createElement("canvas");c2.width=IW;c2.height=IH;const y=c2.getContext("2d");y.drawImage(im,0,0);
+    const d=y.getImageData(0,0,IW,IH).data;
+    for(let k=0;k<9000&&o.pts.length<700;k++){const px=Math.floor(Math.random()*IW),py=Math.floor(Math.random()*440)+20,i=(py*IW+px)*4;
+      if(d[i]*.3+d[i+1]*.59+d[i+2]*.11>150&&Math.abs(px-280)<230)o.pts.push([px,py])}};
+  return o}
+const imgC=carregar("/static/cerebro.jpg"),imgR=carregar("/static/rosto.jpg");
+let morph=0,ultimoT=0,acumulo=0,pulsos=[],brilhos=[],sobe=[];
+function novoPulso(o){if(o.pts.length<2)return;const a=o.pts[Math.floor(Math.random()*o.pts.length)];
+  let b=null;for(let k=0;k<25;k++){const c=o.pts[Math.floor(Math.random()*o.pts.length)];const dd=Math.hypot(c[0]-a[0],c[1]-a[1]);if(dd>15&&dd<70){b=c;break}}
+  if(b)pulsos.push({a,b,p:0,v:.02+Math.random()*.03})}
 function ajustarCanvas(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1,w=Math.round(r.width*d),h=Math.round(r.height*d);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}}
+function desenharImg(o,alpha,k,ox,oy,aberto){
+  if(!o.ok||alpha<=0)return;g.globalAlpha=alpha;g.drawImage(o.im,ox,oy,IW*k,IH*k);
+  if(aberto>0.3){ /* boca: o queixo desce em faixas e abre uma fresta escura entre os lábios */
+    for(let x=BOCA.x-110;x<BOCA.x+110;x+=3){const w=Math.exp(-(((x-BOCA.x)/62)**2)),dy=aberto*w;
+      g.drawImage(o.im,x,BOCA.y+1,3,95,ox+x*k,oy+(BOCA.y+1+dy)*k,3*k+.6,95*k);
+      if(Math.abs(x-BOCA.x)<BOCA.meia){g.fillStyle="rgba(2,14,16,.92)";g.fillRect(ox+x*k,oy+(BOCA.y+.5)*k,3*k+.6,dy*k*Math.sqrt(1-((x-BOCA.x)/BOCA.meia)**2))}}}
+  g.globalAlpha=1}
 function frame(t){
-  ajustarCanvas();const W=cv.width,H=cv.height,S=Math.min(W,H)*.42,cx=W/2,cy=H*.44,d=window.devicePixelRatio||1;
+  ajustarCanvas();const W=cv.width,H=cv.height,d=window.devicePixelRatio||1;
+  const k=Math.min(W/IW,H/IH),ox=(W-IW*k)/2,oy=(H-IH*k)/2,P=(x,y)=>[ox+x*k,oy+y*k];
   g.globalCompositeOperation="source-over";g.clearRect(0,0,W,H);
-  const cor={espera:[56,189,248],ouvindo:[251,146,60],pensando:[96,205,255],falando:[45,212,191]}[modo];
   const dt=Math.min(.05,(t-ultimoT)/1000||0);ultimoT=t;
   let alvo=modo==="falando"?amp(analyser)*2.6:modo==="ouvindo"?amp(window._micAn)*3:0;nivel+=(Math.min(alvo,1)-nivel)*.3;
-  const ritmo={espera:1.5,ouvindo:8,pensando:22,falando:3}[modo];
-  acumulo+=dt*(ritmo+nivel*30);while(acumulo>1){acumulo--;onda()}
-  morph+=((modo==="falando"?1:0)-morph)*.045;const m=morph*morph*(3-2*morph);
-  /* base: chip */
-  g.save();g.translate(cx,H*.92);g.scale(1,.3);g.rotate(Math.PI/4);const L=S*.85;
-  g.strokeStyle=`rgba(${cor},.35)`;g.lineWidth=d;g.strokeRect(-L/2,-L/2,L,L);g.strokeRect(-L/4,-L/4,L/2,L/2);
-  g.beginPath();for(let k=-3;k<=3;k++){const q=k*L/8,e=L*.16;g.moveTo(-L/2,q);g.lineTo(-L/2-e,q);g.moveTo(L/2,q);g.lineTo(L/2+e,q);g.moveTo(q,-L/2);g.lineTo(q,-L/2-e);g.moveTo(q,L/2);g.lineTo(q,L/2+e)}g.stroke();
-  const gc=g.createRadialGradient(0,0,0,0,0,L*.45);gc.addColorStop(0,`rgba(${cor},${.45+nivel*.4})`);gc.addColorStop(1,`rgba(${cor},0)`);g.fillStyle=gc;g.fillRect(-L/2,-L/2,L,L);g.restore();
-  /* feixe do chip até o holograma */
-  const fb=g.createLinearGradient(0,cy,0,H*.92);fb.addColorStop(0,`rgba(${cor},0)`);fb.addColorStop(1,`rgba(${cor},.12)`);
-  g.fillStyle=fb;g.beginPath();g.moveTo(cx-S*.55,cy+S*.2);g.lineTo(cx+S*.55,cy+S*.2);g.lineTo(cx+S*.12,H*.92);g.lineTo(cx-S*.12,H*.92);g.fill();
-  /* sinapses */
-  for(const o of ondas){const prox=[];for(const i of o.f){luz[i]=1;for(const j of viz[i])if(luz[j]<.5&&Math.random()<.45)prox.push(j)}o.f=prox.slice(0,14);o.vida--}
-  ondas=ondas.filter(o=>o.vida>0&&o.f.length);
-  /* pontos */
-  rot+=dt*(.35*(1-m));const yaw=rot+Math.sin(t/2400)*.3*m,ca=Math.cos(yaw),sa=Math.sin(yaw);
-  const fyaw=Math.sin(t/2600)*.32,fca=Math.cos(fyaw),fsa=Math.sin(fyaw),flut=Math.sin(t/1100)*.02;
-  const varre=((t/1600)%1.4)-.2;
+  morph+=((modo==="falando"?1:0)-morph)*.06;const m=morph*morph*(3-2*morph);
+  const resp=.5+.5*Math.sin(t/900);
+  /* imagens */
+  desenharImg(imgC,1-m,k,ox,oy,0);
+  desenharImg(imgR,m,k,ox,oy,nivel*9*m);
+  /* brilho que respira e reage à voz */
   g.globalCompositeOperation="lighter";
-  for(let i=0;i<N;i++){
-    let bx=B[i*3]*ca+B[i*3+2]*sa,bz=-B[i*3]*sa+B[i*3+2]*ca,by=B[i*3+1];
-    let fx=F[i*3],fy=F[i*3+1]-mand[i]*nivel*.035,fz=F[i*3+2];
-    let fx2=fx*fca+fz*fsa,fz2=-fx*fsa+fz*fca;
-    const x=bx+(fx2-bx)*m,y=by+(fy-by)*m+flut,z=bz+(fz2-bz)*m;
-    const per=1/(1.9-z*.55),X=cx+x*S*per*1.75,Y=cy-y*S*per*1.75;
-    const prof=Math.max(0,Math.min(1,(z+.8)/1.6));
-    luz[i]*=.9;
-    const aB=(.06+.45*prof*prof)*Bl[i]+luz[i]*.9;
-    let aF=.05+.85*sombra[i]**1.6;
-    if(olhoP[i])aF=.12;if(irisP[i])aF=1;if(bocaL[i])aF=.02+(.0)*nivel;
-    {const oy=F[i*3+1],ox=F[i*3],gh=nivel*.06*Math.max(0,1-(ox/.14)**2);if(gh>0&&oy<-.42&&oy>-.43-gh)aF=.02}
-    const sc=1-Math.min(1,Math.abs((1-(F[i*3+1]+.95)/1.9)-varre)*10);if(sc>0)aF+=.35*sc;
-    let a=aB*(1-m)+aF*m;
-    const r=((.7+prof*.9+luz[i]*1.6)*(1-m)+(1.25+.4*sombra[i])*m)*d;
-    g.fillStyle=luz[i]>.3&&m<.5?`rgba(255,${190-luz[i]*60},110,${Math.min(1,a)})`:`rgba(${cor},${Math.min(1,a)})`;
-    g.fillRect(X-r/2,Y-r/2,r,r);
-  }
+  const o=m>.5?imgR:imgC;
+  if(o.brilho){g.globalAlpha=Math.min(.9,.18+.14*resp+nivel*.6+(modo==="pensando"?.12:0));g.drawImage(o.brilho,ox,oy,IW*k,IH*k);g.globalAlpha=1}
+  if(modo==="ouvindo"){g.fillStyle=`rgba(255,120,40,${.06+nivel*.18})`;g.fillRect(ox,oy,IW*k,IH*k)}
+  /* sinapses (cérebro) e cintilação (ambos) */
+  const ritmo={espera:3,ouvindo:10,pensando:30,falando:4}[modo];
+  acumulo+=dt*(ritmo+nivel*30);while(acumulo>1){acumulo--;novoPulso(o);if(o.pts.length)brilhos.push({p:o.pts[Math.floor(Math.random()*o.pts.length)],v:1})}
+  const cor=modo==="ouvindo"?"255,170,90":"170,255,240";
+  pulsos=pulsos.filter(q=>{q.p+=q.v;const x=q.a[0]+(q.b[0]-q.a[0])*q.p,y=q.a[1]+(q.b[1]-q.a[1])*q.p,[X,Y]=P(x,y);
+    const gr=g.createRadialGradient(X,Y,0,X,Y,7*d);gr.addColorStop(0,`rgba(${cor},.95)`);gr.addColorStop(1,`rgba(${cor},0)`);
+    g.fillStyle=gr;g.fillRect(X-7*d,Y-7*d,14*d,14*d);return q.p<1});
+  if(pulsos.length>160)pulsos.splice(0,pulsos.length-160);
+  brilhos=brilhos.filter(b=>{b.v-=.025;const[X,Y]=P(b.p[0],b.p[1]),r=(1+b.v*2.5)*d;g.fillStyle=`rgba(${cor},${b.v})`;g.beginPath();g.arc(X,Y,r,0,7);g.fill();return b.v>0});
+  /* varredura */
+  const vy=40+((t/14)%460),[,VY]=P(0,vy),sg=g.createLinearGradient(0,VY-14*d,0,VY+14*d);
+  sg.addColorStop(0,"rgba(80,255,220,0)");sg.addColorStop(.5,`rgba(80,255,220,${modo==="pensando"?.14:.07})`);sg.addColorStop(1,"rgba(80,255,220,0)");
+  g.fillStyle=sg;g.fillRect(ox+60*k,VY-14*d,(IW-120)*k,28*d);
+  /* anéis da base girando */
+  const[bx,by]=P(BASE.x,BASE.y);g.lineWidth=1.6*d;
+  [[150,26,1,.5],[115,20,-1.6,.6],[78,13,2.4,.7]].forEach(([rx,ry,vel,a])=>{
+    const ang=t/1000*vel*(modo==="pensando"?2:1);g.strokeStyle=`rgba(${cor},${a*(.6+.4*resp)+nivel*.3})`;
+    for(let s=0;s<3;s++){g.beginPath();g.ellipse(bx,by,rx*k,ry*k,0,ang+s*2.1,ang+s*2.1+1.1);g.stroke()}});
+  /* partículas subindo do emissor */
+  if(Math.random()<.5+nivel)sobe.push({x:BASE.x+(Math.random()-.5)*140,y:BASE.y-5,v:.4+Math.random()*1.2,a:1});
+  sobe=sobe.filter(s=>{s.y-=s.v*(1+nivel*2);s.a-=.008;const[X,Y]=P(s.x+(s.x-BASE.x)*.002*(BASE.y-s.y),s.y);
+    g.fillStyle=`rgba(${cor},${Math.max(0,s.a)*.8})`;g.fillRect(X,Y,1.6*d,1.6*d);return s.a>0&&s.y>30});
+  /* esfuma as bordas da imagem para fundir com o painel */
+  g.save();g.globalCompositeOperation="destination-in";g.translate(ox+IW*k/2,oy+IH*k*.5);g.scale(1,IH/IW*1.02);
+  const vm=g.createRadialGradient(0,0,IW*k*.34,0,0,IW*k*.5);vm.addColorStop(0,"rgba(0,0,0,1)");vm.addColorStop(1,"rgba(0,0,0,0)");
+  g.fillStyle=vm;g.fillRect(-IW*k,-IW*k,IW*k*2,IW*k*2);g.restore();
   g.globalCompositeOperation="source-over";
   requestAnimationFrame(frame);
 }

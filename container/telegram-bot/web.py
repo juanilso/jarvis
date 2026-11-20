@@ -98,6 +98,19 @@ class Handler(BaseHTTPRequestHandler):
         url = urllib.parse.urlparse(self.path)
         if url.path == "/":
             return self._html(HTML if self._logado() else LOGIN)
+        if url.path.startswith("/static/"):
+            nome = os.path.basename(url.path)
+            caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", nome)
+            if not nome.endswith(".jpg") or not os.path.isfile(caminho):
+                return self._json({"erro": "não encontrado"}, 404)
+            with open(caminho, "rb") as f:
+                dados = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Cache-Control", "max-age=86400")
+            self.send_header("Content-Length", str(len(dados)))
+            self.end_headers()
+            return self.wfile.write(dados)
         if not self._logado():
             return self._json({"erro": "login"}, 401)
         if url.path == "/api/estado":
