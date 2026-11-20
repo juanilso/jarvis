@@ -22,15 +22,22 @@ main{display:grid;grid-template-columns:230px minmax(0,1fr) 270px;gap:12px;paddi
 .pn::before,.pn::after{content:"";position:absolute;width:10px;height:10px;border-color:var(--c)}
 .pn::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;border-radius:10px 0 0 0}
 .pn::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;border-radius:0 0 10px 0}
-.ag{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px dashed rgba(56,189,248,.1);font-size:13px}
-.ag .dot{width:8px;height:8px;border-radius:50%;background:#1e3a4f;flex:none}
+.ag{display:flex;align-items:center;gap:10px;padding:5px 2px;border-bottom:1px dashed rgba(56,189,248,.1);font-size:13px}
+.ag .nm{display:flex;flex-direction:column;min-width:0}.ag .ds{font-size:11px;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .ag .st{margin-left:auto;font:11px var(--mono);color:var(--m)}
-.ag.ativo .dot{background:var(--c);box-shadow:0 0 8px var(--c);animation:pl 1s infinite}.ag.ativo .st{color:var(--c)}
-.ag.ok .dot{background:var(--ok)}.ag.ok .st{color:var(--ok)}.ag.erro .dot{background:var(--er)}.ag.erro .st{color:var(--er)}
+.robo{width:34px;height:34px;flex:none;--rc:#2b4a60;--olho:#1e3a4f}
+.robo .cab,.robo .corpo,.robo .orelha{fill:#0a1824;stroke:var(--rc);stroke-width:1.4}
+.robo .olho{fill:var(--olho)}.robo .ant{fill:var(--olho)}.robo .boca,.robo .haste{stroke:var(--rc);stroke-width:1.4}
+.ag.ativo .robo{--rc:var(--c);--olho:var(--c);animation:bob .9s ease-in-out infinite}
+.ag.ativo .robo .olho{filter:drop-shadow(0 0 3px var(--c))}.ag.ativo .robo .ant{animation:pl .5s infinite}
+.ag.ativo .st{color:var(--c)}
+.ag.ok .robo{--rc:var(--ok);--olho:var(--ok)}.ag.ok .st{color:var(--ok)}
+.ag.erro .robo{--rc:var(--er);--olho:var(--er)}.ag.erro .st{color:var(--er)}
+@keyframes bob{50%{transform:translateY(-3px)}}
 @keyframes pl{50%{opacity:.35}}
 #centro{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0}
 #orbbox{display:flex;align-items:center;gap:14px;justify-content:center}
-#orb{width:200px;height:200px}
+#orb{width:300px;height:260px}
 #estadoOrb{font:12px var(--mono);letter-spacing:.2em;color:var(--c2);text-transform:uppercase;min-width:110px}
 #estadoOrb small{display:block;letter-spacing:.05em;color:var(--m);text-transform:none;font-size:12px;max-width:220px}
 #log{display:flex;flex-direction:column;gap:8px}
@@ -57,7 +64,7 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
   main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);overflow:auto}
   #agentes,#projeto{display:none}
   main.abrir #agentes,main.abrir #projeto{display:block}
-  #orb{width:120px;height:120px}
+  #orb{width:200px;height:175px}
   #btnPainel{display:inline-block}
   #centro{min-height:60vh}
 }
@@ -79,7 +86,7 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
   <main id="main">
     <section class="pn" id="agentes"><h3>Agentes</h3><div id="listaAg"></div></section>
     <section id="centro">
-      <div id="orbbox"><canvas id="orb" width="400" height="400"></canvas><div id="estadoOrb">em espera<small id="estadoTxt"></small></div></div>
+      <div id="orbbox"><canvas id="orb"></canvas><div id="estadoOrb">em espera<small id="estadoTxt"></small></div></div>
       <div class="pn" id="logbox"><h3>Registro</h3><div id="log"></div></div>
     </section>
     <section class="pn" id="projeto"><h3>Projeto</h3><div id="infoProj" class="vazio">Escolha um projeto.</div></section>
@@ -103,12 +110,14 @@ function add(cls,html){const d=document.createElement("div");d.className=cls;d.i
 
 /* ---------- estado visual ---------- */
 function setModo(m,txt){modo=m;$("estadoOrb").firstChild.nodeValue={espera:"em espera",ouvindo:"ouvindo",pensando:"processando",falando:"falando"}[m];$("estadoTxt").textContent=txt||""}
+const ROBO=`<svg class="robo" viewBox="0 0 40 40" aria-hidden="true"><line class="haste" x1="20" y1="5" x2="20" y2="10"/><circle class="ant" cx="20" cy="4" r="2.6"/><rect class="orelha" x="4" y="15" width="4" height="7" rx="1.5"/><rect class="orelha" x="32" y="15" width="4" height="7" rx="1.5"/><rect class="cab" x="8" y="10" width="24" height="17" rx="5"/><circle class="olho" cx="15" cy="18" r="2.8"/><circle class="olho" cx="25" cy="18" r="2.8"/><line class="boca" x1="16" y1="23" x2="24" y2="23"/><rect class="corpo" x="12" y="29" width="16" height="9" rx="3"/></svg>`;
 function desenharAgentes(){
-  $("listaAg").innerHTML=AGENTES.map(([n,e])=>{const s=agEstado[n]||{c:"",t:"ocioso"};return `<div class="ag ${s.c}"><span class="dot"></span>${e} ${n}<span class="st">${esc(s.t)}</span></div>`}).join("");
+  $("listaAg").innerHTML=AGENTES.map(([n,e])=>{const s=agEstado[n]||{c:"",t:"ocioso",d:""};
+    return `<div class="ag ${s.c}">${ROBO}<div class="nm"><span>${n}</span><span class="ds">${esc(s.d||"")}</span></div><span class="st">${esc(s.t)}</span></div>`}).join("");
 }
 function agente(ev){
-  if(ev.tipo==="agente_inicio") agEstado[ev.agente]={c:"ativo",t:"ativo"};
-  else{agEstado[ev.agente]={c:ev.erro?"erro":"ok",t:ev.erro?"erro":`ok ${ev.segundos}s`};
+  if(ev.tipo==="agente_inicio") agEstado[ev.agente]={c:"ativo",t:"ativo",d:ev.descricao};
+  else{agEstado[ev.agente]={c:ev.erro?"erro":"ok",t:ev.erro?"erro":`ok ${ev.segundos}s`,d:(agEstado[ev.agente]||{}).d};
     setTimeout(()=>{if(agEstado[ev.agente]&&agEstado[ev.agente].c!=="ativo"){delete agEstado[ev.agente];desenharAgentes()}},30000)}
   desenharAgentes();
 }
@@ -193,27 +202,85 @@ $("mic").onclick=async()=>{
   }catch(e){add("ev erro","Não consegui acessar o microfone: "+esc(e.message))}
 };
 
-/* ---------- esfera ---------- */
+/* ---------- cérebro neural / rosto holográfico ---------- */
 const cv=$("orb"),g=cv.getContext("2d"),buf=new Uint8Array(128);
 function amp(an){if(!an)return 0;an.getByteFrequencyData(buf);let s=0;for(let i=0;i<buf.length;i++)s+=buf[i];return s/buf.length/255}
+function rnd(a,b){return a+Math.random()*(b-a)}
+const N=380;
+function dentroCerebro(x,y){
+  const e=(cx,cy,rx,ry)=>((x-cx)/rx)**2+((y-cy)/ry)**2<=1;
+  return (e(-5,-8,122,82)&&y<55)||e(-55,30,60,40)||e(58,55,42,26)||(x>8&&x<34&&y>50&&y<112);
+}
+const nos=[];
+while(nos.length<N){const x=rnd(-130,105),y=rnd(-92,112);if(!dentroCerebro(x,y))continue;
+  const r=Math.min(1,(x/125)**2+((y+8)/90)**2),z=Math.sqrt(Math.max(0,1-r))*(Math.random()<.5?-1:1)*60;
+  nos.push({bx:x,by:y,bz:z,fx:0,fy:0,tag:"",luz:0,viz:[]})}
+for(const a of nos){a.viz=nos.map((b,j)=>[j,(a.bx-b.bx)**2+(a.by-b.by)**2]).filter(v=>v[1]>4).sort((p,q)=>p[1]-q[1]).slice(0,3).filter(v=>v[1]<900).map(v=>v[0])}
+const arestas=[];nos.forEach((a,i)=>a.viz.forEach(j=>{if(i<j)arestas.push([i,j])}));
+const sulcos=[[[-110,-20],[-70,-50],[-20,-60],[30,-55],[80,-35]],[[-100,20],[-60,0],[-10,-15],[40,-5],[95,10]],[[-20,-85],[-15,-40],[-30,0],[-45,40]],[[30,-80],[25,-30],[45,15]]];
+/* pontos do rosto (mesma quantidade de nós) */
+const rosto=[],linhasRosto=[];
+function seg(n,f,tag){const ini=rosto.length;for(let i=0;i<n;i++){const[x,y]=f(i/(n-1));rosto.push({x,y,tag})}linhasRosto.push([ini,rosto.length-1])}
+const elp=(cx,cy,rx,ry,a0=0,a1=Math.PI*2)=>t=>[cx+rx*Math.cos(a0+(a1-a0)*t),cy+ry*Math.sin(a0+(a1-a0)*t)];
+seg(120,elp(0,5,74,98),"");
+seg(26,elp(-29,-18,15,7),"olho");seg(26,elp(29,-18,15,7),"olho");
+seg(10,elp(-29,-18,3.2,3.2),"olho");seg(10,elp(29,-18,3.2,3.2),"olho");
+seg(14,t=>[-44+30*t,-33-5*Math.sin(Math.PI*t)],"");seg(14,t=>[14+30*t,-33-5*Math.sin(Math.PI*t)],"");
+seg(16,t=>t<.7?[-2-6*t/.7,-10+34*t/.7]:[-8+16*(t-.7)/.3,24+2*Math.sin(Math.PI*(t-.7)/.3)],"");
+seg(24,t=>[-26+52*t,46+3*Math.sin(Math.PI*t)],"boca_cima");seg(24,t=>[-26+52*t,46+9*Math.sin(Math.PI*t)],"boca_baixo");
+seg(18,t=>[-50+100*t,92+10*Math.sin(Math.PI*t)-10],"");
+while(rosto.length<N){const x=rnd(-60,60),y=rnd(-75,85);if((x/66)**2+((y-5)/90)**2<.8)rosto.push({x,y,tag:"pele"})}
+nos.forEach((n,i)=>{n.fx=rosto[i].x;n.fy=rosto[i].y;n.tag=rosto[i].tag});
+/* sinapses */
+let pulsos=[],morph=0,piscar=0,ultimoT=0,acumulo=0;
+function disparar(i){const a=nos[i];if(!a.viz.length)return;const j=a.viz[Math.floor(Math.random()*a.viz.length)];pulsos.push({a:i,b:j,p:0,v:rnd(.02,.05)})}
+function ajustarCanvas(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(r.height*d)){cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d)}}
 function frame(t){
-  const W=cv.width,H=cv.height,cx=W/2,cy=H/2;g.clearRect(0,0,W,H);
-  const cor={espera:[56,189,248],ouvindo:[251,113,133],pensando:[125,211,252],falando:[52,211,153]}[modo];
-  const vel={espera:.15,ouvindo:.5,pensando:.9,falando:.4}[modo];
-  let alvo=modo==="falando"?amp(analyser)*2.2:modo==="ouvindo"?amp(window._micAn)*2.5:modo==="pensando"?.25+.15*Math.sin(t/180):.08+.05*Math.sin(t/900);
-  nivel+=(Math.min(alvo,1)-nivel)*.15;
-  const rgb=(a)=>`rgba(${cor[0]},${cor[1]},${cor[2]},${a})`;
-  [[170,1,60,2],[150,-1.6,24,1],[128,2.3,90,1.5],[104,-3,12,3]].forEach(([r,dir,n,w],k)=>{
-    g.save();g.translate(cx,cy);g.rotate(t/1000*vel*dir);g.strokeStyle=rgb(.25+.15*k);g.lineWidth=w;
-    for(let i=0;i<n;i++){const a0=i/n*Math.PI*2,a1=a0+Math.PI*2/n*(k%2?.55:.35);g.beginPath();g.arc(0,0,r,a0,a1);g.stroke()}
-    g.restore();
-  });
-  const rc=46+nivel*38;
-  const grd=g.createRadialGradient(cx,cy,4,cx,cy,rc*1.9);grd.addColorStop(0,rgb(.95));grd.addColorStop(.35,rgb(.55));grd.addColorStop(1,rgb(0));
-  g.fillStyle=grd;g.beginPath();g.arc(cx,cy,rc*1.9,0,Math.PI*2);g.fill();
-  g.strokeStyle=rgb(.9);g.lineWidth=2;g.beginPath();g.arc(cx,cy,rc,0,Math.PI*2);g.stroke();
+  ajustarCanvas();const W=cv.width,H=cv.height;g.clearRect(0,0,W,H);
+  const esc_=Math.min(W/290,H/270),cx=W/2,cy=H*.43;
+  const cor={espera:[56,189,248],ouvindo:[251,146,60],pensando:[125,211,252],falando:[52,211,153]}[modo];
+  const rgb=a=>`rgba(${cor[0]},${cor[1]},${cor[2]},${a})`;
+  const ritmo={espera:2,ouvindo:10,pensando:30,falando:6}[modo];
+  const dt=Math.min(.05,(t-ultimoT)/1000||0);ultimoT=t;
+  let nivel_=modo==="falando"?amp(analyser)*2.4:modo==="ouvindo"?amp(window._micAn)*3:0;nivel_=Math.min(nivel_,1);
+  nivel+=(nivel_-nivel)*.25;
+  acumulo+=dt*(ritmo+nivel*40);while(acumulo>1){acumulo--;disparar(Math.floor(Math.random()*N))}
+  morph+=((modo==="falando"?1:0)-morph)*.05;
+  if(Math.random()<.004)piscar=1;piscar=Math.max(0,piscar-.12);
+  /* chip */
+  g.save();g.translate(cx,H*.9);g.scale(1,.32);g.rotate(Math.PI/4);
+  const L=95*esc_;g.strokeStyle=rgb(.35);g.lineWidth=1.2*esc_;g.strokeRect(-L/2,-L/2,L,L);g.strokeRect(-L/4,-L/4,L/2,L/2);
+  for(let k=-3;k<=3;k++){g.beginPath();g.moveTo(-L/2,k*L/8);g.lineTo(-L/2-L*.18,k*L/8);g.moveTo(L/2,k*L/8);g.lineTo(L/2+L*.18,k*L/8);g.moveTo(k*L/8,-L/2);g.lineTo(k*L/8,-L/2-L*.18);g.moveTo(k*L/8,L/2);g.lineTo(k*L/8,L/2+L*.18);g.stroke()}
+  const gc=g.createRadialGradient(0,0,0,0,0,L*.4);gc.addColorStop(0,rgb(.5+nivel*.4));gc.addColorStop(1,rgb(0));g.fillStyle=gc;g.fillRect(-L/2,-L/2,L,L);g.restore();
+  /* posições (giro leve do cérebro, morph para o rosto) */
+  const ang=Math.sin(t/2600)*.45*(1-morph),ca=Math.cos(ang),sa=Math.sin(ang),flut=Math.sin(t/900)*4;
+  const P=nos.map(n=>{
+    let bx=n.bx*ca+n.bz*sa,bz=-n.bx*sa+n.bz*ca,per=1+bz/420;bx*=per;let by=n.by*per+flut;
+    let fx=n.fx,fy=n.fy;
+    if(n.tag==="boca_cima")fy-=nivel*9;if(n.tag==="boca_baixo")fy+=nivel*16;
+    if(n.tag==="olho")fy=-18+(fy+18)*(1-piscar*.9);
+    const x=bx+(fx-bx)*morph,y=by+(fy-by+(1-morph)*0)*morph;
+    return [cx+x*esc_,cy+y*esc_,per]});
+  /* arestas do cérebro */
+  if(morph<.98){g.lineWidth=.7*esc_;g.strokeStyle=rgb(.16*(1-morph));g.beginPath();for(const[i,j]of arestas){g.moveTo(P[i][0],P[i][1]);g.lineTo(P[j][0],P[j][1])}g.stroke();
+    g.strokeStyle=rgb(.22*(1-morph));g.lineWidth=1.1*esc_;for(const s of sulcos){g.beginPath();s.forEach(([x,y],k)=>{const X=cx+(x*ca)*esc_,Y=cy+(y+flut)*esc_;k?g.lineTo(X,Y):g.moveTo(X,Y)});g.stroke()}}
+  /* contornos do rosto */
+  if(morph>.02){g.strokeStyle=rgb(.55*morph);g.lineWidth=1.2*esc_;for(const[a,b]of linhasRosto){g.beginPath();for(let i=a;i<=b;i++){i===a?g.moveTo(P[i][0],P[i][1]):g.lineTo(P[i][0],P[i][1])}g.stroke()}}
+  /* pulsos */
+  pulsos=pulsos.filter(p=>{p.p+=p.v*(1+nivel*2);const A=P[p.a],B=P[p.b];
+    if(p.p>=1){nos[p.b].luz=1;if(Math.random()<.55)disparar(p.b);return false}
+    if(morph<.9){const x=A[0]+(B[0]-A[0])*p.p,y=A[1]+(B[1]-A[1])*p.p;g.fillStyle=modo==="ouvindo"?"rgba(251,146,60,.95)":"rgba(255,180,90,.9)";g.beginPath();g.arc(x,y,1.8*esc_,0,7);g.fill()}
+    return true});
+  if(pulsos.length>500)pulsos.splice(0,pulsos.length-500);
+  /* nós */
+  for(let i=0;i<N;i++){const n=nos[i],[x,y,per]=P[i];n.luz*=.94;
+    const base=n.tag==="pele"?.18+.25*(1-morph):.35+.25*per;
+    const r=(1.1+n.luz*2.6)*esc_*(n.tag==="pele"&&morph>.5?.7:1);
+    g.fillStyle=rgb(Math.min(1,base+n.luz));g.beginPath();g.arc(x,y,r,0,7);g.fill();
+    if(n.luz>.4){g.fillStyle=rgb(n.luz*.25);g.beginPath();g.arc(x,y,r*3.5,0,7);g.fill()}}
   requestAnimationFrame(frame);
 }
+
 desenharAgentes();estado();poll();requestAnimationFrame(frame);setInterval(()=>{if(!ocupado)painel()},15000);
 </script>
 </body>
