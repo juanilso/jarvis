@@ -34,7 +34,8 @@ _whisper = {"model": None, "lock": threading.Lock()}
 class Estado:
     def __init__(self, nome, padrao=None):
         self.arquivo = os.path.join(CONFIG_DIR, f"{nome}-state.json")
-        self.padrao = {"projeto": None, "sessoes": {}, "audio": "auto", "agentes": True, **(padrao or {})}
+        self.padrao = {"projeto": None, "sessoes": {}, "audio": "auto", "agentes": True, "modelo": None,
+                       "resumos": {}, "custos": {}, **(padrao or {})}
 
     def ler(self):
         try:
@@ -122,13 +123,28 @@ class Execucao:
             return True
         return False
 
-    def rodar(self, estado, texto, responder_audio, ao_evento):
+    def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False):
         """Executa (bloqueante). ao_evento(dict) recebe:
-        {"tipo": "agente_inicio"|"agente_fim"|"resposta"|"erro", ...}"""
+        {"tipo": "agente_inicio"|"agente_fim"|"resposta"|"erro"|"info", ...}
+        compactar=True: resume a conversa, encerra a sessão e guarda o resumo como contexto."""
         est = estado.ler()
         projeto = est["projeto"]
-        cmd = ["claude", "-p", texto + (INSTRUCAO_AUDIO if responder_audio else ""),
-               "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"]
+        resumo_usado = None
+        if compactar:
+            if not est["sessoes"].get(projeto):
+                ao_evento({"tipo": "info", "texto": "Não há conversa para compactar neste projeto."})
+                return
+            prompt = PROMPT_COMPACTAR
+        else:
+            prompt = texto + (INSTRUCAO_AUDIO if responder_audio else "")
+            resumo_usado = est["resumos"].get(projeto) if not est["sessoes"].get(projeto) else None
+            if resumo_usado and texto.startswith("/"):
+                resumo_usado = "comando"  # comandos "/" rodam sem o resumo; ele fica guardado para a próxima mensagem
+            elif resumo_usado:
+                prompt = f"[Contexto resumido da conversa anterior]\n{resumo_usado}\n\n[Nova mensagem]\n{prompt}"
+        cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"]
+        if est.get("modelo"):
+            cmd += ["--model", est["modelo"]]
         if est["sessoes"].get(projeto):
             cmd += ["--resume", est["sessoes"][projeto]]
         agentes, resultado, code, erro = {}, None, None, ""
@@ -173,10 +189,22 @@ class Execucao:
                 "Erro ao executar o Claude: " + (erro or "sem detalhes")[-3000:]
             ao_evento({"tipo": "erro", "texto": msg})
             return
-        if resultado.get("session_id"):
-            est = estado.ler()
-            est["sessoes"][projeto] = resultado["session_id"]
+        est = estado.ler()
+        if resultado.get("total_cost_usd"):
+            est["custos"][projeto] = round(est["custos"].get(projeto, 0) + resultado["total_cost_usd"], 6)
+        if compactar:
+            resumo = (resultado.get("result") or "").strip()
+            est["sessoes"].pop(projeto, None)
+            est["resumos"][projeto] = resumo
             estado.salvar(est)
+            ao_evento({"tipo": "info", "texto": "🗜️ Conversa compactada. A próxima mensagem começa uma sessão nova "
+                                                "com este resumo como contexto:\n\n" + resumo})
+            return
+        if resultado.get("session_id") and resumo_usado != "comando":
+            est["sessoes"][projeto] = resultado["session_id"]
+            if resumo_usado:
+                est["resumos"].pop(projeto, None)
+        estado.salvar(est)
         resposta, resumo = resultado.get("result") or "", ""
         if MARCA_RESUMO in resposta:
             resposta, _, resumo = resposta.rpartition(MARCA_RESUMO)
@@ -224,3 +252,100 @@ def painel_projeto(projeto):
             res["decisoes"].append({"id": titulo[0], "titulo": titulo[1]})
             titulo = None
     return res
+
+
+# ------------------------------------------------------------------ comandos "/"
+PROMPT_COMPACTAR = (
+    "Resuma esta conversa para continuarmos depois numa sessão nova, em português, em no máximo 25 linhas: "
+    "objetivo, o que já foi feito, decisões tomadas, arquivos importantes, pendências e próximo passo. "
+    "Responda apenas com o resumo, sem executar nenhuma ação."
+)
+MODELOS = {"sonnet", "opus", "haiku", "padrao"}
+COMANDOS = [
+    ("/ajuda", "Lista os comandos"),
+    ("/projetos", "Lista os projetos"),
+    ("/projeto", "Escolhe o projeto: /projeto <nome>"),
+    ("/status", "O que está rodando agora"),
+    ("/compactar", "Resume a conversa e libera contexto (economiza tokens)"),
+    ("/novo", "Começa uma conversa nova, sem resumo"),
+    ("/parar", "Interrompe o trabalho em andamento"),
+    ("/modelo", "Modelo da sessão: sonnet, opus, haiku ou padrao"),
+    ("/custo", "Gasto estimado do projeto atual"),
+    ("/audio", "Resposta em áudio: auto, sempre ou nunca"),
+    ("/agentes", "Avisos dos agentes: on ou off"),
+    ("/jarvis:status", "Jarvis: resumo do projeto"),
+    ("/jarvis:executar", "Jarvis: executa o backlog sozinho"),
+    ("/jarvis:decidir", "Jarvis: responde decisões pendentes"),
+    ("/jarvis:evoluir", "Jarvis: propõe uma mudança"),
+    ("/jarvis:adotar", "Jarvis: estuda um projeto existente"),
+    ("/jarvis:novo", "Jarvis: inicia um projeto novo"),
+    ("/jarvis:modelos", "Jarvis: perfil de modelos dos agentes"),
+    ("/jarvis:jarvis", "Jarvis: pedido livre"),
+]
+LOCAIS = {c for c, _ in COMANDOS if not c.startswith("/jarvis:")}
+
+
+def comando(estado, execucao, texto):
+    """Comandos do painel/Telegram. Retorna (resposta, acao) ou (None, None) se não for comando local.
+    acao="compactar" pede para a interface rodar a compactação em segundo plano."""
+    cmd, _, resto = texto.strip().partition(" ")
+    cmd = cmd.split("@")[0].lower()
+    if cmd not in LOCAIS:
+        return None, None
+    arg = resto.strip()
+    est = estado.ler()
+    proj = est["projeto"]
+    if cmd == "/ajuda":
+        return "\n".join(f"{c} — {d}" for c, d in COMANDOS), None
+    if cmd == "/projetos":
+        ps = listar_projetos()
+        return ("📁 Projetos:\n" + "\n".join(f"• {p}" for p in ps)) if ps else "Nenhum projeto em /workspace.", None
+    if cmd == "/projeto":
+        if arg not in listar_projetos():
+            return "Projeto não encontrado. Use /projetos para ver os nomes.", None
+        est["projeto"] = arg
+        estado.salvar(est)
+        return f"✅ Projeto atual: {arg}", None
+    if cmd == "/status":
+        if execucao.ocupado:
+            mins = int((time.time() - execucao.inicio) // 60)
+            return f"🔄 Rodando há {mins} min em {execucao.projeto}: “{execucao.pedido}”", None
+        extra = " · conversa compactada (resumo pronto)" if est["resumos"].get(proj) else ""
+        return f"💤 Livre · projeto: {proj or 'nenhum'} · modelo: {est.get('modelo') or 'padrão'}{extra}", None
+    if cmd == "/novo":
+        est["sessoes"].pop(proj, None)
+        est["resumos"].pop(proj, None)
+        estado.salvar(est)
+        return "🆕 A próxima mensagem começa uma conversa nova, sem contexto anterior.", None
+    if cmd == "/parar":
+        return ("⛔ Parando…" if execucao.parar() else "Nada rodando."), None
+    if cmd == "/compactar":
+        if not proj:
+            return "Escolha um projeto primeiro.", None
+        if execucao.ocupado:
+            return "Espere o pedido atual terminar (ou use /parar) para compactar.", None
+        return "🗜️ Compactando a conversa…", "compactar"
+    if cmd == "/modelo":
+        a = arg.lower()
+        if a not in MODELOS:
+            return f"Modelo atual: {est.get('modelo') or 'padrão'}. Use /modelo sonnet, opus, haiku ou padrao.", None
+        est["modelo"] = None if a == "padrao" else a
+        estado.salvar(est)
+        return f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)", None
+    if cmd == "/custo":
+        c = est["custos"].get(proj, 0)
+        tot = sum(est["custos"].values())
+        return f"💲 {proj or 'nenhum projeto'}: US$ {c:.4f} · todos os projetos: US$ {tot:.4f} (estimativa deste canal)", None
+    if cmd == "/audio":
+        if arg.lower() not in ("auto", "sempre", "nunca"):
+            return f"Áudio: {est['audio']}. Use /audio auto, sempre ou nunca.", None
+        est["audio"] = arg.lower()
+        estado.salvar(est)
+        return f"🔊 Resposta em áudio: {est['audio']}", None
+    if cmd == "/agentes":
+        if arg.lower() not in ("on", "off"):
+            return f"Avisos de agentes: {'on' if est['agentes'] else 'off'}. Use /agentes on ou off.", None
+        est["agentes"] = arg.lower() == "on"
+        estado.salvar(est)
+        return f"👥 Avisos de agentes: {arg.lower()}", None
+    return None, None

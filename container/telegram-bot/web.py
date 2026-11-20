@@ -38,7 +38,7 @@ def publicar(ev):
         del eventos[:-300]  # guarda só os últimos 300
 
 
-def rodar(texto, responder_audio):
+def rodar(texto, responder_audio, compactar=False):
     def ao_evento(ev):
         if ev["tipo"] == "resposta" and ev.get("audio"):
             nome = secrets.token_hex(8) + ".mp3"
@@ -49,10 +49,18 @@ def rodar(texto, responder_audio):
                 print("erro no áudio:", e, flush=True)
         publicar(ev)
 
-    execucao.rodar(estado, texto, responder_audio, ao_evento)
+    execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
 
 
 def iniciar(texto, veio_de_audio):
+    if texto.startswith("/"):
+        resposta, acao = core.comando(estado, execucao, texto)
+        if resposta is not None:
+            publicar({"tipo": "usuario", "texto": texto})
+            publicar({"tipo": "info", "texto": resposta})
+            if acao == "compactar":
+                threading.Thread(target=rodar, args=("", False, True), daemon=True).start()
+            return None
     est = estado.ler()
     if not est["projeto"]:
         return "Escolha um projeto primeiro."
@@ -118,6 +126,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
                                "audio": est["audio"], "agentes": est["agentes"],
                                "ocupado": execucao.ocupado, "pedido": execucao.pedido})
+        if url.path == "/api/comandos":
+            return self._json([{"cmd": c, "desc": d} for c, d in core.COMANDOS])
         if url.path == "/api/painel":
             return self._json(core.painel_projeto(estado.ler()["projeto"]))
         if url.path == "/api/eventos":

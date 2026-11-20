@@ -60,6 +60,11 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #mic,#enviar{width:50px;height:46px;font-size:20px;padding:0}
 #mic.gravando{background:rgba(251,113,133,.25);border-color:var(--er);animation:pl 1s infinite}
 #btnPainel{display:none}
+footer{position:relative}
+#menuCmd{position:absolute;left:14px;right:14px;bottom:calc(100% + 4px);background:#07131d;border:1px solid var(--ln2);border-radius:8px;max-height:300px;overflow:auto;display:none;z-index:5}
+#menuCmd div{display:flex;gap:12px;padding:7px 12px;cursor:pointer;font-size:13px}
+#menuCmd div b{font:500 13px var(--mono);color:var(--c2);min-width:150px}#menuCmd div span{color:var(--m)}
+#menuCmd div.sel,#menuCmd div:hover{background:rgba(56,189,248,.14)}
 @media (max-width:980px){
   main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);overflow:auto}
   #agentes,#projeto{display:none}
@@ -92,8 +97,9 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
     <section class="pn" id="projeto"><h3>Projeto</h3><div id="infoProj" class="vazio">Escolha um projeto.</div></section>
   </main>
   <footer>
+    <div id="menuCmd" role="listbox"></div>
     <button id="mic" title="Gravar áudio (clique para começar e para enviar)">🎙️</button>
-    <textarea id="texto" placeholder="Fale ou escreva a demanda…"></textarea>
+    <textarea id="texto" placeholder="Fale ou escreva a demanda… ( / para comandos)"></textarea>
     <button id="enviar" title="Enviar">➤</button>
   </footer>
 </div>
@@ -150,6 +156,7 @@ function mostrar(ev){
   else if(ev.tipo==="agente_fim"){add("ev "+(ev.erro?"erro":"ok"),`${ev.emoji} ${esc(ev.agente)} ${ev.erro?"✕ erro":"✓ concluiu"} (${ev.segundos}s)`);agente(ev)}
   else if(ev.tipo==="erro")add("msg jv err","⚠ "+esc(ev.texto)+h);
   else if(ev.tipo==="sistema")add("ev",esc(ev.texto));
+  else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+h);if(carregado)painel()}
   else if(ev.tipo==="resposta"){
     const custo=ev.custo?`<div class="hora">custo US$ ${Number(ev.custo).toFixed(4)}</div>`:"";
     const d=add("msg jv",(ev.erro?"⚠ ":"")+fmt(ev.texto)+custo+h);
@@ -173,7 +180,32 @@ function prepararAudio(){if(!ctx){try{ctx=new (window.AudioContext||window.webki
 document.addEventListener("click",prepararAudio,{once:false});
 async function enviar(){const t=$("texto").value.trim();if(!t)return;const r=await api("/api/mensagem",{texto:t});if(r.erro)add("ev erro",esc(r.erro));else{$("texto").value="";setModo("pensando")}}
 $("enviar").onclick=enviar;
-$("texto").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();enviar()}});
+let CMDS=[],selCmd=0,filtrados=[];
+fetch("/api/comandos").then(r=>r.json()).then(j=>CMDS=j).catch(()=>{});
+function menu(){
+  const v=$("texto").value,m=$("menuCmd");
+  if(!v.startsWith("/")||v.includes(" ")||v.includes("\n")){m.style.display="none";filtrados=[];return}
+  filtrados=CMDS.filter(c=>c.cmd.startsWith(v.toLowerCase())||c.cmd.replace("/jarvis:","/").startsWith(v.toLowerCase()));
+  if(!filtrados.length){m.style.display="none";return}
+  selCmd=Math.min(selCmd,filtrados.length-1);
+  m.innerHTML=filtrados.map((c,i)=>`<div class="${i===selCmd?"sel":""}" data-i="${i}"><b>${esc(c.cmd)}</b><span>${esc(c.desc)}</span></div>`).join("");
+  m.style.display="block";
+  m.querySelectorAll("div").forEach(d=>d.onmousedown=e=>{e.preventDefault();escolher(+d.dataset.i)});
+  const s=m.querySelector(".sel");if(s)s.scrollIntoView({block:"nearest"});
+}
+const SEM_ARG=new Set(["/ajuda","/projetos","/status","/compactar","/novo","/parar","/custo","/jarvis:status","/jarvis:executar"]);
+function escolher(i){const c=filtrados[i];if(!c)return;$("texto").value=c.cmd+(SEM_ARG.has(c.cmd)?"":" ");$("menuCmd").style.display="none";filtrados=[];$("texto").focus();
+  if(SEM_ARG.has(c.cmd))enviar()}
+$("texto").addEventListener("input",()=>{selCmd=0;menu()});
+$("texto").addEventListener("blur",()=>setTimeout(()=>$("menuCmd").style.display="none",150));
+$("texto").addEventListener("keydown",e=>{
+  if(filtrados.length&&$("menuCmd").style.display==="block"){
+    if(e.key==="ArrowDown"){e.preventDefault();selCmd=(selCmd+1)%filtrados.length;menu();return}
+    if(e.key==="ArrowUp"){e.preventDefault();selCmd=(selCmd-1+filtrados.length)%filtrados.length;menu();return}
+    if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();escolher(selCmd);return}
+    if(e.key==="Escape"){$("menuCmd").style.display="none";filtrados=[];return}
+  }
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();enviar()}});
 $("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.value});add("ev","projeto › "+esc(e.target.value));estado()};
 $("audio").onchange=e=>api("/api/config",{audio:e.target.value});
 $("agentesBtn").onclick=async()=>{agentesOn=!agentesOn;await api("/api/config",{agentes:agentesOn});$("agentesBtn").textContent="👥 "+(agentesOn?"on":"off")};

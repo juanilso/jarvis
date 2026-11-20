@@ -93,8 +93,9 @@ def baixar_arquivo(file_id, destino):
 
 
 # ---------------------------------------------------------------- pedidos
-def rodar(chat_id, texto, responder_audio):
-    enviar(chat_id, f"⏳ Trabalhando em {estado.ler()['projeto']}…")
+def rodar(chat_id, texto, responder_audio, compactar=False):
+    if not compactar:
+        enviar(chat_id, f"⏳ Trabalhando em {estado.ler()['projeto']}…")
 
     def ao_evento(ev):
         if ev["tipo"] == "agente_inicio":
@@ -102,6 +103,8 @@ def rodar(chat_id, texto, responder_audio):
         elif ev["tipo"] == "agente_fim":
             st = "⚠️ terminou com erro" if ev["erro"] else "✅ concluiu"
             enviar(chat_id, f"{ev['emoji']} {ev['agente']} {st} ({ev['segundos']}s)")
+        elif ev["tipo"] == "info":
+            enviar(chat_id, ev["texto"])
         elif ev["tipo"] == "erro":
             enviar(chat_id, "⚠️ " + ev["texto"])
         elif ev["tipo"] == "resposta":
@@ -110,7 +113,7 @@ def rodar(chat_id, texto, responder_audio):
             if ev["audio"]:
                 falar(chat_id, ev["resumo"])
 
-    execucao.rodar(estado, texto, responder_audio, ao_evento)
+    execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
 
 
 def iniciar_pedido(chat_id, texto, veio_de_audio):
@@ -216,6 +219,14 @@ def tratar(msg):
     texto = (msg.get("text") or "").strip()
     if not texto:
         return
+    if texto.startswith("/jarvis_"):
+        texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
+    if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status"):
+        resposta, acao = core.comando(estado, execucao, texto)
+        enviar(chat_id, resposta)
+        if acao == "compactar":
+            threading.Thread(target=rodar, args=(chat_id, "", False, True), daemon=True).start()
+        return
     est = estado.ler()
     cmd, _, resto = texto.partition(" ")
     cmd, arg = cmd.split("@")[0].lower(), resto.strip().lower()
@@ -267,6 +278,12 @@ def tratar(msg):
 def main():
     if not TOKEN:
         raise SystemExit("Defina TELEGRAM_BOT_TOKEN no .env.claude")
+    try:  # menu que aparece ao digitar "/" no Telegram (nomes sem ":" por regra do Telegram)
+        cmds = [{"command": c[1:], "description": d[:60]} for c, d in core.COMANDOS if ":" not in c]
+        cmds += [{"command": "jarvis_" + c.split(":")[1], "description": d[:60]} for c, d in core.COMANDOS if ":" in c]
+        tg("setMyCommands", commands=json.dumps(cmds))
+    except Exception as e:  # noqa: BLE001
+        print("não consegui registrar o menu de comandos:", e, flush=True)
     print("Jarvis Telegram iniciado. Autorizados:", ALLOWED or "nenhum (configure TELEGRAM_CHAT_ID)", flush=True)
     offset = 0
     while True:
