@@ -18,7 +18,6 @@
       "Bash(git commit:*)",
       "Bash(git checkout -b:*)",
       "Bash(git switch:*)",
-
       "Bash(php -l:*)",
       "Bash(php -v:*)",
       "Bash(php -m:*)",
@@ -36,7 +35,6 @@
       "Bash(./vendor/bin/phpunit:*)",
       "Bash(./vendor/bin/phpstan:*)",
       "Bash(sqlite3:*)",
-
       "Bash(./gradlew assembleDebug:*)",
       "Bash(./gradlew test:*)",
       "Bash(./gradlew lint:*)",
@@ -76,7 +74,9 @@
       "Read(./secrets/**)",
       "Read(./**/*.jks)",
       "Read(./**/*.keystore)",
-      "Read(./keystore.properties)"
+      "Read(./keystore.properties)",
+      "mcp__plugin_jarvis_playwright__browser_run_code_unsafe",
+      "mcp__playwright__browser_run_code_unsafe"
     ]
   }
 }

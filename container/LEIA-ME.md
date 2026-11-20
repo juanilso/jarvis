@@ -88,3 +88,10 @@ Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.
 - 👁 Prévia: liga `php -S` do projeto na porta 8081. Publique no Tailscale: `tailscale serve --bg --https=8081 http://localhost:8081`.
 - Depois de atualizar, renove o plugin no contêiner dev:
   `claude plugin marketplace update jarvis-marketplace && claude plugin uninstall jarvis@jarvis-marketplace && claude plugin install jarvis@jarvis-marketplace`
+
+## Design, Canva, navegador e biblioteca de skills
+- `jarvis-extras` (no contêiner dev): instala frontend-design e canva do marketplace oficial e atualiza o Jarvis.
+- `/jarvis:redesenhar <url> [o que mudar]`: analisa o site e cria 3 variantes em `redesign/` (veja pelo 👁 Prévia).
+- `/jarvis:skill <link>`: verifica uma skill/plugin/MCP com a skill-scanner (Sentry) antes de instalar.
+- Biblioteca de itens aprovados: `biblioteca/BIBLIOTECA.md`.
+- Canva: dentro do Claude, `/mcp` → canva → Authenticate (ver instruções no final do `jarvis-extras`).

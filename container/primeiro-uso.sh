@@ -26,6 +26,10 @@ echo
 echo "3) Aplicando as permissões recomendadas..."
 bash /opt/jarvis/instalar-permissoes.sh
 
+echo
+echo "4) Extensões aprovadas (design, Canva, navegador)..."
+jarvis-extras || true
+
 touch ~/.jarvis-ok
 cat <<'MSG'
 

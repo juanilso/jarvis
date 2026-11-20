@@ -84,7 +84,9 @@
       "Bash(git push origin main:*)",
       "Bash(git push origin master:*)",
       "Bash(git push --force:*)",
-      "Bash(git push -f:*)"
+      "Bash(git push -f:*)",
+      "mcp__plugin_jarvis_playwright__browser_run_code_unsafe",
+      "mcp__playwright__browser_run_code_unsafe"
     ]
   },
   "hooks": {

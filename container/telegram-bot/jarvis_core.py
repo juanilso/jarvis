@@ -291,6 +291,8 @@ COMANDOS = [
     ("/jarvis:decidir", "Jarvis: responde decisões pendentes"),
     ("/jarvis:evoluir", "Jarvis: propõe uma mudança"),
     ("/jarvis:adotar", "Jarvis: estuda um projeto existente"),
+    ("/jarvis:redesenhar", "Jarvis: 3 versões modernas de um site (URL + o que mudar)"),
+    ("/jarvis:skill", "Jarvis: verifica e instala uma skill/plugin com segurança"),
     ("/jarvis:novo", "Jarvis: inicia um projeto novo"),
     ("/jarvis:modelos", "Jarvis: perfil de modelos dos agentes"),
     ("/jarvis:jarvis", "Jarvis: pedido livre"),

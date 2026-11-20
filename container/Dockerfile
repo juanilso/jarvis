@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Voz no Telegram: transcrição local (faster-whisper) e fala (edge-tts)
-RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts
+RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts pyyaml
 
 # GitHub CLI (integração do painel com o GitHub via GH_TOKEN)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -35,6 +35,15 @@ RUN curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/loc
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
  && apt-get install -y --no-install-recommends nodejs && rm -rf /var/lib/apt/lists/* \
  && npm install -g @anthropic-ai/claude-code
+
+# Navegador para o Jarvis (Playwright MCP oficial da Microsoft + Chromium headless)
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN npm install -g @playwright/mcp@latest \
+ && D="$(npm root -g)/@playwright/mcp" \
+ && node "$(dirname "$(node -p "require.resolve('playwright-core/package.json',{paths:['$D']})")")/cli.js" install --with-deps chromium \
+ && chmod -R a+rX /opt/ms-playwright \
+ && printf '#!/bin/sh\nD="$(npm root -g)/@playwright/mcp"\nexec node "$D/cli.js" --headless --isolated --browser chromium --no-sandbox --output-dir /tmp/playwright-mcp "$@"\n' > /usr/local/bin/jarvis-playwright-mcp \
+ && chmod 755 /usr/local/bin/jarvis-playwright-mcp
 
 # VS Code no navegador (acesso web)
 RUN curl -fsSL https://code-server.dev/install.sh | sh
@@ -60,9 +69,10 @@ COPY --chown=dev:dev . /opt/jarvis
 RUN rm -rf /opt/jarvis/.git /opt/jarvis/container
 
 COPY --chown=dev:dev container/primeiro-uso.sh /usr/local/bin/primeiro-uso
+COPY --chown=dev:dev container/jarvis-extras.sh /usr/local/bin/jarvis-extras
 COPY --chown=dev:dev container/telegram-bot/ /opt/jarvis-bots/
 RUN install -m 755 /opt/jarvis-bots/jarvis-busca /usr/local/bin/jarvis-busca
-RUN chmod +x /usr/local/bin/primeiro-uso \
+RUN chmod +x /usr/local/bin/primeiro-uso /usr/local/bin/jarvis-extras \
  && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \
  && echo '[ -f ~/.jarvis-ok ] || echo ">> Primeira vez? Rode: primeiro-uso"' >> /home/dev/.bashrc
 

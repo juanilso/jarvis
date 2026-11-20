@@ -28,6 +28,7 @@ Ao delegar, SEMPRE passe o parâmetro `model` do perfil ativo em `docs/ORQUESTRA
 | testador | haiku | haiku | sonnet |
 | revisor | haiku | sonnet | opus |
 | deploy / documentador | haiku | haiku | haiku |
+| designer | sonnet | sonnet | opus |
 
 Recomendação automática (quando o usuário não escolher):
 - economico: site institucional, CRUD simples, script, protótipo, até ~15 tarefas
@@ -38,7 +39,7 @@ Exceções por tarefa: a tag `[modelo:opus]` (ou sonnet/haiku) no título da tar
 Escalonamento automático: depois de 2 falhas na mesma tarefa, suba um nível de modelo nessa tarefa.
 
 ## Roteamento de executores
-`[db]` → dba · `[android]` → android · `[deploy]` → deploy · sem tag → desenvolvedor.
+`[db]` → dba · `[android]` → android · `[deploy]` → deploy · `[design]` → designer · sem tag → desenvolvedor.
 Testador e revisor validam todas as tarefas.
 
 ## Pipeline por tarefa (sem pedir aceite)
@@ -71,6 +72,15 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
   Uma nota por assunto, nome `AAAA-MM-DD-assunto.md`. Nunca guarde senhas, tokens ou dados pessoais de clientes.
 - Pesquisa na internet: use WebSearch/WebFetch; se não estiverem disponíveis, use `jarvis-busca "termos"` e
   `jarvis-busca --ler URL`. Sempre registre as fontes.
+
+## Design, navegador e segurança de extensões
+- Tarefas `[design]` (telas, sites, landing pages, redesign) vão para o agente `designer`, que usa a skill
+  `frontend-design` e verifica o resultado no navegador (prints desktop e celular).
+- Navegador: use o MCP `playwright` (analisar sites, prints, testes visuais). NUNCA use `browser_run_code_unsafe`.
+- Redesign a partir de uma URL: fluxo `/redesenhar` (análise → 3 variantes → verificação → prévia).
+- Canva: para peças gráficas (posts, banners, apresentações) use as ferramentas/skills do plugin `canva`, se instalado.
+- PORTÃO DE SEGURANÇA: nenhuma skill, plugin ou MCP novo é instalado sem passar por `/skill`
+  (skill-scanner + análise manual). Consulte `biblioteca/BIBLIOTECA.md` do plugin para ver o que já foi aprovado.
 
 ## Economia de tokens
 - Delegue com: ID + critério de aceite + caminhos. Nunca cole arquivos inteiros.

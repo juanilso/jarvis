@@ -10,7 +10,7 @@ Carregue a skill `orquestrador`. Leia `docs/ORQUESTRACAO.md` (perfil), `docs/EST
 Para cada tarefa `pendente` com as dependências `feita`, em ordem:
 1. Marque `em_andamento`.
 2. `explorador` (modelo do perfil): mapa do código para a tarefa.
-3. Executor pela tag ([db] dba, [android] android, [deploy] deploy, sem tag desenvolvedor),
+3. Executor pela tag ([db] dba, [android] android, [deploy] deploy, [design] designer, sem tag desenvolvedor),
    com o modelo do perfil (ou `[modelo:x]` da tarefa): ID + critério + mapa.
    - `precisa_decisao` → registre em DECISOES-PENDENTES, marque `aguardando_decisao` e vá para a próxima.
 4. `testador`: falhou → reenvie só as falhas ao executor (máx. 2 voltas).

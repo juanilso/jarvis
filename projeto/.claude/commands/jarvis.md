@@ -16,6 +16,8 @@ Carregue a skill `orquestrador`. Depois, identifique a intenção e siga o fluxo
 - mudança de escopo, nova funcionalidade, ajuste técnico, problema → fluxo **evoluir**
 - respostas a decisões ("D-001 A", "ok pode seguir") → fluxo **decidir**
 - "como estamos", "status", "o que falta" → fluxo **status**
+- URL de site + "parecido", "moderno", "redesenhar", "melhorar o visual" → fluxo **redesenhar**
+- instalar/avaliar skill, plugin ou MCP → fluxo **skill** (portão de segurança)
 - trocar modelo, custo, "mais barato", "mais qualidade" → fluxo **modelos**
 - pergunta técnica pontual → responda direto, curto, sem subagentes
 
