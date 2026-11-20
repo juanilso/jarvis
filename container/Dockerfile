@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Voz no Telegram: transcrição local (faster-whisper) e fala (edge-tts)
-RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts
+RUN pip3 install --no-cache-dir --break-system-packages faster-whisper "av<15" edge-tts
 
 # Composer
 RUN curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer

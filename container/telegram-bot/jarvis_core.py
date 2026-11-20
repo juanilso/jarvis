@@ -61,12 +61,25 @@ def listar_projetos():
 
 
 # ------------------------------------------------------------------ áudio
+def _carregar_audio(caminho):
+    """Converte qualquer áudio (ogg, webm, mp4, mp3) para 16 kHz mono via ffmpeg.
+    Evita depender do PyAV, cujas versões novas quebram o faster-whisper."""
+    import numpy as np
+    bruto = subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-i", caminho,
+                            "-f", "f32le", "-ac", "1", "-ar", "16000", "-"],
+                           capture_output=True, check=True, timeout=180).stdout
+    return np.frombuffer(bruto, dtype=np.float32)
+
+
 def transcrever(caminho):
+    audio = _carregar_audio(caminho)
+    if audio.size < 1600:  # menos de 0,1 s
+        return ""
     with _whisper["lock"]:
         if _whisper["model"] is None:
             from faster_whisper import WhisperModel  # carregado só quando necessário
             _whisper["model"] = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
-        segmentos, _ = _whisper["model"].transcribe(caminho, language="pt", vad_filter=True)
+        segmentos, _ = _whisper["model"].transcribe(audio, language="pt", vad_filter=True)
         return " ".join(s.text.strip() for s in segmentos).strip()
 
 
