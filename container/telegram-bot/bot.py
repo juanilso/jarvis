@@ -242,7 +242,8 @@ def tratar(msg):
     if texto.startswith("/jarvis_"):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
-                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar"):
+                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar") \
+            or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, execucao, texto)
         enviar(chat_id, resposta)
         if acao == "compactar":

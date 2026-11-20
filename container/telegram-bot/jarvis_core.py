@@ -138,7 +138,7 @@ class Execucao:
                 return
             prompt = PROMPT_COMPACTAR
         else:
-            prompt = texto + (INSTRUCAO_AUDIO if responder_audio else "")
+            prompt = texto + (INSTRUCAO_AUDIO if responder_audio and not texto.startswith("/") else "")
             resumo_usado = est["resumos"].get(projeto) if not est["sessoes"].get(projeto) else None
             if resumo_usado and texto.startswith("/"):
                 resumo_usado = "comando"  # comandos "/" rodam sem o resumo; ele fica guardado para a próxima mensagem
@@ -298,6 +298,11 @@ COMANDOS = [
     ("/jarvis:jarvis", "Jarvis: pedido livre"),
 ]
 LOCAIS = {c for c, _ in COMANDOS if not c.startswith("/jarvis:")}
+# comandos que só existem na tela interativa do Claude Code (terminal)
+INTERATIVOS = {"/mcp", "/login", "/logout", "/config", "/plugin", "/plugins", "/permissions", "/doctor", "/hooks",
+               "/agents", "/memory", "/resume", "/model", "/theme", "/terminal-setup", "/vim", "/ide", "/install-github-app",
+               "/compact", "/clear", "/exit", "/remote-control", "/mobile", "/statusline", "/output-style"}
+EQUIVALENTES = {"/compact": "/compactar", "/clear": "/novo", "/model": "/modelo"}
 
 
 def comando(estado, execucao, texto):
@@ -305,6 +310,12 @@ def comando(estado, execucao, texto):
     acao="compactar" pede para a interface rodar a compactação em segundo plano."""
     cmd, _, resto = texto.strip().partition(" ")
     cmd = cmd.split("@")[0].lower()
+    if cmd in INTERATIVOS:
+        if cmd in EQUIVALENTES:
+            return f"Aqui use {EQUIVALENTES[cmd]} (o {cmd} é do terminal interativo).", None
+        return (f"O {cmd} só funciona no terminal interativo do Claude Code. Abra o terminal "
+                "(VS Code no navegador: menu ☰ → Terminal → New Terminal, ou SSH: docker compose exec dev bash), "
+                f"rode `claude` e digite {cmd} lá."), None
     if cmd not in LOCAIS:
         return None, None
     arg = resto.strip()
