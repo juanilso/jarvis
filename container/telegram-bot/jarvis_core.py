@@ -123,12 +123,14 @@ class Execucao:
             return True
         return False
 
-    def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False):
+    def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False, cwd=None, usar_sessao=True):
         """Executa (bloqueante). ao_evento(dict) recebe:
         {"tipo": "agente_inicio"|"agente_fim"|"resposta"|"erro"|"info", ...}
         compactar=True: resume a conversa, encerra a sessão e guarda o resumo como contexto."""
         est = estado.ler()
         projeto = est["projeto"]
+        if not usar_sessao:  # tarefa avulsa (ex.: pesquisa): sem retomar nem salvar a conversa do projeto
+            est = dict(est, sessoes={}, resumos={})
         resumo_usado = None
         if compactar:
             if not est["sessoes"].get(projeto):
@@ -150,9 +152,9 @@ class Execucao:
         agentes, resultado, code, erro = {}, None, None, ""
         try:
             with self._lock:
-                self.proc = subprocess.Popen(cmd, cwd=os.path.join(WORKSPACE, projeto), stdout=subprocess.PIPE,
+                self.proc = subprocess.Popen(cmd, cwd=cwd or os.path.join(WORKSPACE, projeto), stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE, text=True, bufsize=1)
-                self.inicio, self.pedido, self.projeto = time.time(), texto[:80], projeto
+                self.inicio, self.pedido, self.projeto = time.time(), texto[:80], projeto or "conhecimento"
             timer = threading.Timer(TIMEOUT, self.proc.kill)
             timer.start()
             for linha in self.proc.stdout:
@@ -191,7 +193,14 @@ class Execucao:
             return
         est = estado.ler()
         if resultado.get("total_cost_usd"):
-            est["custos"][projeto] = round(est["custos"].get(projeto, 0) + resultado["total_cost_usd"], 6)
+            chave = projeto if usar_sessao else "conhecimento"
+            est["custos"][chave] = round(est["custos"].get(chave, 0) + resultado["total_cost_usd"], 6)
+        if not usar_sessao:
+            estado.salvar(est)
+            resposta = resultado.get("result") or ""
+            ao_evento({"tipo": "resposta", "texto": resposta, "resumo": resposta, "custo": resultado.get("total_cost_usd"),
+                       "erro": bool(resultado.get("is_error")), "audio": responder_audio})
+            return
         if compactar:
             resumo = (resultado.get("result") or "").strip()
             est["sessoes"].pop(projeto, None)
@@ -263,6 +272,10 @@ PROMPT_COMPACTAR = (
 MODELOS = {"sonnet", "opus", "haiku", "padrao"}
 COMANDOS = [
     ("/ajuda", "Lista os comandos"),
+    ("/ideia", "Guarda uma ideia na base de conhecimento"),
+    ("/lembrar", "Procura na base de conhecimento"),
+    ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
+    ("/sincronizar", "Envia a base de conhecimento para o GitHub agora"),
     ("/projetos", "Lista os projetos"),
     ("/projeto", "Escolhe o projeto: /projeto <nome>"),
     ("/status", "O que está rodando agora"),
@@ -295,6 +308,34 @@ def comando(estado, execucao, texto):
     arg = resto.strip()
     est = estado.ler()
     proj = est["projeto"]
+    if cmd in ("/ideia", "/lembrar", "/sincronizar", "/pesquisar"):
+        import kb  # import tardio (kb depende deste módulo)
+        if cmd == "/ideia":
+            if not arg:
+                return "Escreva a ideia depois do comando: /ideia app de agendamento para barbearias", None
+            titulo = arg.split("\n")[0][:70]
+            caminho = kb.salvar("ideias", titulo, arg, tags=["ideia"], projeto=proj)
+            return f"💡 Ideia guardada: {caminho}", None
+        if cmd == "/lembrar":
+            if not arg:
+                rec = kb.recentes(limite=8)
+                return ("🧠 Últimas notas:\n" + "\n".join(f"• {r['titulo']} ({r['caminho']})" for r in rec)) if rec \
+                    else "A base de conhecimento ainda está vazia. Use /ideia ou /pesquisar.", None
+            res = kb.buscar(arg)
+            if not res:
+                return f"Não encontrei nada sobre “{arg}” na base de conhecimento.", None
+            return "🧠 Encontrei:\n\n" + "\n\n".join(f"• {r['titulo']} ({r['caminho']})\n  …{r['trecho']}…" for r in res[:5]), None
+        if cmd == "/sincronizar":
+            kb.garantir()
+            r = kb.sincronizar()
+            return {"ok": "☁️ Base de conhecimento salva no GitHub.", "sem remoto": "Base salva localmente "
+                    "(configure GH_TOKEN para ter cópia no GitHub)."}.get(r, f"Sincronização: {r}"), None
+        if cmd == "/pesquisar":
+            if not arg:
+                return "Diga o tema: /pesquisar melhores gateways de pagamento PIX para PHP", None
+            if execucao.ocupado:
+                return "Espere o pedido atual terminar (ou use /parar) para pesquisar.", None
+            return f"🔎 Pesquisando “{arg}”… aviso quando terminar.", "pesquisar"
     if cmd == "/ajuda":
         return "\n".join(f"{c} — {d}" for c, d in COMANDOS), None
     if cmd == "/projetos":

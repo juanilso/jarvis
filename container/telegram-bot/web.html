@@ -60,8 +60,12 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #mic,#enviar{width:50px;height:46px;font-size:20px;padding:0}
 #mic.gravando{background:rgba(251,113,133,.25);border-color:var(--er);animation:pl 1s infinite}
 #btnPainel{display:none}
-#gestao{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#gestao.aberto{display:flex}
+#gestao,#kb{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#gestao.aberto,#kb.aberto{display:flex}
+#kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
+#kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
+#kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
+#kb .fechar{position:absolute;right:12px;top:10px}#kb .prim{border-color:var(--c);color:var(--c2)}
 #gestao .caixa{width:min(760px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #gestao h2{margin:0 0 14px;font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2)}
 #gestao h3{margin:18px 0 8px;font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);text-transform:uppercase}
@@ -74,6 +78,15 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #repos div{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed var(--ln);font-size:13px}
 #ghStatus{font:12.5px var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px;padding:8px 10px;margin-bottom:8px}
 #gMsg{font-size:13px;margin-top:10px;min-height:18px}
+ #kb .cols{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px;min-height:380px}
+#kbLista{max-height:430px;overflow:auto;border-right:1px dashed var(--ln);padding-right:8px}
+#kbLista div{padding:6px 4px;border-bottom:1px dashed rgba(56,189,248,.1);cursor:pointer;font-size:13px}
+#kbLista div:hover,#kbLista div.sel{background:rgba(56,189,248,.12)}#kbLista small{display:block;color:var(--m);font-size:11px}
+#kbNota{max-height:430px;overflow:auto;font-size:14px;line-height:1.6}#kbNota h1,#kbNota h2,#kbNota h3{font-weight:500;color:var(--c2);margin:12px 0 6px}
+#kbNota h1{font-size:18px}#kbNota h2{font-size:15px}#kbNota a{color:var(--c)}#kbNota ul{padding-left:18px;margin:4px 0}
+.filtros{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.filtros button{font-size:12px;padding:4px 10px}.filtros button.on{border-color:var(--c);color:var(--c2)}
+#kb textarea{width:100%;min-height:60px;resize:vertical;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
+@media (max-width:700px){#kb .cols{grid-template-columns:1fr}#kbLista{max-height:220px;border-right:0}}
 .barraUp{height:6px;background:#0d2233;border-radius:3px;overflow:hidden;margin-top:8px;display:none}.barraUp i{display:block;height:100%;width:0;background:var(--c)}
 footer{position:relative}
 #menuCmd{position:absolute;left:14px;right:14px;bottom:calc(100% + 4px);background:#07131d;border:1px solid var(--ln2);border-radius:8px;max-height:300px;overflow:auto;display:none;z-index:5}
@@ -109,6 +122,18 @@ footer{position:relative}
   <div class="lin"><input type="text" id="gMsgCommit" placeholder="mensagem do commit (opcional)"><button class="prim" id="gPush">⬆ Salvar e enviar</button><button id="gPull">⬇ Atualizar</button><button id="gCriarRepo">Criar repositório</button><a id="gLink" target="_blank" style="display:none;color:var(--c2);font-size:13px">abrir no GitHub ↗</a></div>
   <div id="gMsg"></div>
 </div></div>
+<div id="kb"><div class="caixa">
+  <button class="fechar" id="kbFechar" title="Fechar">✕</button>
+  <h2>BASE DE CONHECIMENTO</h2>
+  <div class="lin"><input type="text" id="kbBusca" placeholder="buscar ideias, pesquisas, decisões…"><button id="kbBuscar">Buscar</button></div>
+  <div class="filtros" id="kbFiltros"><button data-t="" class="on">tudo</button><button data-t="ideias">💡 ideias</button><button data-t="pesquisas">🔎 pesquisas</button><button data-t="decisoes">⚖️ decisões</button><button data-t="aprendizados">📚 aprendizados</button><button data-t="projetos">📁 projetos</button></div>
+  <div class="cols"><div id="kbLista"></div><div id="kbNota" class="vazio">Escolha uma nota.</div></div>
+  <h3>Nova ideia</h3>
+  <textarea id="kbIdeia" placeholder="Escreva a ideia… (também dá para usar /ideia no chat ou dizer “ideia: …” por áudio no Telegram)"></textarea>
+  <div class="lin" style="margin-top:6px"><button class="prim" id="kbSalvar">💡 Guardar ideia</button></div>
+  <h3>Pesquisar na internet</h3>
+  <div class="lin"><input type="text" id="kbTema" placeholder="tema da pesquisa (o resultado é salvo com as fontes)"><button class="prim" id="kbPesquisar">🔎 Pesquisar</button></div>
+</div></div>
 <div id="app">
   <header>
     <div class="logo">JARVIS<small>orquestrador de projetos</small></div>
@@ -118,6 +143,8 @@ footer{position:relative}
     </select>
     <button id="agentesBtn" title="Avisos dos agentes">👥 on</button>
     <button id="btnGestao" title="Projetos e GitHub">📁</button>
+    <button id="btnKb" title="Base de conhecimento">🧠</button>
+    <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
     <button id="btnPainel" title="Mostrar painéis">📋</button>
     <button id="novo" title="Conversa nova neste projeto">🆕</button>
     <button id="parar" title="Parar">⛔</button>
@@ -244,6 +271,32 @@ $("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.val
 $("audio").onchange=e=>api("/api/config",{audio:e.target.value});
 $("agentesBtn").onclick=async()=>{agentesOn=!agentesOn;await api("/api/config",{agentes:agentesOn});$("agentesBtn").textContent="👥 "+(agentesOn?"on":"off")};
 $("btnPainel").onclick=()=>$("main").classList.toggle("abrir");
+/* ---------- base de conhecimento ---------- */
+let kbTipo="";
+function md(t){t=t.replace(/^---[\s\S]*?---\s*/,"");let h=esc(t);
+  h=h.replace(/```[\s\S]*?```/g,m=>`<pre><code>${m.slice(3,-3).replace(/^\w*\n/,"")}</code></pre>`)
+   .replace(/^### (.*)$/gm,"<h3>$1</h3>").replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>")
+   .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank">$1</a>').replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank">$2</a>')
+   .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/`([^`\n]+)`/g,"<code>$1</code>")
+   .replace(/^- (.*)$/gm,"<li>$1</li>").replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g,"<ul>$1</ul>").replace(/\n{2,}/g,"<br><br>");return h}
+function kbListar(notas){const el=$("kbLista");
+  el.innerHTML=notas.map(n=>`<div data-c="${esc(n.caminho)}">${esc(n.titulo)}<small>${esc(n.caminho.split("/")[0])} · ${new Date(n.data*1000).toLocaleDateString("pt-BR")}</small></div>`).join("")||'<span class="vazio">Nada por aqui ainda.</span>';
+  el.querySelectorAll("div").forEach(d=>d.onclick=async()=>{el.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));d.classList.add("sel");
+    const j=await api("/api/kb/ler?c="+encodeURIComponent(d.dataset.c));$("kbNota").classList.remove("vazio");$("kbNota").innerHTML=j.erro?esc(j.erro):md(j.texto)})}
+async function kbCarregar(){const q=$("kbBusca").value.trim();const j=q?await api("/api/kb/buscar?q="+encodeURIComponent(q)):await api("/api/kb/recentes"+(kbTipo?"?tipo="+kbTipo:""));
+  kbListar((j.notas||[]).filter(n=>!kbTipo||n.caminho.startsWith(kbTipo+"/")))}
+$("btnKb").onclick=()=>{$("kb").classList.add("aberto");kbCarregar()};
+$("kbFechar").onclick=()=>$("kb").classList.remove("aberto");
+$("kb").onclick=e=>{if(e.target.id==="kb")$("kb").classList.remove("aberto")};
+$("kbBuscar").onclick=kbCarregar;$("kbBusca").addEventListener("keydown",e=>{if(e.key==="Enter")kbCarregar()});
+$("kbFiltros").querySelectorAll("button").forEach(b=>b.onclick=()=>{kbTipo=b.dataset.t;$("kbFiltros").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));kbCarregar()});
+$("kbSalvar").onclick=async()=>{const t=$("kbIdeia").value.trim();if(!t)return;const j=await api("/api/kb/ideia",{texto:t});if(!j.erro){$("kbIdeia").value="";kbCarregar()}};
+$("kbPesquisar").onclick=async()=>{const t=$("kbTema").value.trim();if(!t)return;const r=await api("/api/mensagem",{texto:"/pesquisar "+t});
+  if(r.erro)alert(r.erro);else{$("kbTema").value="";$("kb").classList.remove("aberto")}};
+/* ---------- prévia do site ---------- */
+$("btnPrevia").onclick=async()=>{const e=await api("/api/estado");const url=`${location.protocol}//${location.hostname}:${e.porta_previa||8081}/`;
+  if(e.previa&&e.previa===e.projeto){if(confirm("Prévia ligada. Abrir o site? (Cancelar desliga a prévia)"))window.open(url,"_blank");else api("/api/previa",{acao:"parar"});return}
+  const j=await api("/api/previa",{acao:"iniciar"});if(j.erro){add("ev erro",esc(j.erro));return}setTimeout(()=>window.open(url,"_blank"),600)};
 /* ---------- projetos e GitHub ---------- */
 function gMsg(t,erro){$("gMsg").innerHTML=`<span style="color:var(--${erro?"er":"ok"})">${esc(t)}</span>`}
 async function gPost(c,b){$("gMsg").textContent="⏳ aguarde…";const r=await fetch(c,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});const j=await r.json();

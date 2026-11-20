@@ -60,6 +60,18 @@ Também é portão a troca de perfil de modelos para `maximo` em projeto já em 
 - Instale o que faltar na stack (apt, pecl, composer) sem pedir confirmação, porque o ambiente é descartável.
 - Não existe emulador Android: compile e rode os testes unitários; testes no aparelho viram tarefa para o usuário.
 
+## Base de conhecimento (memória permanente)
+Fica em `/workspace/.jarvis-conhecimento` (repositório privado `jarvis-conhecimento` no GitHub, sincronizado
+automaticamente pelo painel). Formato: Markdown com cabeçalho YAML (titulo, tipo, data, projeto, tags), compatível com Obsidian.
+Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
+- ANTES de iniciar, adotar ou evoluir um projeto: procure notas relacionadas
+  (`grep -ril "<termos>" /workspace/.jarvis-conhecimento`) e leia as relevantes (máx. 5).
+- AO CONCLUIR um ciclo: o `documentador` atualiza `projetos/<nome-do-projeto>.md` (resumo, stack, links, estado)
+  e cria notas curtas em `decisoes/` (decisões tomadas) e `aprendizados/` (o que funcionou ou falhou e por quê).
+  Uma nota por assunto, nome `AAAA-MM-DD-assunto.md`. Nunca guarde senhas, tokens ou dados pessoais de clientes.
+- Pesquisa na internet: use WebSearch/WebFetch; se não estiverem disponíveis, use `jarvis-busca "termos"` e
+  `jarvis-busca --ler URL`. Sempre registre as fontes.
+
 ## Economia de tokens
 - Delegue com: ID + critério de aceite + caminhos. Nunca cole arquivos inteiros.
 - Subagentes devolvem relatório curto; reenvie só falhas/correções.

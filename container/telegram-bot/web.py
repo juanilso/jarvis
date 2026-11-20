@@ -8,6 +8,7 @@ import hmac
 import json
 import os
 import secrets
+import subprocess
 import sys
 import tempfile
 import threading
@@ -19,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import jarvis_core as core  # noqa: E402
 import projetos  # noqa: E402
+import kb  # noqa: E402
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -53,6 +55,38 @@ def rodar(texto, responder_audio, compactar=False):
     execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
 
 
+PREVIA = {"proc": None, "projeto": None}
+PORTA_PREVIA = int(os.environ.get("JARVIS_PREVIA_PORT", "8081"))
+
+
+def previa(acao):
+    """Servidor de prévia (php -S) do projeto atual, para ver o site em construção."""
+    if PREVIA["proc"] and PREVIA["proc"].poll() is None:
+        PREVIA["proc"].terminate()
+        PREVIA["proc"].wait(timeout=5)
+    PREVIA.update(proc=None, projeto=None)
+    if acao != "iniciar":
+        return "Prévia desligada."
+    proj = estado.ler()["projeto"]
+    if not proj:
+        raise projetos.Erro("Escolha um projeto primeiro.")
+    pasta = os.path.join(core.WORKSPACE, proj)
+    raiz = next((os.path.join(pasta, d) for d in ("public", "public_html", "www", "dist", "build")
+                 if os.path.isdir(os.path.join(pasta, d))), pasta)
+    PREVIA["proc"] = subprocess.Popen(["php", "-S", f"0.0.0.0:{PORTA_PREVIA}", "-t", raiz], cwd=pasta,
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    PREVIA["projeto"] = proj
+    return f"👁 Prévia de {proj} ligada (pasta {os.path.relpath(raiz, core.WORKSPACE)})."
+
+
+def pesquisar(tema):
+    destino, prompt = kb.prompt_pesquisa(tema)
+    execucao.rodar(estado, prompt, False, publicar, cwd=kb.KB_DIR, usar_sessao=False)
+    kb.sincronizar()
+    if os.path.exists(destino):
+        publicar({"tipo": "info", "texto": f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}"})
+
+
 def iniciar(texto, veio_de_audio):
     if texto.startswith("/"):
         resposta, acao = core.comando(estado, execucao, texto)
@@ -61,6 +95,8 @@ def iniciar(texto, veio_de_audio):
             publicar({"tipo": "info", "texto": resposta})
             if acao == "compactar":
                 threading.Thread(target=rodar, args=("", False, True), daemon=True).start()
+            elif acao == "pesquisar":
+                threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
             return None
     est = estado.ler()
     if not est["projeto"]:
@@ -126,13 +162,26 @@ class Handler(BaseHTTPRequestHandler):
             est = estado.ler()
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
                                "audio": est["audio"], "agentes": est["agentes"],
-                               "ocupado": execucao.ocupado, "pedido": execucao.pedido})
+                               "ocupado": execucao.ocupado, "pedido": execucao.pedido,
+                               "previa": PREVIA["projeto"] if PREVIA["proc"] and PREVIA["proc"].poll() is None else None,
+                               "porta_previa": PORTA_PREVIA})
         if url.path in ("/api/github/repos", "/api/github/status"):
             try:
                 if url.path.endswith("repos"):
                     return self._json({"repos": projetos.gh_repos()})
                 proj = estado.ler()["projeto"]
                 return self._json(projetos.status(proj) if proj else {"git": False, "gh": projetos.gh_ok()})
+            except projetos.Erro as e:
+                return self._json({"erro": str(e)}, 400)
+        if url.path.startswith("/api/kb/"):
+            q = urllib.parse.parse_qs(url.query)
+            try:
+                if url.path == "/api/kb/recentes":
+                    return self._json({"notas": kb.recentes(q.get("tipo", [None])[0], 40)})
+                if url.path == "/api/kb/buscar":
+                    return self._json({"notas": kb.buscar(q.get("q", [""])[0], 20)})
+                if url.path == "/api/kb/ler":
+                    return self._json({"texto": kb.ler(q.get("c", [""])[0])})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
         if url.path == "/api/comandos":
@@ -251,6 +300,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": msg})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/previa":
+            try:
+                msg = previa(dados.get("acao", "iniciar"))
+                publicar({"tipo": "sistema", "texto": msg})
+                return self._json({"ok": True, "msg": msg, "porta": PORTA_PREVIA})
+            except projetos.Erro as e:
+                return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/kb/ideia":
+            texto = (dados.get("texto") or "").strip()
+            if not texto:
+                return self._json({"erro": "Escreva a ideia."}, 400)
+            caminho = kb.salvar("ideias", texto.split("\n")[0][:70], texto, tags=["ideia"], projeto=estado.ler()["projeto"])
+            publicar({"tipo": "info", "texto": f"💡 Ideia guardada: {caminho}"})
+            return self._json({"ok": True, "caminho": caminho})
         if url.path == "/api/parar":
             return self._json({"ok": execucao.parar()})
         if url.path == "/api/novo":
@@ -276,6 +339,8 @@ def main():
     if not SENHA:
         raise SystemExit("Defina PASSWORD (ou JARVIS_WEB_PASSWORD) no .env.claude")
     print(f"Jarvis Web na porta {PORTA}", flush=True)
+    threading.Thread(target=kb.garantir, daemon=True).start()
+    kb.iniciar_sincronizacao_periodica(10)
     ThreadingHTTPServer(("0.0.0.0", PORTA), Handler).serve_forever()
 
 

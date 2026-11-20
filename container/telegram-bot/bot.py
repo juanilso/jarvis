@@ -5,6 +5,7 @@ Variáveis: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (IDs autorizados, separados por
 JARVIS_WORKSPACE, JARVIS_TIMEOUT_MIN, WHISPER_MODEL, TTS_VOICE. Long polling: nenhuma porta aberta.
 """
 import json
+import re
 import mimetypes
 import os
 import subprocess
@@ -18,6 +19,7 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import jarvis_core as core  # noqa: E402
+import kb  # noqa: E402
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 ALLOWED = {c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()}
@@ -116,6 +118,20 @@ def rodar(chat_id, texto, responder_audio, compactar=False):
     execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
 
 
+def pesquisar(chat_id, tema):
+    destino, prompt = kb.prompt_pesquisa(tema)
+
+    def ao_evento(ev):
+        if ev["tipo"] == "resposta":
+            enviar(chat_id, ev["texto"] + (f"\n\n💲 custo estimado: US$ {ev['custo']:.4f}" if ev.get("custo") else ""))
+        elif ev["tipo"] in ("erro", "info"):
+            enviar(chat_id, ev["texto"])
+    execucao.rodar(estado, prompt, False, ao_evento, cwd=kb.KB_DIR, usar_sessao=False)
+    kb.sincronizar()
+    if os.path.exists(destino):
+        enviar(chat_id, f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}")
+
+
 def iniciar_pedido(chat_id, texto, veio_de_audio):
     est = estado.ler()
     if not est["projeto"]:
@@ -143,6 +159,10 @@ def tratar_audio(chat_id, msg):
         enviar(chat_id, "Não entendi o áudio. Pode repetir?")
         return
     enviar(chat_id, f"📝 Entendi: “{texto}”")
+    m = re.match(r"^\s*(ideia|anota|anote|anotar)\b[\s:,.-]*(.+)", texto, re.I | re.S)
+    if m:  # "ideia: ..." por voz vira /ideia
+        enviar(chat_id, core.comando(estado, execucao, "/ideia " + m.group(2).strip())[0])
+        return
     iniciar_pedido(chat_id, texto, veio_de_audio=True)
 
 
@@ -221,11 +241,14 @@ def tratar(msg):
         return
     if texto.startswith("/jarvis_"):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
-    if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status"):
+    if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
+                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar"):
         resposta, acao = core.comando(estado, execucao, texto)
         enviar(chat_id, resposta)
         if acao == "compactar":
             threading.Thread(target=rodar, args=(chat_id, "", False, True), daemon=True).start()
+        elif acao == "pesquisar":
+            threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip()), daemon=True).start()
         return
     est = estado.ler()
     cmd, _, resto = texto.partition(" ")

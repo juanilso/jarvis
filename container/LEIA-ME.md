@@ -79,3 +79,12 @@ Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.
 - Novo projeto, upload de arquivos/.zip, clonar repositórios, status, criar repositório, salvar e enviar (commit + push) e atualizar (pull).
 - Requer `GH_TOKEN` no `.env.claude` (token do GitHub). Se aparecer erro de permissão ao criar pastas:
   `docker compose exec -u root dev chown -R dev:dev /workspace`
+
+## Base de conhecimento, pesquisa e prévia de sites
+- 🧠 no painel (ou /ideia, /lembrar, /pesquisar, /sincronizar no chat e no Telegram). Por voz no Telegram: "ideia: …".
+- As notas ficam em /workspace/.jarvis-conhecimento e no repositório privado `jarvis-conhecimento` do seu GitHub
+  (criado automaticamente com o GH_TOKEN). Abra a pasta como "vault" no Obsidian para navegar pelas notas.
+- Busca: o Claude usa WebSearch; sem ele, `jarvis-busca` (Brave com BRAVE_API_KEY, ou DuckDuckGo sem chave).
+- 👁 Prévia: liga `php -S` do projeto na porta 8081. Publique no Tailscale: `tailscale serve --bg --https=8081 http://localhost:8081`.
+- Depois de atualizar, renove o plugin no contêiner dev:
+  `claude plugin marketplace update jarvis-marketplace && claude plugin uninstall jarvis@jarvis-marketplace && claude plugin install jarvis@jarvis-marketplace`

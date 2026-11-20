@@ -1,8 +1,20 @@
 {
   "name": "jarvis",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Orquestrador global de projetos: time de agentes (arquiteto, dev, dba, android, testador, revisor, deploy) com roteamento de modelos por perfil, execução autônoma e fila de decisões pontuais.",
-  "author": { "name": "Rafael Lessa" },
+  "author": {
+    "name": "Rafael Lessa"
+  },
   "license": "MIT",
-  "keywords": ["orquestrador", "multi-agente", "php", "cpanel", "mysql", "sqlserver", "sqlite", "android", "pt-br"]
+  "keywords": [
+    "orquestrador",
+    "multi-agente",
+    "php",
+    "cpanel",
+    "mysql",
+    "sqlserver",
+    "sqlite",
+    "android",
+    "pt-br"
+  ]
 }
