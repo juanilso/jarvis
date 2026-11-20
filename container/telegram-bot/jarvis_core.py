@@ -171,3 +171,43 @@ class Execucao:
         ao_evento({"tipo": "resposta", "texto": resposta, "resumo": resumo or resposta,
                    "custo": resultado.get("total_cost_usd"), "erro": bool(resultado.get("is_error")),
                    "audio": responder_audio})
+
+
+# ------------------------------------------------------------------ painel do projeto
+def _ler(caminho):
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def painel_projeto(projeto):
+    """Resumo dos docs do Jarvis para o painel: perfil, estado, backlog e decisões pendentes."""
+    vazio = {"perfil": None, "estado": [], "contagem": {}, "proximas": [], "decisoes": [], "adotado": False}
+    if not projeto:
+        return vazio
+    docs = os.path.join(WORKSPACE, projeto, "docs")
+    if not os.path.isdir(docs):
+        return vazio
+    res = dict(vazio, adotado=True)
+    m = re.search(r"Perfil ativo:\s*(\w+)", _ler(os.path.join(docs, "ORQUESTRACAO.md")))
+    res["perfil"] = m.group(1) if m else None
+    res["estado"] = [l.strip("- ").strip() for l in _ler(os.path.join(docs, "ESTADO.md")).splitlines()
+                     if l.strip().startswith("-")][:6]
+    for linha in _ler(os.path.join(docs, "BACKLOG.md")).splitlines():
+        cols = [c.strip() for c in linha.strip().strip("|").split("|")]
+        if len(cols) >= 3 and re.match(r"T-\d+", cols[0]):
+            st = (cols[1].split()[0] if cols[1] else "pendente").lower()
+            res["contagem"][st] = res["contagem"].get(st, 0) + 1
+            if st in ("pendente", "em_andamento") and len(res["proximas"]) < 5:
+                res["proximas"].append({"id": cols[0], "status": st, "titulo": cols[2]})
+    titulo = None
+    for linha in _ler(os.path.join(docs, "DECISOES-PENDENTES.md")).splitlines():
+        h = re.match(r"##\s*(D-\d+)\s*[—-]\s*(.+)", linha)
+        if h:
+            titulo = (h.group(1), h.group(2).strip())
+        elif titulo and re.search(r"Status:\s*pendente", linha):
+            res["decisoes"].append({"id": titulo[0], "titulo": titulo[1]})
+            titulo = None
+    return res

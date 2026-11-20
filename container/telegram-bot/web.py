@@ -105,6 +105,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
                                "audio": est["audio"], "agentes": est["agentes"],
                                "ocupado": execucao.ocupado, "pedido": execucao.pedido})
+        if url.path == "/api/painel":
+            return self._json(core.painel_projeto(estado.ler()["projeto"]))
         if url.path == "/api/eventos":
             desde = int(urllib.parse.parse_qs(url.query).get("desde", ["0"])[0])
             with ev_lock:
