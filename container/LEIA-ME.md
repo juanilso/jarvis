@@ -55,6 +55,7 @@ Dentro do contêiner:
 4. Mande "oi" para o bot: ele responde com o seu chat ID. Coloque em `TELEGRAM_CHAT_ID=` e rode
    `docker compose --profile telegram up -d` de novo.
 5. No bot: `/projetos` → `/projeto nome` → depois é só escrever as demandas.
+Imagens e arquivos: mande foto (ou álbum) ou documento com a pergunta na legenda; ficam em /workspace/.jarvis-anexos.
 Áudio: mande mensagem de voz (transcrição local). `/audio auto|sempre|nunca` controla a resposta falada.
 `/agentes on|off` liga/desliga os avisos de cada agente trabalhando.
 Logs: `docker logs -f jarvis-telegram`. Só os chat IDs autorizados conseguem usar o bot.

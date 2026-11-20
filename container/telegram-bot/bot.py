@@ -143,6 +143,63 @@ def tratar_audio(chat_id, msg):
     iniciar_pedido(chat_id, texto, veio_de_audio=True)
 
 
+ANEXOS_DIR = os.path.join(core.WORKSPACE, ".jarvis-anexos")  # fora dos projetos: não entra no Git
+grupos, grupos_lock = {}, threading.Lock()  # álbuns (várias fotos de uma vez)
+
+
+def receber_anexo(chat_id, msg):
+    """Fotos e arquivos: salva na VPS e manda o caminho para o Claude ler."""
+    grupo = msg.get("media_group_id")
+    if not grupo:
+        threading.Thread(target=processar_anexos, args=(chat_id, [msg]), daemon=True).start()
+        return
+    with grupos_lock:  # espera o álbum chegar inteiro antes de processar
+        if grupo not in grupos:
+            grupos[grupo] = []
+            threading.Timer(2.5, lambda: processar_anexos(chat_id, grupos.pop(grupo, []))).start()
+        grupos[grupo].append(msg)
+
+
+def processar_anexos(chat_id, msgs):
+    est = estado.ler()
+    if not est["projeto"]:
+        enviar(chat_id, "Escolha um projeto antes de mandar arquivos: /projetos e depois /projeto <nome>")
+        return
+    if execucao.ocupado:
+        enviar(chat_id, "Ainda estou trabalhando no pedido anterior. Mande o arquivo de novo quando terminar.")
+        return
+    os.makedirs(ANEXOS_DIR, exist_ok=True)
+    caminhos, legenda = [], ""
+    for i, m in enumerate(msgs):
+        legenda = legenda or (m.get("caption") or "").strip()
+        if m.get("photo"):
+            arq, ext = m["photo"][-1], ".jpg"  # a última é a de maior resolução
+        else:
+            arq = m["document"]
+            ext = os.path.splitext(arq.get("file_name") or "")[1] or ".bin"
+        if (arq.get("file_size") or 0) > 20 * 1024 * 1024:
+            enviar(chat_id, "Arquivo maior que 20 MB: o Telegram não deixa o bot baixar. Envie compactado ou divida.")
+            continue
+        destino = os.path.join(ANEXOS_DIR, time.strftime("%Y%m%d-%H%M%S") + f"-{uuid.uuid4().hex[:6]}{ext}")
+        try:
+            baixar_arquivo(arq["file_id"], destino)
+            caminhos.append(destino)
+        except Exception as e:  # noqa: BLE001
+            print("erro ao baixar anexo:", e, flush=True)
+            enviar(chat_id, "Não consegui baixar um dos arquivos.")
+    if not caminhos:
+        return
+    lista = "\n".join(f"- {c}" for c in caminhos)
+    pedido = legenda or "Analise o(s) anexo(s) e me diga o que você vê e o que sugere fazer neste projeto."
+    texto = (f"{pedido}\n\n[Anexos enviados pelo usuário pelo Telegram. Abra cada um com a ferramenta Read "
+             f"(imagens incluídas) antes de responder. Não faça commit destes arquivos.]\n{lista}")
+    nomes = ", ".join(os.path.basename(c) for c in caminhos)
+    enviar(chat_id, f"📎 Recebi {len(caminhos)} arquivo(s): {nomes}" +
+           ("" if legenda else "\nDica: escreva a pergunta na legenda da imagem."))
+    audio = est["audio"] == "sempre"
+    threading.Thread(target=rodar, args=(chat_id, texto, audio), daemon=True).start()
+
+
 def tratar(msg):
     chat_id = str(msg["chat"]["id"])
     if chat_id not in ALLOWED:
@@ -152,6 +209,9 @@ def tratar(msg):
         return
     if msg.get("voice") or msg.get("audio"):
         threading.Thread(target=tratar_audio, args=(chat_id, msg), daemon=True).start()
+        return
+    if msg.get("photo") or msg.get("document"):
+        receber_anexo(chat_id, msg)
         return
     texto = (msg.get("text") or "").strip()
     if not texto:
