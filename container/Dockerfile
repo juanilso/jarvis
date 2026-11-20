@@ -23,6 +23,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Voz no Telegram: transcrição local (faster-whisper) e fala (edge-tts)
 RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts
 
+# GitHub CLI (integração do painel com o GitHub via GH_TOKEN)
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+ && apt-get update && apt-get install -y --no-install-recommends gh && rm -rf /var/lib/apt/lists/*
+
 # Composer
 RUN curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 

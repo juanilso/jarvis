@@ -60,6 +60,21 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #mic,#enviar{width:50px;height:46px;font-size:20px;padding:0}
 #mic.gravando{background:rgba(251,113,133,.25);border-color:var(--er);animation:pl 1s infinite}
 #btnPainel{display:none}
+#gestao{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#gestao.aberto{display:flex}
+#gestao .caixa{width:min(760px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
+#gestao h2{margin:0 0 14px;font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2)}
+#gestao h3{margin:18px 0 8px;font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);text-transform:uppercase}
+#gestao .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#gestao input[type=text]{flex:1;min-width:180px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
+#gestao .prim{border-color:var(--c);color:var(--c2)}
+#gestao .ajuda{font-size:12.5px;color:var(--m);margin:6px 0 0}
+#gestao .fechar{position:absolute;right:12px;top:10px}
+#repos{max-height:220px;overflow:auto;margin-top:8px}
+#repos div{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed var(--ln);font-size:13px}
+#ghStatus{font:12.5px var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px;padding:8px 10px;margin-bottom:8px}
+#gMsg{font-size:13px;margin-top:10px;min-height:18px}
+.barraUp{height:6px;background:#0d2233;border-radius:3px;overflow:hidden;margin-top:8px;display:none}.barraUp i{display:block;height:100%;width:0;background:var(--c)}
 footer{position:relative}
 #menuCmd{position:absolute;left:14px;right:14px;bottom:calc(100% + 4px);background:#07131d;border:1px solid var(--ln2);border-radius:8px;max-height:300px;overflow:auto;display:none;z-index:5}
 #menuCmd div{display:flex;gap:12px;padding:7px 12px;cursor:pointer;font-size:13px}
@@ -76,6 +91,24 @@ footer{position:relative}
 </style>
 </head>
 <body>
+<div id="gestao"><div class="caixa">
+  <button class="fechar" id="gFechar" title="Fechar">✕</button>
+  <h2>PROJETOS E GITHUB</h2>
+  <h3>Novo projeto</h3>
+  <div class="lin"><input type="text" id="gNome" placeholder="nome-do-projeto"><label style="font-size:13px"><input type="checkbox" id="gGh"> criar no GitHub (privado)</label><button class="prim" id="gCriar">Criar</button></div>
+  <h3>Enviar arquivos</h3>
+  <div class="lin"><input type="text" id="gDestino" list="gLista" placeholder="projeto de destino (novo ou existente)"><datalist id="gLista"></datalist>
+    <input type="file" id="gArq" multiple><button class="prim" id="gEnviarArq">Enviar</button></div>
+  <p class="ajuda">Um .zip é extraído automaticamente. Se o projeto não existir, ele é criado.</p>
+  <div class="barraUp" id="gBarra"><i></i></div>
+  <h3>Clonar do GitHub</h3>
+  <div class="lin"><input type="text" id="gRepo" placeholder="dono/repositorio"><button class="prim" id="gClonar">Clonar</button><button id="gListar">Meus repositórios</button></div>
+  <div id="repos"></div>
+  <h3>GitHub do projeto atual</h3>
+  <div id="ghStatus">—</div>
+  <div class="lin"><input type="text" id="gMsgCommit" placeholder="mensagem do commit (opcional)"><button class="prim" id="gPush">⬆ Salvar e enviar</button><button id="gPull">⬇ Atualizar</button><button id="gCriarRepo">Criar repositório</button><a id="gLink" target="_blank" style="display:none;color:var(--c2);font-size:13px">abrir no GitHub ↗</a></div>
+  <div id="gMsg"></div>
+</div></div>
 <div id="app">
   <header>
     <div class="logo">JARVIS<small>orquestrador de projetos</small></div>
@@ -84,6 +117,7 @@ footer{position:relative}
       <option value="auto">🔊 auto</option><option value="sempre">🔊 sempre</option><option value="nunca">🔇 nunca</option>
     </select>
     <button id="agentesBtn" title="Avisos dos agentes">👥 on</button>
+    <button id="btnGestao" title="Projetos e GitHub">📁</button>
     <button id="btnPainel" title="Mostrar painéis">📋</button>
     <button id="novo" title="Conversa nova neste projeto">🆕</button>
     <button id="parar" title="Parar">⛔</button>
@@ -210,6 +244,44 @@ $("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.val
 $("audio").onchange=e=>api("/api/config",{audio:e.target.value});
 $("agentesBtn").onclick=async()=>{agentesOn=!agentesOn;await api("/api/config",{agentes:agentesOn});$("agentesBtn").textContent="👥 "+(agentesOn?"on":"off")};
 $("btnPainel").onclick=()=>$("main").classList.toggle("abrir");
+/* ---------- projetos e GitHub ---------- */
+function gMsg(t,erro){$("gMsg").innerHTML=`<span style="color:var(--${erro?"er":"ok"})">${esc(t)}</span>`}
+async function gPost(c,b){$("gMsg").textContent="⏳ aguarde…";const r=await fetch(c,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});const j=await r.json();
+  if(j.erro){gMsg(j.erro,true);return null}gMsg(j.msg||"ok");await estado();ghStatus();return j}
+async function ghStatus(){
+  const st=await api("/api/github/status");const el=$("ghStatus"),ln=$("gLink");
+  $("gLista").innerHTML=[...$("projetoSel").options].filter(o=>o.value).map(o=>`<option value="${esc(o.value)}">`).join("");
+  if(st.erro){el.textContent=st.erro;return}
+  if(!st.gh)el.innerHTML="⚠ GitHub não configurado: coloque <code>GH_TOKEN</code> no .env.claude da VPS.";
+  else if(!st.git)el.textContent="Projeto sem Git. Use “Criar repositório” para iniciar e publicar.";
+  else el.textContent=`branch ${st.branch||"-"} · ${st.alteracoes} alteração(ões) não salvas · ${st.afrente} commit(s) para enviar · ${st.atras} para receber · ${st.remoto?"remoto: "+st.remoto.replace(/^https:\/\/github.com\//,""):"sem repositório no GitHub"}`;
+  ln.style.display=st.url?"inline":"none";if(st.url)ln.href=st.url;
+  $("gCriarRepo").style.display=st.remoto?"none":"inline-block";
+}
+$("btnGestao").onclick=()=>{$("gestao").classList.add("aberto");$("gDestino").value=$("projetoSel").value;ghStatus()};
+$("gFechar").onclick=()=>$("gestao").classList.remove("aberto");
+$("gestao").onclick=e=>{if(e.target.id==="gestao")$("gestao").classList.remove("aberto")};
+$("gCriar").onclick=()=>gPost("/api/projeto/novo",{nome:$("gNome").value.trim(),github:$("gGh").checked,privado:true});
+$("gClonar").onclick=()=>gPost("/api/github/clonar",{repo:$("gRepo").value.trim()});
+$("gPush").onclick=()=>{if(confirm("Salvar todas as alterações e enviar para o GitHub?"))gPost("/api/github/enviar",{mensagem:$("gMsgCommit").value.trim()})};
+$("gPull").onclick=()=>gPost("/api/github/atualizar");
+$("gCriarRepo").onclick=()=>{if(confirm("Criar um repositório PRIVADO no seu GitHub com este projeto?"))gPost("/api/github/criar",{privado:true})};
+$("gListar").onclick=async()=>{$("repos").textContent="⏳ carregando…";const j=await api("/api/github/repos");
+  if(j.erro){$("repos").textContent=j.erro;return}
+  $("repos").innerHTML=j.repos.map(r=>`<div><span>${r.isPrivate?"🔒":"🌐"} ${esc(r.nameWithOwner)}</span><button data-r="${esc(r.nameWithOwner)}">Clonar</button></div>`).join("")||"Nenhum repositório.";
+  $("repos").querySelectorAll("button").forEach(b=>b.onclick=()=>gPost("/api/github/clonar",{repo:b.dataset.r}))};
+$("gEnviarArq").onclick=async()=>{
+  const dest=$("gDestino").value.trim(),arqs=[...$("gArq").files];
+  if(!dest){gMsg("Informe o projeto de destino.",true);return}if(!arqs.length){gMsg("Escolha um ou mais arquivos.",true);return}
+  const barra=$("gBarra"),fill=barra.firstElementChild;barra.style.display="block";
+  for(let i=0;i<arqs.length;i++){const f=arqs[i];
+    const ok=await new Promise(res=>{const x=new XMLHttpRequest();x.open("POST",`/api/upload?projeto=${encodeURIComponent(dest)}&arquivo=${encodeURIComponent(f.name)}`);
+      x.upload.onprogress=e=>{if(e.lengthComputable)fill.style.width=Math.round(((i+e.loaded/e.total)/arqs.length)*100)+"%"};
+      x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(j.erro){gMsg(j.erro,true);res(false)}else{gMsg(j.msg);res(true)}};
+      x.onerror=()=>{gMsg("Falha no envio de "+f.name,true);res(false)};x.send(f)});
+    if(!ok)break}
+  setTimeout(()=>{barra.style.display="none";fill.style.width=0},1500);await estado();ghStatus();
+};
 $("novo").onclick=()=>api("/api/novo",{});
 $("parar").onclick=()=>api("/api/parar",{});
 $("mic").onclick=async()=>{

@@ -18,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import jarvis_core as core  # noqa: E402
+import projetos  # noqa: E402
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -126,6 +127,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
                                "audio": est["audio"], "agentes": est["agentes"],
                                "ocupado": execucao.ocupado, "pedido": execucao.pedido})
+        if url.path in ("/api/github/repos", "/api/github/status"):
+            try:
+                if url.path.endswith("repos"):
+                    return self._json({"repos": projetos.gh_repos()})
+                proj = estado.ler()["projeto"]
+                return self._json(projetos.status(proj) if proj else {"git": False, "gh": projetos.gh_ok()})
+            except projetos.Erro as e:
+                return self._json({"erro": str(e)}, 400)
         if url.path == "/api/comandos":
             return self._json([{"cmd": c, "desc": d} for c, d in core.COMANDOS])
         if url.path == "/api/painel":
@@ -166,6 +175,17 @@ class Handler(BaseHTTPRequestHandler):
         if not self._logado():
             return self._json({"erro": "login"}, 401)
 
+        if url.path == "/api/upload":
+            q = urllib.parse.parse_qs(url.query)
+            try:
+                msg = projetos.receber_upload(q.get("projeto", [""])[0], q.get("arquivo", ["arquivo"])[0], self._corpo())
+                est = estado.ler()
+                est["projeto"] = q.get("projeto", [""])[0]
+                estado.salvar(est)
+                publicar({"tipo": "info", "texto": "📦 " + msg})
+                return self._json({"ok": True, "msg": msg})
+            except projetos.Erro as e:
+                return self._json({"erro": str(e)}, 400)
         if url.path == "/api/audio":
             sufixo = ".mp4" if "mp4" in (self.headers.get("Content-Type") or "") else ".webm"
             with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as f:
@@ -199,6 +219,38 @@ class Handler(BaseHTTPRequestHandler):
                 est["agentes"] = dados["agentes"]
             estado.salvar(est)
             return self._json({"ok": True})
+        if url.path.startswith("/api/projeto/novo") or url.path.startswith("/api/github/"):
+            try:
+                est = estado.ler()
+                if url.path == "/api/projeto/novo":
+                    nome = (dados.get("nome") or "").strip()
+                    projetos.criar(nome)
+                    est["projeto"] = nome
+                    estado.salvar(est)
+                    msg = f"✅ Projeto {nome} criado"
+                    if dados.get("github"):
+                        projetos.criar_repo(nome, privado=dados.get("privado", True))
+                        msg += " e repositório criado no GitHub"
+                elif url.path == "/api/github/clonar":
+                    nome = projetos.clonar((dados.get("repo") or "").strip())
+                    est["projeto"] = nome
+                    estado.salvar(est)
+                    msg = f"⬇️ {dados.get('repo')} clonado em {nome}"
+                elif not est["projeto"]:
+                    return self._json({"erro": "Escolha um projeto primeiro."}, 400)
+                elif url.path == "/api/github/criar":
+                    projetos.criar_repo(est["projeto"], privado=dados.get("privado", True))
+                    msg = f"✅ Repositório {est['projeto']} criado no GitHub"
+                elif url.path == "/api/github/enviar":
+                    msg = "⬆️ " + projetos.enviar(est["projeto"], dados.get("mensagem", ""))
+                elif url.path == "/api/github/atualizar":
+                    msg = "🔄 " + projetos.atualizar(est["projeto"])
+                else:
+                    return self._json({"erro": "não encontrado"}, 404)
+                publicar({"tipo": "info", "texto": msg})
+                return self._json({"ok": True, "msg": msg})
+            except projetos.Erro as e:
+                return self._json({"erro": str(e)}, 400)
         if url.path == "/api/parar":
             return self._json({"ok": execucao.parar()})
         if url.path == "/api/novo":

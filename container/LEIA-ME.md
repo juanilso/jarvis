@@ -74,3 +74,8 @@ Sobe junto com o acesso web: `docker compose --profile web up -d` (usa a mesma `
 Publique no Tailscale numa segunda porta: `tailscale serve --bg --https=8090 http://localhost:8090`
 → abra `https://<sua-vps>.ts.net:8090`. Microfone: clique para gravar e clique de novo para enviar.
 Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.
+
+## Projetos e GitHub no painel (botão 📁)
+- Novo projeto, upload de arquivos/.zip, clonar repositórios, status, criar repositório, salvar e enviar (commit + push) e atualizar (pull).
+- Requer `GH_TOKEN` no `.env.claude` (token do GitHub). Se aparecer erro de permissão ao criar pastas:
+  `docker compose exec -u root dev chown -R dev:dev /workspace`
