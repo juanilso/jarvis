@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Voz no Telegram: transcrição local (faster-whisper) e fala (edge-tts)
-RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts pyyaml
+RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts pyyaml telethon
 
 # GitHub CLI (integração do painel com o GitHub via GH_TOKEN)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -62,7 +62,7 @@ RUN if [ "$INSTALL_SQLSRV" = "true" ]; then \
 # Usuário sem root (o modo autônomo do Claude Code não roda como root). Pode usar sudo DENTRO do contêiner.
 RUN useradd -m -s /bin/bash dev && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
  # pastas dos volumes já pertencendo ao dev (senão o Docker cria como root e o login não é salvo)
- && mkdir -p /home/dev/.claude /home/dev/.cache /home/dev/.local/share/code-server /workspace && chown -R dev:dev /home/dev /workspace
+ && mkdir -p /home/dev/.claude /home/dev/.cache /home/dev/.local/share/code-server /workspace /segredos /sessao && chown -R dev:dev /home/dev /workspace && chown dev:dev /segredos /sessao && chmod 700 /segredos /sessao
 
 # Jarvis embutido (copiado do repositório no momento do build)
 COPY --chown=dev:dev . /opt/jarvis

@@ -111,6 +111,28 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.14: API do painel no 📱, robô volta após 30 min e leitor do @DastDePixPartnerBot
+
+- **📱 → Painel (API) e regras:** endereço do `api.php`, token (fica guardado num volume só do painel; a tela nunca mostra),
+  ação de renovar (quando você publicar a `renew_client`, é só preencher), tabela valor=meses, horas e limite de testes,
+  e **minutos sem você para o robô voltar**. O botão 🔌 **Testar conexão** confere endereço e token sem criar nada.
+- **Você assume, o robô volta sozinho:** quando você responde o cliente pelo WhatsApp, o robô se cala naquela conversa;
+  cada resposta sua reinicia a contagem; depois de 30 min (configurável) sem mensagem sua, ele volta a atender.
+  As suas mensagens entram no histórico como da empresa, então ele continua de onde você parou.
+- **Pagamentos do @DastDePixPartnerBot:** o Telegram não deixa um bot ler a sua conversa com outro bot. Por isso há
+  um **leitor opcional** que entra na sua conta como "dispositivo conectado" e lê **só** essa conversa (não envia nada,
+  não lê outras conversas). Ao ligar, recupera os pagamentos das últimas 24 h; cada pagamento é processado uma vez.
+
+**Aplicar (na VPS):**
+```bash
+cd ~/jarvis/container && git pull
+docker compose build && docker compose --profile web --profile telegram up -d
+./pagamentos-configurar.sh     # api_id/api_hash do my.telegram.org + código de login no app do Telegram
+```
+Depois: painel → 📱 → **Painel (API) e regras** → preencha, **Salvar** e **Testar conexão**.
+Desligar o leitor: `docker compose --profile pagamentos stop leitor`. Desconectar a conta: Telegram → Configurações →
+Dispositivos → encerrar "Jarvis leitor".
+
 ## Jarvis 1.13: pagamentos FastFlow e autoatendimento com a API do painel
 
 **O que faz**

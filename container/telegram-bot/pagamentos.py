@@ -23,7 +23,8 @@ LOGIN_RE = re.compile(r"^[A-Za-z0-9._@-]{3,40}$")
 def planos():
     """Valor pago -> meses. Ex.: PAINEL_PLANOS=25=1,30=1,70=3,130=6"""
     t = {}
-    for par in os.environ.get("PAINEL_PLANOS", "25=1,30=1").split(","):
+    import painel_api
+    for par in str(painel_api.config()["planos"]).split(","):
         if "=" in par:
             v, m = par.split("=", 1)
             try:

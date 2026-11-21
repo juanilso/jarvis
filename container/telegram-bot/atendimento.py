@@ -24,7 +24,13 @@ FAQ = os.environ.get("ATENDIMENTO_FAQ", os.path.join(core.WORKSPACE, ".jarvis-at
 WAHA_URL = os.environ.get("WAHA_URL", "http://whatsapp:3000").rstrip("/")
 WAHA_KEY = os.environ.get("WAHA_API_KEY", "")
 SESSAO = os.environ.get("WAHA_SESSAO", "default")
-HORAS_HUMANO = float(os.environ.get("ATENDIMENTO_HORAS_HUMANO", "12"))
+def _seg_humano():
+    """Tempo que o robô fica calado depois da SUA última mensagem na conversa (padrão 30 min; configurável no 📱)."""
+    try:
+        import painel_api
+        return max(1.0, float(painel_api.config().get("minutos_humano") or 30)) * 60
+    except Exception:  # noqa: BLE001
+        return 1800.0
 LIMITE_MSGS = 15          # por conversa, a cada 10 minutos
 GUARDA_SEG = 24 * 3600    # histórico máximo
 _lock = threading.RLock()  # reentrante: pagamentos chama o atendimento de volta
@@ -170,7 +176,7 @@ def _perguntar_modelo(historico, faq, extra=""):
     faq_limpo = re.sub(r"<!--.*?-->", "", faq, flags=re.S).strip()
     msgs = []
     for m in historico[-12:]:
-        papel = "assistant" if m["p"] == "bot" else "user"
+        papel = "assistant" if m["p"] in ("bot", "dono") else "user"  # suas mensagens contam como da empresa
         if msgs and msgs[-1]["role"] == papel:
             msgs[-1]["content"] += "\n" + m["x"]
         else:
@@ -322,7 +328,7 @@ def _acoes_painel(e, chat, resposta):
         if dia.get("d") != hoje:
             dia.clear()
             dia["d"] = hoje
-        if dia.get("n", 0) >= int(os.environ.get("PAINEL_TESTES_DIA", "20")):
+        if dia.get("n", 0) >= int(painel_api.config().get("testes_dia") or 20):
             return "Os testes de hoje acabaram. 😕 Já avisei o atendente para te ajudar!"
         try:
             t = painel_api.criar_teste(tel)
@@ -416,7 +422,8 @@ def _chamar_dono(e, chat, nome, motivo):
                        for m in _historico(chat)[-8:])
     numero = _numero(e, chat)
     _avisar_dono(f"📞 Atendimento: {nome or numero} ({numero}) precisa de você.\nMotivo: {motivo}\n\n{resumo}\n\n"
-                 f"O robô continua conversando até você responder pelo WhatsApp (aí ele se cala nessa conversa).\n"
+                 f"O robô continua conversando até você responder pelo WhatsApp; aí ele se cala e volta sozinho "
+                 f"{int(_seg_humano() // 60)} min depois da sua última mensagem.\n"
                  f"Calar agora: /assumir {numero} · devolver depois: /devolver {numero}")
     return True
 
@@ -449,10 +456,10 @@ def atender(dados):
                 _evento(e, chat, "🤖 você devolveu ao robô (#bot)")
                 _salvar_estado(e)
                 return {"responder": False, "motivo": "conversa devolvida ao robô"}
-            e.setdefault("humano", {})[chat] = time.time() + HORAS_HUMANO * 3600  # você respondeu: o robô se cala
+            e.setdefault("humano", {})[chat] = time.time() + _seg_humano()  # você respondeu: o robô se cala
             e.get("esperando", {}).pop(chat, None)
             _guardar(chat, "dono", texto)
-            _evento(e, chat, "🙋 você respondeu pelo WhatsApp: robô calado nesta conversa", texto)
+            _evento(e, chat, f"🙋 você respondeu: robô calado até {int(_seg_humano() // 60)} min sem você", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "você assumiu a conversa"}
         if not e.get("ligado", True):
@@ -469,7 +476,8 @@ def atender(dados):
         _contar(e, "mensagens")
         ate = e.get("humano", {}).get(chat)
         if ate and ate > time.time():
-            _evento(e, chat, "🔇 não respondeu: conversa está com você (📱 → devolver ao robô)", texto)
+            falta = max(1, int((ate - time.time()) // 60))
+            _evento(e, chat, f"🔇 conversa com você: o robô volta em {falta} min se você não responder", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "aguardando atendente"}
         recentes = [m for m in _historico(chat) if m["p"] == "cliente" and m["t"] > time.time() - 600]
@@ -559,9 +567,10 @@ def assumir(numero):
         return "Informe o número: /assumir 5511999998888"
     with _lock:
         e = _ler_estado()
-        e.setdefault("humano", {})[chat] = time.time() + HORAS_HUMANO * 3600
+        e.setdefault("humano", {})[chat] = time.time() + _seg_humano()
         _salvar_estado(e)
-    return f"🙋 Você assumiu {chat.split('@')[0]} por {HORAS_HUMANO:g} h. O robô não responde essa conversa."
+    return (f"🙋 Você assumiu {_numero(_ler_estado(), chat)}. O robô volta sozinho {int(_seg_humano() // 60)} min "
+            "depois da sua última mensagem nessa conversa.")
 
 
 def devolver(numero):

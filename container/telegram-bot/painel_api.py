@@ -15,11 +15,55 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-URL = os.environ.get("PAINEL_API_URL", "https://pg.tvdc.site/api.php")
-TOKEN = os.environ.get("PAINEL_API_TOKEN", "")
-ACAO_RENOVAR = os.environ.get("PAINEL_ACAO_RENOVAR", "").strip()
-TESTE_HORAS = os.environ.get("PAINEL_TESTE_HORAS", "4")
-UA = os.environ.get("JARVIS_USER_AGENT", "Jarvis-Atendimento/1.13 (+https://github.com/juanilso/jarvis)")
+# Configuração: valores do .env.atendimento, sobrepostos pelo que você salvar no painel (📱 → Painel / API).
+# O arquivo fica num volume montado SÓ no serviço do painel (os agentes não enxergam o token).
+CONFIG = os.environ.get("PAINEL_CONFIG", "/segredos/painel.json")
+UA = os.environ.get("JARVIS_USER_AGENT", "Jarvis-Atendimento/1.14 (+https://github.com/juanilso/jarvis)")
+PADRAO = {"url": os.environ.get("PAINEL_API_URL", "https://pg.tvdc.site/api.php"),
+          "token": os.environ.get("PAINEL_API_TOKEN", ""),
+          "acao_renovar": os.environ.get("PAINEL_ACAO_RENOVAR", "").strip(),
+          "teste_horas": os.environ.get("PAINEL_TESTE_HORAS", "4"),
+          "testes_dia": os.environ.get("PAINEL_TESTES_DIA", "20"),
+          "planos": os.environ.get("PAINEL_PLANOS", "25=1,30=1"),
+          "minutos_humano": os.environ.get("ATENDIMENTO_MINUTOS_HUMANO", "30")}
+
+
+def config():
+    c = dict(PADRAO)
+    try:
+        salvo = json.load(open(CONFIG, encoding="utf-8"))
+        c.update({k: v for k, v in salvo.items() if k in PADRAO and v not in (None,)})
+    except (OSError, json.JSONDecodeError):
+        pass
+    return c
+
+
+def salvar_config(novos):
+    """Salva só os campos conhecidos. Token vazio = mantém o atual."""
+    c = config()
+    for k in PADRAO:
+        if k in novos and novos[k] is not None:
+            v = str(novos[k]).strip()
+            if k == "token" and not v:
+                continue
+            c[k] = v
+    if not re.match(r"^https?://", c["url"]):
+        raise ValueError("o endereço da API precisa começar com https://")
+    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+    tmp = CONFIG + ".tmp"
+    with open(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8") as f:
+        json.dump(c, f, ensure_ascii=False)
+    os.replace(tmp, CONFIG)
+    return publico()
+
+
+def publico():
+    """Configuração para mostrar no painel (sem o token)."""
+    c = config()
+    t = c.pop("token", "")
+    c["token_definido"] = bool(t)
+    c["token_final"] = t[-4:] if len(t) >= 8 else ""
+    return c
 
 
 class ErroPainel(Exception):
@@ -27,12 +71,14 @@ class ErroPainel(Exception):
 
 
 def configurado():
-    return bool(TOKEN and URL)
+    c = config()
+    return bool(c["token"] and c["url"])
 
 
 def _limpar(texto):
     """Nunca deixa o token aparecer em mensagens de erro."""
-    return str(texto).replace(TOKEN, "XXXX") if TOKEN else str(texto)
+    t = config()["token"]
+    return str(texto).replace(t, "XXXX") if t else str(texto)
 
 
 def _chamar(acao, **params):
@@ -40,9 +86,10 @@ def _chamar(acao, **params):
         raise ErroPainel("API do painel não configurada (./painel-configurar.sh)")
     if not acao:
         raise ErroPainel("ação vazia")  # a API cria teste quando a action falta: nunca chamar sem action
-    q = {"action": acao, "token": TOKEN}
+    c = config()
+    q = {"action": acao, "token": c["token"]}
     q.update({k: v for k, v in params.items() if v not in (None, "")})
-    req = urllib.request.Request(URL + "?" + urllib.parse.urlencode(q),
+    req = urllib.request.Request(c["url"] + ("&" if "?" in c["url"] else "?") + urllib.parse.urlencode(q),
                                  headers={"User-Agent": UA, "Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
@@ -96,7 +143,7 @@ def criar_teste(telefone):
     tel = re.sub(r"\D", "", str(telefone or ""))
     if len(tel) < 10:
         raise ErroPainel("telefone inválido")
-    j = _chamar("create_test", phone=tel, duration=TESTE_HORAS)
+    j = _chamar("create_test", phone=tel, duration=config()["teste_horas"])
     msg = _achar(j, "message") if isinstance(j.get("client"), dict) and j["client"].get("message") else None
     if not msg:
         u, p = _achar(j, "username"), _achar(j, "password")
@@ -108,10 +155,28 @@ def criar_teste(telefone):
 
 def renovar(login, meses=1, referencia=""):
     """Renova pela API, se a action de renovação estiver configurada. Senão, avisa que precisa ser manual."""
-    if not ACAO_RENOVAR:
-        raise ErroPainel("renovação pela API ainda não disponível (PAINEL_ACAO_RENOVAR vazio)")
-    j = _chamar(ACAO_RENOVAR, username=login, months=str(int(meses)), reference=referencia)
+    acao = config()["acao_renovar"].strip()
+    if not acao:
+        raise ErroPainel("renovação pela API ainda não configurada (📱 → Painel / API → ação de renovar)")
+    j = _chamar(acao, username=login, months=str(int(meses)), reference=referencia)
     try:
         return consultar(login)
     except ErroPainel:
         return {"login": login, "vencimento": _achar(j, "exp_date_formatted") or "?", "status": "active"}
+
+
+def testar():
+    """Confere se a API responde e se o token é aceito, sem criar nada (consulta um login que não existe)."""
+    if not configurado():
+        return {"ok": False, "msg": "falta o endereço ou o token"}
+    try:
+        _chamar("check_validity", username="jarvis-teste-conexao-0000")
+        return {"ok": True, "msg": "✅ API respondeu e aceitou o token"}
+    except ErroPainel as e:
+        m = str(e)
+        rede = any(x in m for x in ("URLError", "timeout", "Timeout", "Connection", "resposta inválida")) or m.startswith("HTTP ")
+        if rede:
+            return {"ok": False, "msg": f"❌ não consegui falar com a API: {m}"}
+        if "token" in m.lower():
+            return {"ok": False, "msg": f"❌ a API recusou o token: {m}"}
+        return {"ok": True, "msg": f"✅ API respondeu e aceitou o token (para um login inexistente ela disse: {m})"}

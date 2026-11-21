@@ -100,6 +100,7 @@ services:
       DB_NAME: dev
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace
+      - atendimento-segredos:/segredos      # config da API do painel (token): só este serviço monta
       - claude-config:/home/dev/.claude
       - dev-home:/home/dev/.cache
     ports:
@@ -180,6 +181,21 @@ services:
     mem_limit: 1g
     restart: unless-stopped
 
+  # Leitor de pagamentos (opcional): lê na SUA conta do Telegram só a conversa com o bot de pagamentos
+  # (@DastDePixPartnerBot) e repassa ao Jarvis. ./pagamentos-configurar.sh
+  leitor:
+    image: jarvis-dev:latest
+    container_name: jarvis-leitor-pagamentos
+    profiles: ["pagamentos"]
+    command: ["python3", "/opt/jarvis-bots/leitor_pagamentos.py"]
+    env_file:
+      - path: .env.pagamentos    # só: TG_API_ID, TG_API_HASH, PAGAMENTOS_BOT e o token do gatilho
+        required: false
+    volumes:
+      - pagamentos-sessao:/sessao
+    mem_limit: 256m
+    restart: unless-stopped
+
   mariadb:
     image: mariadb:11
     container_name: jarvis-mariadb
@@ -212,6 +228,8 @@ services:
 
 volumes:
   claude-config:
+  atendimento-segredos:
+  pagamentos-sessao:
   hermes-data:
   n8n-data:
   whatsapp-sessoes:

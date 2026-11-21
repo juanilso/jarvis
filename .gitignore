@@ -7,3 +7,4 @@ __pycache__/
 .env.n8n
 .env.whatsapp
 .env.atendimento
+.env.pagamentos

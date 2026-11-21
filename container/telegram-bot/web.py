@@ -281,6 +281,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(png)))
             self.end_headers()
             return self.wfile.write(png)
+        if url.path == "/api/painel/config":
+            import painel_api
+            return self._json(painel_api.publico())
         if url.path == "/api/whatsapp/faq":
             return self._json({"texto": atendimento.ler_faq(), "caminho": atendimento.FAQ})
         if url.path == "/api/escritorio":
@@ -375,6 +378,14 @@ class Handler(BaseHTTPRequestHandler):
             if a == "faq":
                 atendimento.salvar_faq(str(d.get("texto", "")))
                 return self._json({"ok": True})
+            if a in ("painel_salvar", "painel_testar"):
+                import painel_api
+                if a == "painel_salvar":
+                    try:
+                        return self._json({"ok": True, "config": painel_api.salvar_config(d.get("config") or {})})
+                    except ValueError as e:
+                        return self._json({"ok": False, "erro": str(e)}, 400)
+                return self._json(painel_api.testar())
             return self._json({"erro": "ação inválida"}, 400)
         if url.path == "/api/upload":
             q = urllib.parse.parse_qs(url.query)

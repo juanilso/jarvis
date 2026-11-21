@@ -81,6 +81,9 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #waQr.qr{background-color:#fff}
 .waSt{font:13px var(--mono)}.waSt b{color:var(--c2)}.waOk{color:var(--ok)}.waEr{color:var(--er)}
 .waNums{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.waNum{border:1px solid var(--ln);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--m)}.waNum b{display:block;font-size:18px;color:var(--t)}
+.waCfg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}@media (max-width:700px){.waCfg{grid-template-columns:1fr}}
+.waCfg label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--m)}.waCfg label.inteira{grid-column:1/-1}
+.waCfg input{padding:7px 9px;font:13px var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 #waFaq{width:100%;min-height:300px;resize:vertical;padding:10px;font:13px/1.5 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 .waAg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--ln);font-size:13px}.waAg button{margin-left:auto}
 .waDica{font-size:12px;color:var(--m);margin-top:6px}
@@ -156,11 +159,22 @@ footer{position:relative}
       <div class="waNums"><div class="waNum"><b id="waMsgs">0</b>mensagens hoje</div><div class="waNum"><b id="waResp">0</b>respostas do robô</div><div class="waNum"><b id="waHum">0</b>passadas para você</div></div>
       <div class="lin" style="display:flex;gap:8px;flex-wrap:wrap"><button id="waConectar" class="prim">📲 Conectar</button><button id="waLigar">🤖 —</button></div>
       <div class="waDica">Use um número só da empresa. No celular: Configurações → Dispositivos conectados → Conectar dispositivo, e leia o QR code.
-        Quando o cliente precisa de você, o robô te avisa no Telegram e <b>continua conversando</b>; ele só se cala naquela conversa
-        (por 12 h) quando você responde pelo WhatsApp. Escreva <code>#bot</code> na conversa para devolver ao robô.</div>
+        Quando o cliente precisa de você, o robô te avisa no Telegram e <b>continua conversando</b>. Quando você responde pelo
+        WhatsApp, ele se cala naquela conversa e <b>volta sozinho</b> depois de 30 min sem mensagem sua (ajuste abaixo). <code>#bot</code> devolve na hora.</div>
     </div>
   </div>
   <h3>PRECISAM DE VOCÊ</h3><div id="waAguard"><div class="waDica">ninguém aguardando</div></div>
+  <h3>PAINEL (API) E REGRAS</h3>
+  <div class="waCfg">
+    <label class="inteira">Endereço da API (onde fica o api.php)<input id="cfgUrl" placeholder="https://pg.tvdc.site/api.php"></label>
+    <label>Token da API <input id="cfgToken" type="password" autocomplete="new-password" placeholder="(deixe vazio para manter)"></label>
+    <label>Ação de renovar no api.php (vazio = você renova)<input id="cfgRenovar" placeholder="ex.: renew_client"></label>
+    <label>Valor pago = meses<input id="cfgPlanos" placeholder="25=1,30=1,70=3"></label>
+    <label>Horas do teste grátis<input id="cfgHoras" type="number" min="1" max="72"></label>
+    <label>Testes por dia (máximo)<input id="cfgTestesDia" type="number" min="0" max="500"></label>
+    <label>Minutos sem você para o robô voltar<input id="cfgMin" type="number" min="1" max="1440"></label>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><button id="cfgSalvar" class="prim">💾 Salvar</button><button id="cfgTestar">🔌 Testar conexão</button><span class="waDica" id="cfgMsg"></span></div>
   <h3>ÚLTIMOS EVENTOS</h3><div id="waEventos"><div class="waDica">nenhuma mensagem ainda</div></div>
   <h3>BASE DE RESPOSTAS</h3>
   <div class="waDica" style="margin:0 0 6px">O robô responde <b>só</b> com o que estiver aqui. Coloque preços, horários, como pagar, regras e quando chamar você.</div>
@@ -294,10 +308,11 @@ footer{position:relative}
    <b>Atenção:</b> não é a API oficial da Meta; use um número só da empresa, só para responder (nada de mensagens em massa),
    porque o WhatsApp pode bloquear números com uso automatizado.</details>
   <details><summary>Como funcionam os pagamentos FastFlow e o autoatendimento?</summary>
-   Quando chega "PAGAMENTO FASTFLOW RECEBIDO" no Telegram (grupo/canal com o bot do Jarvis, ou mensagem encaminhada a ele),
+   Quando chega "PAGAMENTO FASTFLOW RECEBIDO" no Telegram (pelo leitor da conversa com o @DastDePixPartnerBot, grupo/canal
+   com o bot do Jarvis, ou mensagem encaminhada a ele),
    o Jarvis confere o login no painel: se já está renovado, confirma ao cliente no WhatsApp; se não, renova (ou te avisa);
    se não veio o login, pergunta ao cliente e conclui quando ele responder. No WhatsApp, o cliente também pode perguntar
-   "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure com <code>./painel-configurar.sh</code>.
+   "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure em 📱 → <b>Painel (API) e regras</b>; o leitor de pagamentos liga com <code>./pagamentos-configurar.sh</code>.
    Quem chama a API é código com regras fixas: a IA só entende o pedido.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
@@ -519,11 +534,20 @@ async function waAtualizar(){
   $("waConectar").style.display=w.status==="WORKING"?"none":"";
   $("waAguard").innerHTML=a.aguardando.length?a.aguardando.map(x=>x.tipo==="esperando"
     ?`<div class="waAg">⏳ <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · esperando você há ${Math.max(1,Math.round(x.desde/60))} min · o robô segue conversando</span><button data-n="${esc(x.numero)}">✓ resolvido</button></div>`
-    :`<div class="waAg">🙋 <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · com você, robô calado · ${Math.round(x.ate/3600)}h</span><button data-n="${esc(x.numero)}">🤖 devolver ao robô</button></div>`).join(""):'<div class="waDica">ninguém esperando</div>';
+    :`<div class="waAg">🙋 <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · com você · o robô volta em ${Math.max(1,Math.round(x.ate/60))} min sem resposta sua</span><button data-n="${esc(x.numero)}">🤖 devolver ao robô</button></div>`).join(""):'<div class="waDica">ninguém esperando</div>';
   $("waEventos").innerHTML=(a.eventos||[]).length?a.eventos.map(x=>`<div class="waAg"><span class="waDica" style="margin:0;min-width:58px">${esc(x.h)}</span><b>${esc(x.nome||x.n)}</b> <span>${esc(x.m)}</span>${x.x?`<span class="waDica" style="margin:0 0 0 auto;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“${esc(x.x)}”</span>`:""}</div>`).join(""):'<div class="waDica">nenhuma mensagem ainda</div>';
   $("waAguard").querySelectorAll("button").forEach(b=>b.onclick=async()=>{await api("/api/whatsapp/acao",{acao:"devolver",numero:b.dataset.n});waAtualizar()});
 }
-$("btnWa").onclick=async()=>{$("wa").classList.add("aberto");const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
+async function cfgCarregar(){const c=await api("/api/painel/config");if(!c||c.erro)return;
+  $("cfgUrl").value=c.url||"";$("cfgRenovar").value=c.acao_renovar||"";$("cfgPlanos").value=c.planos||"";$("cfgHoras").value=c.teste_horas||4;
+  $("cfgTestesDia").value=c.testes_dia||20;$("cfgMin").value=c.minutos_humano||30;$("cfgToken").value="";
+  $("cfgToken").placeholder=c.token_definido?`definido (…${c.token_final||"****"}); vazio = manter`:"cole o token da API";
+  $("cfgMsg").textContent=c.token_definido?"":"⚠️ token ainda não definido"}
+$("cfgSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"painel_salvar",config:{url:$("cfgUrl").value,token:$("cfgToken").value,
+  acao_renovar:$("cfgRenovar").value,planos:$("cfgPlanos").value,teste_horas:$("cfgHoras").value,testes_dia:$("cfgTestesDia").value,minutos_humano:$("cfgMin").value}});
+  $("cfgMsg").textContent=r.ok?"✔ salvo":"❌ "+(r.erro||"erro ao salvar");if(r.ok)cfgCarregar()};
+$("cfgTestar").onclick=async()=>{$("cfgMsg").textContent="⏳ testando…";const r=await api("/api/whatsapp/acao",{acao:"painel_testar"});$("cfgMsg").textContent=r.msg||r.erro||"?"};
+$("btnWa").onclick=async()=>{$("wa").classList.add("aberto");cfgCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)};
 function waFechar(){$("wa").classList.remove("aberto");clearInterval(waTimer)}
 $("waFechar").onclick=waFechar;$("wa").onclick=e=>{if(e.target.id==="wa")waFechar()};
