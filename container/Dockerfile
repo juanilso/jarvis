@@ -71,7 +71,14 @@ RUN rm -rf /opt/jarvis/.git /opt/jarvis/container
 COPY --chown=dev:dev container/primeiro-uso.sh /usr/local/bin/primeiro-uso
 COPY --chown=dev:dev container/jarvis-extras.sh /usr/local/bin/jarvis-extras
 COPY --chown=dev:dev container/telegram-bot/ /opt/jarvis-bots/
+# last30days (MIT): motor de tendências, fixado no commit verificado; sem testes nem imagens de exemplo
+ARG LAST30DAYS_SHA=bb2f1ed2b9f6d07b90557c5eebd736b566533fec
+RUN git init -q /tmp/l30 && git -C /tmp/l30 fetch -q --depth 1 https://github.com/mvanhorn/last30days-skill.git "$LAST30DAYS_SHA" \
+ && git -C /tmp/l30 checkout -q FETCH_HEAD && mkdir -p /opt/last30days \
+ && cp -r /tmp/l30/skills/last30days/scripts /tmp/l30/skills/last30days/SKILL.md /tmp/l30/LICENSE /opt/last30days/ \
+ && rm -f /opt/last30days/scripts/test_*.py && rm -rf /tmp/l30 && chmod -R a+rX /opt/last30days
 RUN install -m 755 /opt/jarvis-bots/jarvis-busca /usr/local/bin/jarvis-busca \
+ && install -m 755 /opt/jarvis-bots/jarvis-tendencias /usr/local/bin/jarvis-tendencias \
  && install -m 755 /opt/jarvis-bots/jarvis-hermes /usr/local/bin/jarvis-hermes
 RUN chmod +x /usr/local/bin/primeiro-uso /usr/local/bin/jarvis-extras \
  && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \

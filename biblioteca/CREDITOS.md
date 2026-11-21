@@ -39,3 +39,7 @@ foi copiado para o Jarvis; o Jarvis só conversa com a API dele (formato OpenAI)
 ## n8n (https://github.com/n8n-io/n8n), licença Sustainable Use License (fair-code)
 Usado como serviço separado a partir da imagem oficial, para uso interno do próprio usuário. Nenhum código do n8n foi
 copiado; o Jarvis traz só fluxos de exemplo (JSON) que chamam o gatilho do Jarvis.
+
+## last30days (https://github.com/mvanhorn/last30days-skill), por Matt Van Horn, licença MIT
+O motor (pasta `skills/last30days/scripts`, commit bb2f1ed) é baixado na construção da imagem para `/opt/last30days`, junto com o
+arquivo LICENSE original. O Jarvis só o executa pelo `jarvis-tendencias`, num ambiente isolado; nenhum arquivo foi modificado.

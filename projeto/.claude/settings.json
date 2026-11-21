@@ -55,7 +55,8 @@
       "Bash(service mysql:*)",
       "Bash(service mariadb:*)",
       "Bash(jarvis-hermes:*)",
-      "Bash(jarvis-busca:*)"
+      "Bash(jarvis-busca:*)",
+      "Bash(jarvis-tendencias:*)"
     ],
     "ask": [
       "Bash(composer require:*)",

@@ -491,6 +491,7 @@ COMANDOS = [
     ("/ideia", "Guarda uma ideia na base de conhecimento"),
     ("/lembrar", "Procura na base de conhecimento"),
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
+    ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/sincronizar", "Envia a base de conhecimento para o GitHub agora"),
     ("/projetos", "Lista os projetos"),
     ("/projeto", "Escolhe o projeto: /projeto <nome>"),
@@ -535,6 +536,7 @@ Design e sites
 
 Conhecimento
 • /ideia <texto> (ou diga "ideia: …" por áudio) · /lembrar <assunto> · /pesquisar <tema>
+• /tendencias <tema>: o que estão falando nos últimos 30 dias (Reddit, Hacker News, GitHub), com fontes
 
 Vários projetos
 • Mande no projeto A, troque (/projeto B) e mande outra: os dois trabalham juntos. As mensagens vêm marcadas [projeto].
@@ -582,6 +584,13 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd == "/tendencias":
+        if not arg:
+            return "Diga o tema: /tendencias gateway pix  (ou em inglês: /tendencias pix payments)", None
+        ok, motivo = pool.pode_iniciar("_pesquisa")
+        if not ok:
+            return motivo, None
+        return f"📈 Buscando o que estão falando de “{arg}” nos últimos 30 dias… aviso quando terminar.", "tendencias"
     if cmd in ("/ideia", "/lembrar", "/sincronizar", "/pesquisar"):
         import kb  # import tardio (kb depende deste módulo)
         if cmd == "/ideia":

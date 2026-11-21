@@ -111,6 +111,19 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.10: tendências dos últimos 30 dias (last30days)
+
+`/tendencias <tema>` (painel, Telegram ou rotina do n8n) mostra o que as pessoas estão falando nos últimos 30 dias no Reddit,
+Hacker News, GitHub e Polymarket, ordenado por engajamento, e salva um resumo em português na base (📈 tendências).
+Os agentes também usam (`jarvis-tendencias`) quando uma decisão depende do mercado.
+
+**Segurança:** o motor da skill last30days (MIT) fica fixado num commit verificado e roda num ambiente limpo: nenhuma chave
+(nem a do gateway, nem o GH_TOKEN), sem cookies do navegador, sem publicar e sem instalar extras. Só 5 fontes permitidas.
+Opcional: `TENDENCIAS_GITHUB_TOKEN=` (token do GitHub **só leitura**) no `.env.claude` para mais resultados do GitHub.
+
+**Aplicar:** `git pull && docker compose build && docker compose --profile web --profile telegram up -d` (Ctrl+F5 no painel).
+Rotina de exemplo nova: `./automacoes-configurar.sh` de novo importa "Jarvis · Tendências da semana".
+
 ## Jarvis 1.9: escritório virtual, rotinas (n8n) e Hermes em português
 
 **Hermes em português.** Ele recebe uma personalidade em português (`container/hermes/SOUL.md`), o pedido sempre lembra o idioma

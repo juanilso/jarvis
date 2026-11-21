@@ -136,7 +136,7 @@ footer{position:relative}
   <button class="fechar" id="kbFechar" title="Fechar">✕</button>
   <h2>BASE DE CONHECIMENTO</h2>
   <div class="lin"><input type="text" id="kbBusca" placeholder="buscar ideias, pesquisas, decisões…"><button id="kbBuscar">Buscar</button></div>
-  <div class="filtros" id="kbFiltros"><button data-t="" class="on">tudo</button><button data-t="ideias">💡 ideias</button><button data-t="pesquisas">🔎 pesquisas</button><button data-t="decisoes">⚖️ decisões</button><button data-t="aprendizados">📚 aprendizados</button><button data-t="projetos">📁 projetos</button></div>
+  <div class="filtros" id="kbFiltros"><button data-t="" class="on">tudo</button><button data-t="ideias">💡 ideias</button><button data-t="pesquisas">🔎 pesquisas</button><button data-t="tendencias">📈 tendências</button><button data-t="decisoes">⚖️ decisões</button><button data-t="aprendizados">📚 aprendizados</button><button data-t="projetos">📁 projetos</button></div>
   <div class="cols"><div id="kbLista"></div><div id="kbNota" class="vazio">Escolha uma nota.</div></div>
   <h3>Nova ideia</h3>
   <textarea id="kbIdeia" placeholder="Escreva a ideia… (também dá para usar /ideia no chat ou dizer “ideia: …” por áudio no Telegram)"></textarea>
@@ -244,6 +244,12 @@ footer{position:relative}
   <details><summary>Uma rotina pode alterar meu código ou publicar?</summary>
    Não. Em rotina, o Jarvis roda sem as ferramentas de edição e com commit, push, deploy, banco e envio de arquivos bloqueados; ele só
    devolve um relatório com sugestões. O Hermes continua só lendo. Para aplicar uma sugestão, peça você mesmo no painel.</details>
+  <details><summary>O que é o /tendencias?</summary>
+   Mostra o que as pessoas estão falando de um tema nos <b>últimos 30 dias</b> no Reddit, Hacker News, GitHub e Polymarket,
+   ordenado por engajamento (curtidas, comentários), e salva um resumo em português na base (📈 tendências).
+   Ex.: <code>/tendencias gateway pix</code>. Termos em inglês costumam trazer mais resultados.
+   Usa o motor da skill last30days (código aberto) num ambiente isolado: <b>sem</b> suas chaves, <b>sem</b> cookies do navegador e
+   <b>sem</b> publicar nada. O Hermes lê os resultados na base de conhecimento.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>

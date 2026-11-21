@@ -1,0 +1,93 @@
+{
+  "id": "jarvisRotina0005",
+  "name": "Jarvis · Tendências da semana (last30days)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                3
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "8f79737c-f86b-4c1e-827f-b7de6b8780f8",
+      "name": "Toda quarta 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Tendências da semana\",\n  \"acao\": \"tendencias\",\n  \"avisar\": true,\n  \"texto\": \"pix payment gateway\"\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "dea910f0-cf44-4883-b201-a44b983257e2",
+      "name": "Buscar tendências",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Tendências da semana\nToda quarta às 9h: o que estão falando nos últimos 30 dias (Reddit, Hacker News, GitHub, Polymarket) sobre o tema. Resumo em português na base (📈) e no Telegram.\n\n- Troque o **texto** pelo tema (em inglês costuma trazer mais).\n- Ative no botão **Active**.",
+        "height": 260,
+        "width": 420
+      },
+      "id": "fb9a6a64-50fb-4497-8176-5bfd3a803219",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Toda quarta 9h": {
+      "main": [
+        [
+          {
+            "node": "Buscar tendências",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

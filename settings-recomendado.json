@@ -48,7 +48,8 @@
       "Bash(adb logcat:*)",
       "Bash(adb shell am:*)",
       "Bash(jarvis-hermes:*)",
-      "Bash(jarvis-busca:*)"
+      "Bash(jarvis-busca:*)",
+      "Bash(jarvis-tendencias:*)"
     ],
     "ask": [
       "Bash(composer require:*)",

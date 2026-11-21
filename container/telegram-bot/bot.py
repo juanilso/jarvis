@@ -178,8 +178,8 @@ def rodar(chat_id, texto, responder_audio, compactar=False, proj=None):
     pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
 
 
-def pesquisar(chat_id, tema):
-    destino, prompt = kb.prompt_pesquisa(tema)
+def pesquisar(chat_id, tema, tipo="pesquisa"):
+    destino, prompt = (kb.prompt_tendencias if tipo == "tendencias" else kb.prompt_pesquisa)(tema)
 
     def ao_evento(ev):
         if ev["tipo"] == "resposta":
@@ -304,7 +304,7 @@ def tratar(msg):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
-                                                  "/modelos", "/hermes") \
+                                                  "/modelos", "/hermes", "/tendencias") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
@@ -312,6 +312,9 @@ def tratar(msg):
             threading.Thread(target=rodar, args=(chat_id, "", False, True, estado.ler()["projeto"]), daemon=True).start()
         elif acao == "pesquisar":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip()), daemon=True).start()
+        elif acao == "tendencias":
+            threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip(), "tendencias"),
+                             daemon=True).start()
         elif acao == "hermes":
             threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
                              lambda tipo, t: responder_hermes(chat_id, tipo, t)), daemon=True).start()

@@ -149,9 +149,9 @@ def previa(acao):
     return f"👁 Prévia de {proj} ligada (pasta {os.path.relpath(raiz, core.WORKSPACE)})."
 
 
-def pesquisar(tema):
+def pesquisar(tema, tipo="pesquisa"):
     proj = estado.ler()["projeto"]
-    destino, prompt = kb.prompt_pesquisa(tema)
+    destino, prompt = (kb.prompt_tendencias if tipo == "tendencias" else kb.prompt_pesquisa)(tema)
     pool.de("_pesquisa").rodar(estado, prompt, False, lambda ev: publicar(ev, proj), cwd=kb.KB_DIR, usar_sessao=False,
                                projeto=proj)
     kb.sincronizar()
@@ -169,6 +169,8 @@ def iniciar(texto, veio_de_audio):
                 threading.Thread(target=rodar, args=("", False, True, estado.ler()["projeto"]), daemon=True).start()
             elif acao == "pesquisar":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
+            elif acao == "tendencias":
+                threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(), "tendencias"), daemon=True).start()
             elif acao == "hermes":
                 proj = estado.ler()["projeto"]
                 threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), proj,

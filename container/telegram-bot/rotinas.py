@@ -3,7 +3,7 @@
 POST /api/gatilho  (cabeçalho: Authorization: Bearer <JARVIS_GATILHO_TOKEN>)
 {
   "rotina":  "Pesquisa semanal",          nome que aparece no escritório e nos avisos
-  "acao":    "hermes" | "jarvis" | "pesquisar" | "ideia" | "avisar" | "status",
+  "acao":    "hermes" | "jarvis" | "pesquisar" | "tendencias" | "ideia" | "avisar" | "status",
   "texto":   "o pedido",
   "projeto": "pasta do projeto" (opcional; padrão: o projeto atual do painel),
   "avisar":  true                          manda o resultado no Telegram
@@ -26,7 +26,7 @@ import jarvis_core as core
 
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
-ACOES = {"hermes", "jarvis", "pesquisar", "ideia", "avisar", "status"}
+ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status"}
 _lock = threading.Lock()
 
 
@@ -137,9 +137,9 @@ def executar(dados, publicar, pool, estado):
                     saida.update(ok=True, resultado=r)
                 except hermes.ErroHermes as e:
                     saida.update(ok=False, resultado=f"Hermes: {e}")
-            elif acao == "pesquisar":
+            elif acao in ("pesquisar", "tendencias"):
                 import kb
-                destino, prompt = kb.prompt_pesquisa(texto)
+                destino, prompt = (kb.prompt_tendencias if acao == "tendencias" else kb.prompt_pesquisa)(texto)
                 final = {}
                 pool.de("_pesquisa").rodar(estado, prompt, False, lambda ev: final.update(ev) if ev["tipo"] == "resposta" else None,
                                            cwd=kb.KB_DIR, usar_sessao=False, projeto=projeto or None)
@@ -170,7 +170,7 @@ def executar(dados, publicar, pool, estado):
         if not ok:
             registrar(dict(base, ok=False, resultado=motivo))
             return 409, {"erro": motivo}
-    if acao == "pesquisar":
+    if acao in ("pesquisar", "tendencias"):
         ok, motivo = pool.pode_iniciar("_pesquisa")
         if not ok:
             return 409, {"erro": motivo}
