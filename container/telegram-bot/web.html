@@ -32,6 +32,7 @@ main{display:grid;grid-template-columns:230px minmax(0,1fr) 270px;gap:12px;paddi
 .ag.ativo .robo .olho{filter:drop-shadow(0 0 3px var(--c))}.ag.ativo .robo .ant{animation:pl .5s infinite}
 .ag.ativo .st{color:var(--c)}
 .ag.ok .robo{--rc:var(--ok);--olho:var(--ok)}.ag.ok .st{color:var(--ok)}
+.ag.hermes{--c:#ffc45a}.ag.hermes .nm span:first-child{color:#ffc45a}
 .ag.erro .robo{--rc:var(--er);--olho:var(--er)}.ag.erro .st{color:var(--er)}
 @keyframes bob{50%{transform:translateY(-3px)}}
 @keyframes pl{50%{opacity:.35}}
@@ -211,6 +212,16 @@ footer{position:relative}
    dá segunda opinião. Use <code>/hermes &lt;pedido&gt;</code>; os agentes também podem consultá-lo sozinhos. Ele usa o mesmo gateway
    (o gasto entra na mesma conta) e responde um pedido por vez. Ele não altera projetos, não usa seu GitHub e não tem porta aberta
    na VPS. Se <code>/hermes</code> disser que não está ligado, rode <code>./hermes-configurar.sh</code> dentro de <code>container/</code>.</details>
+  <details><summary>Por que o Hermes não usa o modelo da própria Nous?</summary>
+   O que aprende e evolui é o <b>agente</b> Hermes (memória, skills que ele cria, histórico), não o modelo. Isso funciona igual com o
+   Claude do seu gateway, que hoje programa e usa ferramentas melhor que os modelos Hermes. Se quiser o modelo e as ferramentas da Nous
+   (busca, navegador, voz e imagens), rode <code>./hermes-configurar.sh --nous</code>: precisa de conta no Nous Portal, com cobrança à parte.
+   Para voltar ao gateway: <code>./hermes-configurar.sh</code>.</details>
+  <details><summary>O Hermes testa como um usuário de verdade?</summary>
+   Sim, nas tarefas com tela ou site: depois do testador, o Jarvis liga a prévia (👁) e pede ao Hermes para usar o sistema como um
+   cliente e relatar o que quebrou. Cada problema vira tarefa e é corrigido e conferido. Você também pode pedir direto:
+   <code>/hermes teste como usuário o cadastro em http://jarvisweb:8081</code>. Para clicar em telas ele precisa do navegador
+   (vem com <code>--nous</code>); sem ele, testa lendo as páginas.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>
@@ -257,7 +268,7 @@ footer{position:relative}
 </div>
 <script>
 const $=id=>document.getElementById(id);
-const AGENTES=[["arquiteto","🏛️"],["explorador","🔎"],["desenvolvedor","💻"],["dba","🗄️"],["android","🤖"],["testador","🧪"],["revisor","🧐"],["deploy","🚀"],["documentador","📝"]];
+const AGENTES=[["hermes","☤"],["arquiteto","🏛️"],["explorador","🔎"],["desenvolvedor","💻"],["dba","🗄️"],["android","🤖"],["testador","🧪"],["revisor","🧐"],["deploy","🚀"],["documentador","📝"]];
 let ultimo=0,agentesOn=true,ocupado=false,gravador=null,pedacos=[],t0=0,timerG=null,modo="espera",nivel=0,ctx=null,analyser=null,carregado=false;
 const agEstado={};
 
@@ -271,7 +282,7 @@ function add(cls,html){const d=document.createElement("div");d.className=cls;d.i
 function setModo(m,txt){modo=m;$("estadoOrb").firstChild.nodeValue={espera:"em espera",ouvindo:"ouvindo",pensando:"processando",falando:"falando"}[m];$("estadoTxt").textContent=txt||""}
 const ROBO=`<svg class="robo" viewBox="0 0 40 40" aria-hidden="true"><line class="haste" x1="20" y1="5" x2="20" y2="10"/><circle class="ant" cx="20" cy="4" r="2.6"/><rect class="orelha" x="4" y="15" width="4" height="7" rx="1.5"/><rect class="orelha" x="32" y="15" width="4" height="7" rx="1.5"/><rect class="cab" x="8" y="10" width="24" height="17" rx="5"/><circle class="olho" cx="15" cy="18" r="2.8"/><circle class="olho" cx="25" cy="18" r="2.8"/><line class="boca" x1="16" y1="23" x2="24" y2="23"/><rect class="corpo" x="12" y="29" width="16" height="9" rx="3"/></svg>`;
 function desenharAgentes(){
-  $("listaAg").innerHTML=AGENTES.map(([n,e])=>{const s=agEstado[n]||{c:"",t:"ocioso",d:""};
+  $("listaAg").innerHTML=AGENTES.filter(([n])=>n!=="hermes"||hermesAtivo||agEstado.hermes).map(([n,e])=>{const s=n==="hermes"&&hermesAtivo?{c:"ativo hermes",t:"ativo",d:"ajudante (Hermes Agent)"}:(agEstado[n]||{c:"",t:"ocioso",d:""});
     return `<div class="ag ${s.c}">${ROBO}<div class="nm"><span>${n}</span><span class="ds">${esc(s.d||"")}</span></div><span class="st">${esc(s.t)}</span></div>`}).join("");
 }
 function agente(ev){
@@ -329,7 +340,7 @@ function mostrar(ev){
     if(carregado)painel();
   }
 }
-let ocupadoEm=null,rodandoSet=new Set();
+let ocupadoEm=null,rodandoSet=new Set(),hermesAtivo=false;
 async function poll(){
   const v=ver;
   try{const r=await api("/api/eventos?desde="+ultimo+"&projeto="+encodeURIComponent($("projetoSel").value||""));
@@ -337,6 +348,8 @@ async function poll(){
       const atual=$("projetoSel").value,meu=!!r.ocupado;
       const outros=(r.rodando||[]).map(x=>x.projeto).filter(p=>p!==atual);ocupadoEm=outros.length?outros.join(", "):null;
       rodandoSet=new Set((r.rodando||[]).map(x=>x.projeto));
+      if(!!r.hermes!==hermesAtivo){hermesAtivo=!!r.hermes;desenharAgentes();if(!hermesAtivo&&!ocupado&&modo==="pensando")setModo("espera")}
+      if(hermesAtivo&&modo==="espera")setModo("pensando","Hermes trabalhando");
       [...$("projetoSel").options].forEach(o=>{if(o.value)o.textContent=(rodandoSet.has(o.value)?"⏳ ":"")+o.value});
       if(meu&&!inicioRun)inicioRun=Date.now()-(r.desde_inicio||0)*1000;
       if(meu!==ocupado){ocupado=meu;if(!ocupado){inicioRun=0;fecharRun()}if(modo!=="falando"&&modo!=="ouvindo")setModo(ocupado?"pensando":"espera")}}}catch(e){}
@@ -482,17 +495,17 @@ $("mic").onclick=async()=>{
 /* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */
 const cv=$("orb"),g=cv.getContext("2d"),buf=new Uint8Array(128);
 function amp(an){if(!an)return 0;an.getByteFrequencyData(buf);let s=0;for(let i=0;i<buf.length;i++)s+=buf[i];return s/buf.length/255}
-const IW=560,IH=572,BOCA={x:308,y:339,meia:48},BASE={x:280,y:492};
-function carregar(src){const im=new Image();im.src=src;const o={im,ok:false,brilho:null,pts:[]};
+const IW=600,IH=600,BOCA={x:352,y:352,meia:36};
+function carregar(src,base){const im=new Image();im.src=src;const o={im,ok:false,brilho:null,pts:[],base};
   im.onload=()=>{o.ok=true;
     const c=document.createElement("canvas");c.width=IW;c.height=IH;const x=c.getContext("2d");x.filter="blur(7px)";x.drawImage(im,0,0);o.brilho=c;
     const c2=document.createElement("canvas");c2.width=IW;c2.height=IH;const y=c2.getContext("2d");y.drawImage(im,0,0);
     const d=y.getImageData(0,0,IW,IH).data;
-    for(let k=0;k<9000&&o.pts.length<700;k++){const px=Math.floor(Math.random()*IW),py=Math.floor(Math.random()*440)+20,i=(py*IW+px)*4;
-      if(d[i]*.3+d[i+1]*.59+d[i+2]*.11>150&&Math.abs(px-280)<230)o.pts.push([px,py])}};
+    for(let k=0;k<9000&&o.pts.length<700;k++){const px=Math.floor(Math.random()*IW),py=Math.floor(Math.random()*(base.y-60))+30,i=(py*IW+px)*4;
+      if(d[i]*.3+d[i+1]*.59+d[i+2]*.11>150&&Math.abs(px-300)<220)o.pts.push([px,py])}};
   return o}
-const imgC=carregar("/static/cerebro.jpg"),imgR=carregar("/static/rosto.jpg");
-let morph=0,ultimoT=0,acumulo=0,pulsos=[],brilhos=[],sobe=[];
+const imgC=carregar("/static/cerebro.jpg",{x:290,y:440}),imgR=carregar("/static/rosto.jpg",{x:293,y:498}),imgH=carregar("/static/hermes.jpg",{x:293,y:498});
+let morph=0,hm=0,ultimoT=0,acumulo=0,pulsos=[],brilhos=[],sobe=[];
 function novoPulso(o){if(o.pts.length<2)return;const a=o.pts[Math.floor(Math.random()*o.pts.length)];
   let b=null;for(let k=0;k<25;k++){const c=o.pts[Math.floor(Math.random()*o.pts.length)];const dd=Math.hypot(c[0]-a[0],c[1]-a[1]);if(dd>15&&dd<70){b=c;break}}
   if(b)pulsos.push({a,b,p:0,v:.02+Math.random()*.03})}
@@ -512,30 +525,32 @@ function frame(t){
   let alvo=modo==="falando"?amp(analyser)*2.6:modo==="ouvindo"?amp(window._micAn)*3:0;nivel+=(Math.min(alvo,1)-nivel)*.3;
   morph+=((modo==="falando"?1:0)-morph)*.06;const m=morph*morph*(3-2*morph);
   const resp=.5+.5*Math.sin(t/900);
-  /* imagens */
-  desenharImg(imgC,1-m,k,ox,oy,0);
-  desenharImg(imgR,m,k,ox,oy,nivel*9*m);
+  hm+=((hermesAtivo?1:0)-hm)*.05;const hh=hm*hm*(3-2*hm);
+  /* imagens: cérebro (pensando/espera), rosto (falando), rosto dourado (Hermes trabalhando) */
+  desenharImg(imgC,(1-m)*(1-hh),k,ox,oy,0);
+  desenharImg(imgR,m*(1-hh),k,ox,oy,nivel*9*m);
+  desenharImg(imgH,hh,k,ox,oy,nivel*9*m*hh);
   /* brilho que respira e reage à voz */
   g.globalCompositeOperation="lighter";
-  const o=m>.5?imgR:imgC;
+  const o=hh>.5?imgH:m>.5?imgR:imgC,BASE=o.base;
   if(o.brilho){g.globalAlpha=Math.min(.9,.18+.14*resp+nivel*.6+(modo==="pensando"?.12:0));g.drawImage(o.brilho,ox,oy,IW*k,IH*k);g.globalAlpha=1}
   if(modo==="ouvindo"){g.fillStyle=`rgba(255,120,40,${.06+nivel*.18})`;g.fillRect(ox,oy,IW*k,IH*k)}
   /* sinapses (cérebro) e cintilação (ambos) */
   const ritmo={espera:3,ouvindo:10,pensando:30,falando:4}[modo];
   acumulo+=dt*(ritmo+nivel*30);while(acumulo>1){acumulo--;novoPulso(o);if(o.pts.length)brilhos.push({p:o.pts[Math.floor(Math.random()*o.pts.length)],v:1})}
-  const cor=modo==="ouvindo"?"255,170,90":"170,255,240";
+  const cor=modo==="ouvindo"?"255,170,90":hh>.5?"255,214,120":"170,255,240";
   pulsos=pulsos.filter(q=>{q.p+=q.v;const x=q.a[0]+(q.b[0]-q.a[0])*q.p,y=q.a[1]+(q.b[1]-q.a[1])*q.p,[X,Y]=P(x,y);
     const gr=g.createRadialGradient(X,Y,0,X,Y,7*d);gr.addColorStop(0,`rgba(${cor},.95)`);gr.addColorStop(1,`rgba(${cor},0)`);
     g.fillStyle=gr;g.fillRect(X-7*d,Y-7*d,14*d,14*d);return q.p<1});
   if(pulsos.length>160)pulsos.splice(0,pulsos.length-160);
   brilhos=brilhos.filter(b=>{b.v-=.025;const[X,Y]=P(b.p[0],b.p[1]),r=(1+b.v*2.5)*d;g.fillStyle=`rgba(${cor},${b.v})`;g.beginPath();g.arc(X,Y,r,0,7);g.fill();return b.v>0});
   /* varredura */
-  const vy=40+((t/14)%460),[,VY]=P(0,vy),sg=g.createLinearGradient(0,VY-14*d,0,VY+14*d);
-  sg.addColorStop(0,"rgba(80,255,220,0)");sg.addColorStop(.5,`rgba(80,255,220,${modo==="pensando"?.14:.07})`);sg.addColorStop(1,"rgba(80,255,220,0)");
+  const vy=40+((t/14)%(BASE.y-30)),[,VY]=P(0,vy),sg=g.createLinearGradient(0,VY-14*d,0,VY+14*d);
+  const sc=hh>.5?"255,200,90":"80,255,220";sg.addColorStop(0,`rgba(${sc},0)`);sg.addColorStop(.5,`rgba(${sc},${modo==="pensando"?.14:.07})`);sg.addColorStop(1,`rgba(${sc},0)`);
   g.fillStyle=sg;g.fillRect(ox+60*k,VY-14*d,(IW-120)*k,28*d);
   /* anéis da base girando */
   const[bx,by]=P(BASE.x,BASE.y);g.lineWidth=1.6*d;
-  [[150,26,1,.5],[115,20,-1.6,.6],[78,13,2.4,.7]].forEach(([rx,ry,vel,a])=>{
+  [[160,28,1,.5],[122,21,-1.6,.6],[82,14,2.4,.7]].forEach(([rx,ry,vel,a])=>{
     const ang=t/1000*vel*(modo==="pensando"?2:1);g.strokeStyle=`rgba(${cor},${a*(.6+.4*resp)+nivel*.3})`;
     for(let s=0;s<3;s++){g.beginPath();g.ellipse(bx,by,rx*k,ry*k,0,ang+s*2.1,ang+s*2.1+1.1);g.stroke()}});
   /* partículas subindo do emissor */

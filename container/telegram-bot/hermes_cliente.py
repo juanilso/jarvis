@@ -19,6 +19,19 @@ REGRAS = (
     "Se o pedido exigir mudar código, descreva o que mudar e o Jarvis executa."
 )
 _ocupado = threading.Lock()
+MARCA = "/tmp/jarvis-hermes.ocupado"  # visível para o painel quando um agente chama o jarvis-hermes
+
+
+def ocupado():
+    """True se o Hermes está atendendo um pedido (deste processo ou de um agente via jarvis-hermes)."""
+    if _ocupado.locked():
+        return True
+    try:
+        pid = int(open(MARCA).read().strip() or 0)
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 class ErroHermes(Exception):
@@ -69,6 +82,10 @@ def perguntar(texto, projeto=None):
     if not _ocupado.acquire(blocking=False):
         raise ErroHermes("o Hermes já está trabalhando em outro pedido; tente quando ele terminar.")
     try:
+        open(MARCA, "w").write(str(os.getpid()))
+    except OSError:
+        pass
+    try:
         try:
             modelos = _pedir("/v1/models").get("data", [])
             modelo = (modelos[0].get("id") if modelos and isinstance(modelos[0], dict) else None) or "hermes-agent"
@@ -88,3 +105,7 @@ def perguntar(texto, projeto=None):
         return (resposta or "").strip() or "(o Hermes respondeu vazio)"
     finally:
         _ocupado.release()
+        try:
+            os.remove(MARCA)
+        except OSError:
+            pass

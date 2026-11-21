@@ -111,6 +111,15 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.7.1: correção do Hermes + holograma novo
+
+- **Erro "Anthropic rejected your API key / invalid x-api-key":** o Hermes ia direto para a Anthropic em vez do seu gateway.
+  Agora o script entrega o endereço do gateway ao Hermes (arquivo `.env.hermes`, só com o necessário) e, se ainda falhar,
+  tenta sozinho o formato OpenAI do gateway. Basta rodar de novo: `git pull && docker compose build && ./hermes-configurar.sh`
+- **Modelo da Nous (opcional):** `./hermes-configurar.sh --nous` (conta no Nous Portal; traz navegador, busca, voz e imagens).
+- **Teste real:** em tarefas com tela, o Hermes usa a prévia como um cliente e relata bugs.
+- **Painel:** holograma novo (cérebro e rosto) e um holograma dourado que aparece enquanto o Hermes trabalha. Ctrl+F5 no painel.
+
 ## Jarvis 1.7: Hermes Agent como ajudante
 
 O Hermes Agent (Nous Research, MIT) roda num contêiner separado e o Jarvis pede ajuda a ele.

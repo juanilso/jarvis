@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import jarvis_core as core  # noqa: E402
 import projetos  # noqa: E402
 import kb  # noqa: E402
+import hermes_cliente as hermes  # noqa: E402
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -246,7 +247,7 @@ class Handler(BaseHTTPRequestHandler):
                 novos = [e for e in eventos if e["id"] > desde and e.get("projeto") == proj]
                 ultimo = _contador[0]
             ex = pool.de(proj)
-            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": ex.ocupado, "projeto_ocupado": proj if ex.ocupado else None,
+            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": ex.ocupado, "hermes": hermes.ocupado(), "projeto_ocupado": proj if ex.ocupado else None,
                                "pedido": ex.pedido, "rodando": pool.resumo(),
                                "desde_inicio": int(time.time() - ex.inicio) if ex.inicio else 0})
         if url.path == "/api/mapa":
