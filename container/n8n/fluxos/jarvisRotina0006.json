@@ -1,0 +1,85 @@
+{
+  "id": "jarvisRotina0006",
+  "name": "Jarvis · Atendimento WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-waha",
+        "options": {}
+      },
+      "id": "0e6a3dfa-c09c-49e8-ba02-ae7ab1ee85c9",
+      "name": "Recebe do WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "af9b406e-c7d7-4f42-9351-0af18123feff"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ acao: \"atender\", evento: $json.body.event, chat: ($json.body.payload || {}).from, nome: (($json.body.payload || {})._data || {}).notifyName || \"\", texto: ($json.body.payload || {}).body || \"\", de_mim: !!($json.body.payload || {}).fromMe, tem_midia: !!($json.body.payload || {}).hasMedia, timestamp: ($json.body.payload || {}).timestamp }) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "1f0368a4-d573-4499-83e2-7dd8bdf5f700",
+      "name": "Jarvis responde",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Atendimento WhatsApp\nO WhatsApp (WAHA) manda cada mensagem para cá e o Jarvis responde com base na **base de respostas** (📱 no painel).\n\n- **Ative** este fluxo (Active) para o atendimento funcionar.\n- Quer registrar conversas numa planilha ou CRM? Adicione nós depois de *Jarvis responde*.\n- O Jarvis já envia a resposta; a saída mostra o texto enviado.",
+        "height": 280,
+        "width": 420
+      },
+      "id": "9757a1ae-1dd7-4504-a99a-68cc872f15a7",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Recebe do WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Jarvis responde",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

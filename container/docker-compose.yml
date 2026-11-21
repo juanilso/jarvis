@@ -90,6 +90,8 @@ services:
     env_file:
       - path: .env.claude
         required: false
+      - path: .env.atendimento   # chave do WhatsApp (WAHA): só o painel usa para responder clientes
+        required: false
     environment:
       CLAUDE_CONFIG_DIR: /home/dev/.claude
       DB_HOST: mariadb
@@ -156,6 +158,28 @@ services:
     mem_limit: 1g
     restart: unless-stopped
 
+  # WhatsApp Web (WAHA Core, Apache 2.0) para o atendimento automático: ./whatsapp-configurar.sh
+  # Sem porta aberta: o painel do Jarvis mostra o QR code (📱). Só o n8n e o Jarvis falam com ele.
+  whatsapp:
+    image: devlikeapro/waha:latest
+    container_name: jarvis-whatsapp
+    profiles: ["whatsapp"]
+    env_file:
+      - path: .env.whatsapp      # criado pelo script: chave da API e senha do dashboard
+        required: false
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB         # sem navegador: leve
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      WAHA_RESTART_ALL_SESSIONS: "True"
+      WAHA_PRINT_QR: "False"
+      WHATSAPP_HOOK_URL: http://n8n:5678/webhook/whatsapp-waha
+      WHATSAPP_HOOK_EVENTS: message.any
+      TZ: America/Sao_Paulo
+    volumes:
+      - whatsapp-sessoes:/app/.sessions
+    mem_limit: 1g
+    restart: unless-stopped
+
   mariadb:
     image: mariadb:11
     container_name: jarvis-mariadb
@@ -190,6 +214,7 @@ volumes:
   claude-config:
   hermes-data:
   n8n-data:
+  whatsapp-sessoes:
   code-server-data:
   dev-home:
   mariadb-data:

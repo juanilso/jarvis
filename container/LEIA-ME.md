@@ -111,6 +111,34 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.11: atendimento automático no WhatsApp (WhatsApp Web)
+
+O número da empresa fica conectado pelo **WhatsApp Web** (WAHA Core, código aberto), sem a API da Meta.
+Cada mensagem passa pelo n8n e o Jarvis responde em segundos com base na **base de respostas** que você escreve (📱 no painel).
+
+**Ligar (na VPS):**
+```bash
+cd ~/jarvis/container && git pull
+docker compose build && docker compose --profile web --profile telegram up -d
+./whatsapp-configurar.sh        # precisa do n8n ligado (./automacoes-configurar.sh)
+```
+Depois: painel → 📱 → **Conectar** → leia o QR code com o WhatsApp da empresa (Dispositivos conectados) →
+preencha a **Base de respostas** → no n8n, ative "Jarvis · Atendimento WhatsApp".
+
+**Como ele se comporta**
+- Responde só com o que está na base; se não souber, se o cliente pedir um atendente ou for reclamação/reembolso,
+  avisa você no Telegram e para de responder aquela conversa.
+- Quando você responde pelo WhatsApp, o robô se cala naquela conversa por 12 h. `#bot` na conversa (ou `/devolver <número>`)
+  devolve ao robô. `/assumir <número>` faz o contrário. `/atendimento off` pausa tudo.
+- Ignora grupos, status e canais; não lê áudio/imagem (pede texto); limita mensagens em sequência.
+- **Segurança:** o modelo do atendimento não tem nenhuma ferramenta (não roda comandos, não lê projetos, não mexe no painel).
+  A chave do WhatsApp fica só no serviço do painel (`.env.atendimento`).
+- **Privacidade:** guarda só as últimas mensagens de cada conversa, por até 24 h.
+- **Modelo:** usa o `ANTHROPIC_DEFAULT_HAIKU_MODEL` (rápido e barato); troque com `ATENDIMENTO_MODELO=` no `.env.claude`.
+
+**Risco:** não é a API oficial. Use um número só da empresa, só para responder clientes (nada de mensagens em massa
+ou para quem não falou com você), porque o WhatsApp pode bloquear números com automação.
+
 ## Jarvis 1.10: tendências dos últimos 30 dias (last30days)
 
 `/tendencias <tema>` (painel, Telegram ou rotina do n8n) mostra o que as pessoas estão falando nos últimos 30 dias no Reddit,

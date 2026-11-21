@@ -24,6 +24,7 @@ import projetos  # noqa: E402
 import kb  # noqa: E402
 import hermes_cliente as hermes  # noqa: E402
 import rotinas  # noqa: E402
+import atendimento  # noqa: E402
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -267,11 +268,27 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/modelos":
             forcar = urllib.parse.parse_qs(url.query).get("atualizar", [""])[0] == "1"
             return self._json({"texto": core.texto_modelos_gateway(forcar)})
+        if url.path == "/api/whatsapp":
+            return self._json({"whatsapp": atendimento.status_whatsapp(), "atendimento": atendimento.resumo()})
+        if url.path == "/api/whatsapp/qr":
+            try:
+                png = atendimento.qr_png()
+            except Exception as e:  # noqa: BLE001
+                return self._json({"erro": f"QR indisponível ({type(e).__name__})"}, 404)
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(png)))
+            self.end_headers()
+            return self.wfile.write(png)
+        if url.path == "/api/whatsapp/faq":
+            return self._json({"texto": atendimento.ler_faq(), "caminho": atendimento.FAQ})
         if url.path == "/api/escritorio":
             agora = time.time()
             agentes = {n: dict(e, segundos=int(agora - e["desde"])) for n, e in ESCRITORIO.items()
                        if e.get("estado") == "ativo" or agora - e.get("fim", agora) < 60}
             return self._json({"agentes": agentes, "rodando": pool.resumo(), "hermes": hermes.ocupado(),
+                               "atendimento": atendimento.resumo(),
                                "hermes_ligado": hermes.configurado(), "rotinas": rotinas.listar(20),
                                "n8n": bool(os.environ.get("JARVIS_GATILHO_TOKEN")), "projeto": estado.ler()["projeto"]})
         if url.path == "/escritorio":
@@ -342,6 +359,23 @@ class Handler(BaseHTTPRequestHandler):
         if not self._logado():
             return self._json({"erro": "login"}, 401)
 
+        if url.path == "/api/whatsapp/acao":
+            try:
+                d = json.loads(self._corpo() or b"{}")
+            except json.JSONDecodeError:
+                return self._json({"erro": "JSON inválido"}, 400)
+            a = d.get("acao")
+            if a == "iniciar":
+                return self._json({"ok": atendimento.iniciar_sessao()})
+            if a == "ligar":
+                atendimento.ligar(bool(d.get("valor")))
+                return self._json({"ok": True})
+            if a == "devolver":
+                return self._json({"ok": True, "msg": atendimento.devolver(str(d.get("numero", "")))})
+            if a == "faq":
+                atendimento.salvar_faq(str(d.get("texto", "")))
+                return self._json({"ok": True})
+            return self._json({"erro": "ação inválida"}, 400)
         if url.path == "/api/upload":
             q = urllib.parse.parse_qs(url.query)
             try:

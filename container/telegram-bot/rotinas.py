@@ -26,7 +26,7 @@ import jarvis_core as core
 
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
-ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status"}
+ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender"}
 _lock = threading.Lock()
 
 
@@ -94,6 +94,9 @@ def executar(dados, publicar, pool, estado):
     acao = str(dados.get("acao", "")).lower()
     if acao not in ACOES:
         return 400, {"erro": f"ação inválida; use uma de: {', '.join(sorted(ACOES))}"}
+    if acao == "atender":  # WhatsApp: resposta rápida, sem registrar como rotina (seria ruído)
+        import atendimento
+        return 200, dict(atendimento.atender(dados), ok=True)
     rotina = _limpar_nome(dados.get("rotina"))
     texto = str(dados.get("texto", ""))[:4000].strip()
     projeto = str(dados.get("projeto") or estado.ler()["projeto"] or "")

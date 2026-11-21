@@ -43,3 +43,6 @@ copiado; o Jarvis traz só fluxos de exemplo (JSON) que chamam o gatilho do Jarv
 ## last30days (https://github.com/mvanhorn/last30days-skill), por Matt Van Horn, licença MIT
 O motor (pasta `skills/last30days/scripts`, commit bb2f1ed) é baixado na construção da imagem para `/opt/last30days`, junto com o
 arquivo LICENSE original. O Jarvis só o executa pelo `jarvis-tendencias`, num ambiente isolado; nenhum arquivo foi modificado.
+
+## WAHA Core (https://github.com/devlikeapro/waha), por devlikeapro, licença Apache 2.0
+Usado como serviço separado a partir da imagem oficial `devlikeapro/waha`; nenhum código copiado. O Jarvis só chama a API REST.

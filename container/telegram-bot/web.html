@@ -70,6 +70,20 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #guia code{background:#081420;padding:1px 5px;border-radius:4px}#guia li{margin:3px 0}#guia table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0}
 #guia th,#guia td{border-bottom:1px dashed var(--ln);padding:5px 6px;text-align:left;vertical-align:top}#guia th{color:var(--c2);font-weight:500}
 #guia details{border:1px dashed var(--ln);border-radius:8px;padding:6px 10px;margin:6px 0}#guia summary{cursor:pointer;color:var(--t)}#guia .fechar{position:absolute;right:12px;top:10px}
+#wa{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#wa.aberto{display:flex}
+#wa .caixa{width:min(900px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
+#wa h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#wa h3{font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);margin:16px 0 8px}
+#wa .fechar{position:absolute;right:12px;top:10px}#wa .prim{border-color:var(--c);color:var(--c2)}
+#wa .topo{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:700px){#wa .topo{grid-template-columns:1fr}}
+#waQr{width:220px;height:220px;border-radius:10px;border:1px solid var(--ln);background:#081420 center/contain no-repeat;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--m);padding:10px}
+#waQr.qr{background-color:#fff}
+.waSt{font:13px var(--mono)}.waSt b{color:var(--c2)}.waOk{color:var(--ok)}.waEr{color:var(--er)}
+.waNums{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.waNum{border:1px solid var(--ln);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--m)}.waNum b{display:block;font-size:18px;color:var(--t)}
+#waFaq{width:100%;min-height:300px;resize:vertical;padding:10px;font:13px/1.5 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
+.waAg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--ln);font-size:13px}.waAg button{margin-left:auto}
+.waDica{font-size:12px;color:var(--m);margin-top:6px}
 #gestao,#kb,#guia{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
 #gestao.aberto,#kb.aberto,#guia.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
@@ -131,6 +145,25 @@ footer{position:relative}
   <div id="ghStatus">—</div>
   <div class="lin"><input type="text" id="gMsgCommit" placeholder="mensagem do commit (opcional)"><button class="prim" id="gPush">⬆ Salvar e enviar</button><button id="gPull">⬇ Atualizar</button><button id="gCriarRepo">Criar repositório</button><a id="gLink" target="_blank" style="display:none;color:var(--c2);font-size:13px">abrir no GitHub ↗</a></div>
   <div id="gMsg"></div>
+</div></div>
+<div id="wa"><div class="caixa">
+  <button class="fechar" id="waFechar">✕</button>
+  <h2>WHATSAPP · ATENDIMENTO</h2>
+  <div class="topo">
+    <div id="waQr">carregando…</div>
+    <div>
+      <div class="waSt" id="waStatus">—</div>
+      <div class="waNums"><div class="waNum"><b id="waMsgs">0</b>mensagens hoje</div><div class="waNum"><b id="waResp">0</b>respostas do robô</div><div class="waNum"><b id="waHum">0</b>passadas para você</div></div>
+      <div class="lin" style="display:flex;gap:8px;flex-wrap:wrap"><button id="waConectar" class="prim">📲 Conectar</button><button id="waLigar">🤖 —</button></div>
+      <div class="waDica">Use um número só da empresa. No celular: Configurações → Dispositivos conectados → Conectar dispositivo, e leia o QR code.
+        Quando você responder um cliente pelo WhatsApp, o robô se cala naquela conversa por 12 h (ou escreva <code>#bot</code> para devolver).</div>
+    </div>
+  </div>
+  <h3>COM ATENDENTE (VOCÊ)</h3><div id="waAguard"><div class="waDica">ninguém aguardando</div></div>
+  <h3>BASE DE RESPOSTAS</h3>
+  <div class="waDica" style="margin:0 0 6px">O robô responde <b>só</b> com o que estiver aqui. Coloque preços, horários, como pagar, regras e quando chamar você.</div>
+  <textarea id="waFaq" spellcheck="false"></textarea>
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="waSalvar" class="prim">💾 Salvar base</button><span class="waDica" id="waSalvo"></span></div>
 </div></div>
 <div id="kb"><div class="caixa">
   <button class="fechar" id="kbFechar" title="Fechar">✕</button>
@@ -250,6 +283,14 @@ footer{position:relative}
    Ex.: <code>/tendencias gateway pix</code>. Termos em inglês costumam trazer mais resultados.
    Usa o motor da skill last30days (código aberto) num ambiente isolado: <b>sem</b> suas chaves, <b>sem</b> cookies do navegador e
    <b>sem</b> publicar nada. O Hermes lê os resultados na base de conhecimento.</details>
+  <details><summary>Como funciona o atendimento no WhatsApp (📱)?</summary>
+   Usa o WhatsApp Web (WAHA) no número da empresa: cada mensagem passa pelo n8n e o Jarvis responde com base na
+   <b>base de respostas</b> (📱), usando um modelo rápido e <b>sem ferramentas</b> (o cliente não consegue fazer o robô agir).
+   Se o cliente pedir um atendente, reclamar, ou o assunto não estiver na base, você é avisado no Telegram e o robô se cala naquela
+   conversa. Quando você responde pelo WhatsApp, o robô também se cala por 12 h; escreva <code>#bot</code> na conversa ou
+   <code>/devolver &lt;número&gt;</code> para devolver. Comandos: <code>/atendimento</code> (status, on, off), <code>/assumir</code>.
+   <b>Atenção:</b> não é a API oficial da Meta; use um número só da empresa, só para responder (nada de mensagens em massa),
+   porque o WhatsApp pode bloquear números com uso automatizado.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>
@@ -271,6 +312,7 @@ footer{position:relative}
     </select>
     <button id="agentesBtn" title="Avisos dos agentes">👥 on</button>
     <button id="btnGestao" title="Projetos e GitHub">📁</button>
+    <button id="btnWa" title="WhatsApp: atendimento automático">📱</button>
     <button id="btnKb" title="Base de conhecimento">🧠</button>
     <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
     <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺</button>
@@ -450,6 +492,30 @@ function kbListar(notas){const el=$("kbLista");
     const j=await api("/api/kb/ler?c="+encodeURIComponent(d.dataset.c));$("kbNota").classList.remove("vazio");$("kbNota").innerHTML=j.erro?esc(j.erro):md(j.texto)})}
 async function kbCarregar(){const q=$("kbBusca").value.trim();const j=q?await api("/api/kb/buscar?q="+encodeURIComponent(q)):await api("/api/kb/recentes"+(kbTipo?"?tipo="+kbTipo:""));
   kbListar((j.notas||[]).filter(n=>!kbTipo||n.caminho.startsWith(kbTipo+"/")))}
+/* ---------- WhatsApp ---------- */
+let waTimer=null,waLigado=true;
+const WA_ST={WORKING:["✅ conectado","waOk"],SCAN_QR_CODE:["📷 aguardando leitura do QR code",""],STARTING:["⏳ iniciando…",""],
+  STOPPED:["⏹ parado: clique em Conectar",""],FAILED:["⚠️ falhou: clique em Conectar","waEr"],SEM_SESSAO:["clique em Conectar",""],
+  DESLIGADO:["desligado: rode ./whatsapp-configurar.sh na VPS","waEr"],ERRO:["⚠️ WhatsApp fora do ar","waEr"]};
+async function waAtualizar(){
+  const j=await api("/api/whatsapp");if(!j.whatsapp)return;const w=j.whatsapp,a=j.atendimento,st=WA_ST[w.status]||[w.status,""];
+  $("waStatus").innerHTML=`WhatsApp: <b class="${st[1]}">${esc(st[0])}</b>`+(w.numero?`<br>conta: <b>${esc(w.conta||"")}</b> · ${esc(w.numero)}`:"")+(w.erro?`<br><span class="waEr">${esc(w.erro)}</span>`:"");
+  $("waMsgs").textContent=a.mensagens_hoje;$("waResp").textContent=a.respostas_hoje;$("waHum").textContent=a.humano_hoje;
+  waLigado=a.ligado;$("waLigar").textContent=a.ligado?"⏸ Pausar robô":"▶️ Ligar robô";$("waLigar").className=a.ligado?"":"prim";
+  const q=$("waQr");
+  if(w.status==="SCAN_QR_CODE"){q.classList.add("qr");q.textContent="";q.style.backgroundImage=`url(/api/whatsapp/qr?t=${Date.now()})`}
+  else{q.classList.remove("qr");q.style.backgroundImage="";q.textContent=w.status==="WORKING"?"✅ WhatsApp conectado":(st[0])}
+  $("waConectar").style.display=w.status==="WORKING"?"none":"";
+  $("waAguard").innerHTML=a.aguardando.length?a.aguardando.map(x=>`<div class="waAg">🙋 <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · ${Math.round(x.ate/3600)}h restantes</span><button data-n="${esc(x.numero)}">🤖 devolver ao robô</button></div>`).join(""):'<div class="waDica">ninguém aguardando</div>';
+  $("waAguard").querySelectorAll("button").forEach(b=>b.onclick=async()=>{await api("/api/whatsapp/acao",{acao:"devolver",numero:b.dataset.n});waAtualizar()});
+}
+$("btnWa").onclick=async()=>{$("wa").classList.add("aberto");const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
+  waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)};
+function waFechar(){$("wa").classList.remove("aberto");clearInterval(waTimer)}
+$("waFechar").onclick=waFechar;$("wa").onclick=e=>{if(e.target.id==="wa")waFechar()};
+$("waConectar").onclick=async()=>{$("waQr").textContent="⏳ iniciando…";await api("/api/whatsapp/acao",{acao:"iniciar"});setTimeout(waAtualizar,2500)};
+$("waLigar").onclick=async()=>{await api("/api/whatsapp/acao",{acao:"ligar",valor:!waLigado});waAtualizar()};
+$("waSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"faq",texto:$("waFaq").value});$("waSalvo").textContent=r.ok?"✔ salvo — o robô já usa a nova base":"erro ao salvar"};
 $("btnKb").onclick=()=>{$("kb").classList.add("aberto");kbCarregar()};
 $("kbFechar").onclick=()=>$("kb").classList.remove("aberto");
 $("kb").onclick=e=>{if(e.target.id==="kb")$("kb").classList.remove("aberto")};

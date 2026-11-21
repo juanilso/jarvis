@@ -304,7 +304,8 @@ def tratar(msg):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
-                                                  "/modelos", "/hermes", "/tendencias") \
+                                                  "/modelos", "/hermes", "/tendencias",
+                                                  "/atendimento", "/assumir", "/devolver") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)

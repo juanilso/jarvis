@@ -502,6 +502,9 @@ COMANDOS = [
     ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable, padrao ou um ID do gateway"),
     ("/modelos", "Pergunta ao seu gateway quais modelos ele oferece"),
     ("/hermes", "Pede ajuda ao Hermes Agent (pesquisa, análise, automações); sem texto: status"),
+    ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq)"),
+    ("/assumir", "WhatsApp: você assume a conversa de um número"),
+    ("/devolver", "WhatsApp: devolve a conversa de um número ao robô"),
     ("/custo", "Gasto estimado do projeto atual"),
     ("/audio", "Resposta em áudio: auto, sempre ou nunca"),
     ("/agentes", "Avisos dos agentes: on ou off"),
@@ -550,6 +553,10 @@ Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
+WhatsApp (atendimento automático)
+• 📱 no painel: conectar pelo QR code, ligar/desligar e editar a base de respostas
+• /atendimento · /assumir <número> · /devolver <número> · no próprio WhatsApp, escrever #bot devolve ao robô
+
 Escritório e rotinas
 • 🏢 no painel: cada agente na sua sala, o Hermes na consultoria e o quadro de rotinas
 • Rotinas (n8n): pesquisa semanal, check-up diário, segurança, alertas. Em rotina o Jarvis só analisa e relata
@@ -584,6 +591,9 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd in ("/atendimento", "/assumir", "/devolver"):
+        import atendimento
+        return atendimento.comando(cmd, arg), None
     if cmd == "/tendencias":
         if not arg:
             return "Diga o tema: /tendencias gateway pix  (ou em inglês: /tendencias pix payments)", None
