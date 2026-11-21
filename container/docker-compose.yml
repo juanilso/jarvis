@@ -107,6 +107,24 @@ services:
     mem_limit: 4g
     restart: unless-stopped
 
+  # Hermes Agent (Nous Research, MIT) como AJUDANTE do Jarvis: ./hermes-configurar.sh
+  # Isolado: sem porta publicada, sem GitHub/Telegram, e /workspace só para leitura.
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: jarvis-hermes
+    profiles: ["hermes"]
+    command: ["gateway", "run"]
+    environment:
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0      # só dentro da rede do docker (nenhuma porta aberta na VPS)
+      API_SERVER_PORT: "8642"
+      TERMINAL_CWD: /workspace
+    volumes:
+      - hermes-data:/opt/data                         # config, memória e skills do Hermes
+      - ${PROJETOS_DIR:-../../projetos}:/workspace:ro # lê os projetos, não altera
+    mem_limit: 2g
+    restart: unless-stopped
+
   mariadb:
     image: mariadb:11
     container_name: jarvis-mariadb
@@ -139,6 +157,7 @@ services:
 
 volumes:
   claude-config:
+  hermes-data:
   code-server-data:
   dev-home:
   mariadb-data:

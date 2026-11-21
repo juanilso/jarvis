@@ -295,7 +295,8 @@ def tratar(msg):
     if texto.startswith("/jarvis_"):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
-                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia") \
+                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
+                                                  "/modelos", "/hermes") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
@@ -303,6 +304,9 @@ def tratar(msg):
             threading.Thread(target=rodar, args=(chat_id, "", False, True, estado.ler()["projeto"]), daemon=True).start()
         elif acao == "pesquisar":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip()), daemon=True).start()
+        elif acao == "hermes":
+            threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
+                             lambda tipo, t: enviar(chat_id, t)), daemon=True).start()
         return
     est = estado.ler()
     cmd, _, resto = texto.partition(" ")

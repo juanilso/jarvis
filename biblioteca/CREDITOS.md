@@ -31,3 +31,7 @@ Instalado como plugin pelo `jarvis-extras` (não copiado para o Jarvis). Usado p
 
 ## Floorplan (https://github.com/haydenschmitty/floorplan), por Hayden Smith, licença MIT
 Instalado como plugin pelo `jarvis-extras` (não copiado para o Jarvis). Usado por `/jarvis:mapa` e `/jarvis:adotar`.
+
+## Hermes Agent (https://github.com/NousResearch/hermes-agent), por Nous Research, licença MIT
+Usado como serviço separado a partir da imagem oficial `nousresearch/hermes-agent`. Nenhum código do Hermes
+foi copiado para o Jarvis; o Jarvis só conversa com a API dele (formato OpenAI) pelo `jarvis-hermes`.

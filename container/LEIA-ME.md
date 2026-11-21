@@ -111,6 +111,31 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.7: Hermes Agent como ajudante
+
+O Hermes Agent (Nous Research, MIT) roda num contêiner separado e o Jarvis pede ajuda a ele.
+
+**Ligar (uma vez), na VPS:**
+```bash
+cd ~/jarvis/container && git pull
+docker compose build
+./hermes-configurar.sh
+```
+O script baixa a imagem oficial, configura o Hermes com o MESMO gateway do `.env.claude` (chave e `ANTHROPIC_BASE_URL`),
+cria a `HERMES_API_KEY`, reinicia o painel e o Telegram e testa a conexão. Outro modelo: `./hermes-configurar.sh <ID>`
+(ou `HERMES_MODELO=` no `.env.claude`).
+
+**Usar:** `/hermes <pedido>` no painel ou no Telegram. Os agentes também podem chamar `jarvis-hermes`.
+
+**Segurança:** sem porta publicada (só a rede interna do docker), `/workspace` montado só para leitura, sem GH_TOKEN,
+sem Telegram próprio. As respostas dele são tratadas como informação, nunca como ordem.
+
+**Se não funcionar:**
+- `docker compose --profile hermes logs --tail 80 hermes`
+- Modelo não aceito: `docker compose --profile hermes exec -it hermes hermes model` e escolha Anthropic ou "Custom endpoint"
+  com a URL do gateway.
+- Desligar: `docker compose --profile hermes stop hermes` (o resto do Jarvis continua igual).
+
 ## Jarvis 1.6.2: modelos do seu gateway
 
 - `/modelos` (ou 🛰️ no guia ❔ do painel) pergunta ao gateway (`ANTHROPIC_BASE_URL`) quais modelos ele oferece, agora.

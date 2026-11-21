@@ -53,7 +53,9 @@
       "Bash(apt-get install:*)",
       "Bash(pecl install:*)",
       "Bash(service mysql:*)",
-      "Bash(service mariadb:*)"
+      "Bash(service mariadb:*)",
+      "Bash(jarvis-hermes:*)",
+      "Bash(jarvis-busca:*)"
     ],
     "ask": [
       "Bash(composer require:*)",

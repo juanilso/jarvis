@@ -71,7 +71,8 @@ RUN rm -rf /opt/jarvis/.git /opt/jarvis/container
 COPY --chown=dev:dev container/primeiro-uso.sh /usr/local/bin/primeiro-uso
 COPY --chown=dev:dev container/jarvis-extras.sh /usr/local/bin/jarvis-extras
 COPY --chown=dev:dev container/telegram-bot/ /opt/jarvis-bots/
-RUN install -m 755 /opt/jarvis-bots/jarvis-busca /usr/local/bin/jarvis-busca
+RUN install -m 755 /opt/jarvis-bots/jarvis-busca /usr/local/bin/jarvis-busca \
+ && install -m 755 /opt/jarvis-bots/jarvis-hermes /usr/local/bin/jarvis-hermes
 RUN chmod +x /usr/local/bin/primeiro-uso /usr/local/bin/jarvis-extras \
  && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \
  && echo '[ -f ~/.jarvis-ok ] || echo ">> Primeira vez? Rode: primeiro-uso"' >> /home/dev/.bashrc

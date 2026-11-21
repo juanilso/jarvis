@@ -170,6 +170,10 @@ footer{position:relative}
    <li>Mande a demanda no projeto A, troque para o B e mande outra: os dois trabalham juntos, cada um com sua conversa.</li>
    <li>Projetos trabalhando aparecem com ⏳ na lista. O limite padrão é 2 (<code>JARVIS_MAX_PARALELO</code> no .env.claude).</li>
    <li><code>/status</code> mostra todos que estão rodando · <code>/parar</code> para só o projeto atual.</li></ul>
+  <h3>HERMES (AJUDANTE)</h3><ul>
+   <li><code>/hermes pesquise gateways PIX para PHP com fontes</code> · <code>/hermes analise o README do projeto</code></li>
+   <li>O Hermes roda separado, só lê os projetos e devolve a resposta. Quem altera código continua sendo o Jarvis.</li>
+   <li><code>/hermes</code> sozinho mostra se ele está ligado. Para ligar: <code>./hermes-configurar.sh</code> na VPS.</li></ul>
   <h3>CONTROLE E ECONOMIA</h3><ul>
    <li><code>/compactar</code> quando a conversa ficar longa · <code>/novo</code> zera a conversa do projeto</li>
    <li><code>/custo</code> mostra o gasto · <code>/modelo sonnet</code> troca o modelo principal · <code>/parar</code> interrompe</li>
@@ -202,6 +206,11 @@ footer{position:relative}
    Depois use <code>/modelo &lt;ID&gt;</code> com o nome exatamente como aparece. Para os agentes usarem outro modelo, mapeie os apelidos
    no <code>.env.claude</code> (<code>ANTHROPIC_DEFAULT_OPUS_MODEL=&lt;ID&gt;</code>, idem SONNET e HAIKU) e recrie os serviços.
    Modelos que não são Claude podem falhar com as ferramentas (editar arquivos, rodar comandos); teste antes num projeto simples.</details>
+  <details><summary>O que é o Hermes e quando usar?</summary>
+   É o Hermes Agent, da Nous Research (código aberto). No Jarvis ele é um <b>ajudante</b>: faz pesquisas longas, compara opções e
+   dá segunda opinião. Use <code>/hermes &lt;pedido&gt;</code>; os agentes também podem consultá-lo sozinhos. Ele usa o mesmo gateway
+   (o gasto entra na mesma conta) e responde um pedido por vez. Ele não altera projetos, não usa seu GitHub e não tem porta aberta
+   na VPS. Se <code>/hermes</code> disser que não está ligado, rode <code>./hermes-configurar.sh</code> dentro de <code>container/</code>.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>

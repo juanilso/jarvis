@@ -138,6 +138,10 @@ def iniciar(texto, veio_de_audio):
                 threading.Thread(target=rodar, args=("", False, True, estado.ler()["projeto"]), daemon=True).start()
             elif acao == "pesquisar":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
+            elif acao == "hermes":
+                proj = estado.ler()["projeto"]
+                threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), proj,
+                                 lambda tipo, t: publicar({"tipo": tipo, "texto": t}, proj)), daemon=True).start()
             return None
     est = estado.ler()
     if not est["projeto"]:

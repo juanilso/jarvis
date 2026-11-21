@@ -359,6 +359,15 @@ TABELA_MODELOS = """🧠 Modelos disponíveis (preço por milhão de tokens: ent
 Todos têm contexto de 1 milhão de tokens. No gateway, a disponibilidade e os nomes podem variar.
 Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)
 Seu gateway tem outros? /modelos lista o que ele oferece."""
+def rodar_hermes(pedido, projeto, avisar):
+    """Executa /hermes em segundo plano e entrega a resposta com avisar(tipo, texto)."""
+    import hermes_cliente as hermes
+    try:
+        avisar("info", "🤝 Hermes:\n\n" + hermes.perguntar(pedido, projeto))
+    except hermes.ErroHermes as e:
+        avisar("erro", f"Hermes: {e}")
+
+
 _cache_gateway = {"quando": 0, "dados": None}
 
 
@@ -453,6 +462,7 @@ COMANDOS = [
     ("/parar", "Interrompe o trabalho em andamento"),
     ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable, padrao ou um ID do gateway"),
     ("/modelos", "Pergunta ao seu gateway quais modelos ele oferece"),
+    ("/hermes", "Pede ajuda ao Hermes Agent (pesquisa, análise, automações); sem texto: status"),
     ("/custo", "Gasto estimado do projeto atual"),
     ("/audio", "Resposta em áudio: auto, sempre ou nunca"),
     ("/agentes", "Avisos dos agentes: on ou off"),
@@ -495,6 +505,10 @@ Vários projetos
 Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao gateway o que ele tem)
 • haiku: barato e rápido · sonnet: o padrão · opus: casos difíceis · fable: o mais forte e o mais caro
 • Os agentes do Jarvis seguem o perfil do projeto (/jarvis:modelos): econômico, equilibrado ou máximo
+
+Hermes (ajudante, se ligado)
+• /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
+• Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
 Controle
 • /compactar (conversa longa) · /novo · /custo · /modelo sonnet · /parar · /audio · /agentes
@@ -609,6 +623,13 @@ def comando(estado, pool, texto):
         estado.salvar(est)
         return (f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)"
                 + aviso), None
+    if cmd == "/hermes":
+        import hermes_cliente as hermes
+        if not arg:
+            return hermes.status(), None
+        if not hermes.configurado():
+            return hermes.status(), None
+        return "🤝 Pedi ao Hermes… aviso quando ele responder.", "hermes"
     if cmd == "/modelos":
         return texto_modelos_gateway(forcar=arg.lower() in ("atualizar", "-f", "novo")), None
     if cmd == "/custo":
