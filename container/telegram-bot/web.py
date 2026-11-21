@@ -28,7 +28,7 @@ PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
 HTML = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "web.html"), encoding="utf-8").read()
 
 estado = core.Estado("web")
-execucao = core.Execucao()
+pool = core.Execucoes()
 tokens = set()
 eventos, ev_lock = [], threading.Lock()
 VOZ_DIR = tempfile.mkdtemp(prefix="jarvis-voz-")
@@ -79,8 +79,8 @@ def carregar_historico(limite=150):
             eventos.append(ev)
 
 
-def rodar(texto, responder_audio, compactar=False):
-    proj = estado.ler()["projeto"]
+def rodar(texto, responder_audio, compactar=False, proj=None):
+    proj = proj or estado.ler()["projeto"]
     def ao_evento(ev):
         if ev["tipo"] == "resposta" and ev.get("audio"):
             nome = secrets.token_hex(8) + ".mp3"
@@ -91,7 +91,7 @@ def rodar(texto, responder_audio, compactar=False):
                 print("erro no áudio:", e, flush=True)
         publicar(ev, proj)
 
-    execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
+    pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
 
 
 PREVIA = {"proc": None, "projeto": None}
@@ -121,7 +121,8 @@ def previa(acao):
 def pesquisar(tema):
     proj = estado.ler()["projeto"]
     destino, prompt = kb.prompt_pesquisa(tema)
-    execucao.rodar(estado, prompt, False, lambda ev: publicar(ev, proj), cwd=kb.KB_DIR, usar_sessao=False)
+    pool.de("_pesquisa").rodar(estado, prompt, False, lambda ev: publicar(ev, proj), cwd=kb.KB_DIR, usar_sessao=False,
+                               projeto=proj)
     kb.sincronizar()
     if os.path.exists(destino):
         publicar({"tipo": "info", "texto": f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}"}, proj)
@@ -129,23 +130,24 @@ def pesquisar(tema):
 
 def iniciar(texto, veio_de_audio):
     if texto.startswith("/"):
-        resposta, acao = core.comando(estado, execucao, texto)
+        resposta, acao = core.comando(estado, pool, texto)
         if resposta is not None:
             publicar({"tipo": "usuario", "texto": texto})
             publicar({"tipo": "info", "texto": resposta})
             if acao == "compactar":
-                threading.Thread(target=rodar, args=("", False, True), daemon=True).start()
+                threading.Thread(target=rodar, args=("", False, True, estado.ler()["projeto"]), daemon=True).start()
             elif acao == "pesquisar":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
             return None
     est = estado.ler()
     if not est["projeto"]:
         return "Escolha um projeto primeiro."
-    if execucao.ocupado:
-        return "Ainda estou trabalhando no pedido anterior."
+    ok, motivo = pool.pode_iniciar(est["projeto"])
+    if not ok:
+        return motivo
     audio = est["audio"] == "sempre" or (est["audio"] == "auto" and veio_de_audio)
     publicar({"tipo": "usuario", "texto": texto, "projeto": est["projeto"]})
-    threading.Thread(target=rodar, args=(texto, audio), daemon=True).start()
+    threading.Thread(target=rodar, args=(texto, audio, False, est["projeto"]), daemon=True).start()
     return None
 
 
@@ -202,7 +204,8 @@ class Handler(BaseHTTPRequestHandler):
             est = estado.ler()
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
                                "audio": est["audio"], "agentes": est["agentes"],
-                               "ocupado": execucao.ocupado, "pedido": execucao.pedido,
+                               "ocupado": pool.de(est["projeto"]).ocupado, "pedido": pool.de(est["projeto"]).pedido,
+                               "rodando": pool.resumo(), "limite": pool.limite,
                                "previa": PREVIA["projeto"] if PREVIA["proc"] and PREVIA["proc"].poll() is None else None,
                                "porta_previa": PORTA_PREVIA})
         if url.path in ("/api/github/repos", "/api/github/status"):
@@ -235,9 +238,10 @@ class Handler(BaseHTTPRequestHandler):
             with ev_lock:
                 novos = [e for e in eventos if e["id"] > desde and e.get("projeto") == proj]
                 ultimo = _contador[0]
-            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": execucao.ocupado,
-                               "projeto_ocupado": execucao.projeto, "pedido": execucao.pedido,
-                               "desde_inicio": int(time.time() - execucao.inicio) if execucao.inicio else 0})
+            ex = pool.de(proj)
+            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": ex.ocupado, "projeto_ocupado": proj if ex.ocupado else None,
+                               "pedido": ex.pedido, "rodando": pool.resumo(),
+                               "desde_inicio": int(time.time() - ex.inicio) if ex.inicio else 0})
         if url.path == "/api/mapa":
             proj = estado.ler()["projeto"]
             caminho = os.path.join(core.WORKSPACE, proj or "", "docs", "mapa.html")
@@ -368,7 +372,7 @@ class Handler(BaseHTTPRequestHandler):
             publicar({"tipo": "info", "texto": f"💡 Ideia guardada: {caminho}"})
             return self._json({"ok": True, "caminho": caminho})
         if url.path == "/api/parar":
-            return self._json({"ok": execucao.parar()})
+            return self._json({"ok": pool.de(estado.ler()["projeto"]).parar()})
         if url.path == "/api/novo":
             est = estado.ler()
             est["sessoes"].pop(est["projeto"], None)

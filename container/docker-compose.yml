@@ -104,7 +104,7 @@ services:
       - "127.0.0.1:8090:8090"
       - "127.0.0.1:8081:8081"   # prévia dos sites (botão 👁 no painel)
     depends_on: [dev]
-    mem_limit: 3g
+    mem_limit: 4g
     restart: unless-stopped
 
   mariadb:

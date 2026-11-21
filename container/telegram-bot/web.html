@@ -164,6 +164,10 @@ footer{position:relative}
    <li>Tudo fica no repositório privado <code>jarvis-conhecimento</code> do seu GitHub</li></ul>
   <h3>PROJETOS E GITHUB (📁)</h3><ul>
    <li>Criar projeto, enviar .zip, clonar do GitHub, criar repositório, salvar e enviar (commit + push), atualizar (pull)</li></ul>
+  <h3>VÁRIOS PROJETOS AO MESMO TEMPO</h3><ul>
+   <li>Mande a demanda no projeto A, troque para o B e mande outra: os dois trabalham juntos, cada um com sua conversa.</li>
+   <li>Projetos trabalhando aparecem com ⏳ na lista. O limite padrão é 2 (<code>JARVIS_MAX_PARALELO</code> no .env.claude).</li>
+   <li><code>/status</code> mostra todos que estão rodando · <code>/parar</code> para só o projeto atual.</li></ul>
   <h3>CONTROLE E ECONOMIA</h3><ul>
    <li><code>/compactar</code> quando a conversa ficar longa · <code>/novo</code> zera a conversa do projeto</li>
    <li><code>/custo</code> mostra o gasto · <code>/modelo sonnet</code> troca o modelo principal · <code>/parar</code> interrompe</li>
@@ -278,22 +282,26 @@ function mostrar(ev){
     if(carregado)painel();
   }
 }
-let ocupadoEm=null;
+let ocupadoEm=null,rodandoSet=new Set();
 async function poll(){
   const v=ver;
   try{const r=await api("/api/eventos?desde="+ultimo+"&projeto="+encodeURIComponent($("projetoSel").value||""));
     if(v===ver){(r.eventos||[]).forEach(mostrar);ultimo=r.ultimo||ultimo;
-      const meu=r.ocupado&&r.projeto_ocupado===$("projetoSel").value;ocupadoEm=r.ocupado&&!meu?r.projeto_ocupado:null;
+      const atual=$("projetoSel").value,meu=!!r.ocupado;
+      const outros=(r.rodando||[]).map(x=>x.projeto).filter(p=>p!==atual);ocupadoEm=outros.length?outros.join(", "):null;
+      rodandoSet=new Set((r.rodando||[]).map(x=>x.projeto));
+      [...$("projetoSel").options].forEach(o=>{if(o.value)o.textContent=(rodandoSet.has(o.value)?"⏳ ":"")+o.value});
       if(meu&&!inicioRun)inicioRun=Date.now()-(r.desde_inicio||0)*1000;
       if(meu!==ocupado){ocupado=meu;if(!ocupado){inicioRun=0;fecharRun()}if(modo!=="falando"&&modo!=="ouvindo")setModo(ocupado?"pensando":"espera")}}}catch(e){}
   carregado=true;setTimeout(poll,1500);
 }
 setInterval(()=>{const c=$("cron");
-  if(ocupado&&inicioRun){const s=Math.floor((Date.now()-inicioRun)/1000);c.textContent=`⏱ trabalhando há ${s>=60?Math.floor(s/60)+"m":""}${String(s%60).padStart(s>=60?2:1,"0")}s`}
-  else c.textContent=ocupadoEm?`⏳ ocupado no projeto ${ocupadoEm}`:"";},1000);
+  const extra=ocupadoEm?` · também trabalhando: ${ocupadoEm}`:"";
+  if(ocupado&&inicioRun){const s=Math.floor((Date.now()-inicioRun)/1000);c.textContent=`⏱ trabalhando há ${s>=60?Math.floor(s/60)+"m":""}${String(s%60).padStart(s>=60?2:1,"0")}s`+extra}
+  else c.textContent=ocupadoEm?`⏳ trabalhando em outro projeto: ${ocupadoEm}`:"";},1000);
 async function estado(){
   const e=await api("/api/estado");
-  $("projetoSel").innerHTML='<option value="">Escolha o projeto…</option>'+e.projetos.map(p=>`<option ${p===e.projeto?"selected":""}>${esc(p)}</option>`).join("");
+  $("projetoSel").innerHTML='<option value="">Escolha o projeto…</option>'+e.projetos.map(p=>`<option value="${esc(p)}" ${p===e.projeto?"selected":""}>${(rodandoSet.has(p)?"⏳ ":"")+esc(p)}</option>`).join("");
   $("audio").value=e.audio;agentesOn=e.agentes;$("agentesBtn").textContent="👥 "+(agentesOn?"on":"off");painel();
 }
 

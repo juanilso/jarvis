@@ -159,12 +159,12 @@ class Execucao:
             return True
         return False
 
-    def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False, cwd=None, usar_sessao=True):
+    def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False, cwd=None, usar_sessao=True, projeto=None):
         """Executa (bloqueante). ao_evento(dict) recebe:
         {"tipo": "agente_inicio"|"agente_fim"|"resposta"|"erro"|"info", ...}
         compactar=True: resume a conversa, encerra a sessão e guarda o resumo como contexto."""
         est = estado.ler()
-        projeto = est["projeto"]
+        projeto = projeto or est["projeto"]
         if not usar_sessao:  # tarefa avulsa (ex.: pesquisa): sem retomar nem salvar a conversa do projeto
             est = dict(est, sessoes={}, resumos={})
         resumo_usado = None
@@ -313,6 +313,36 @@ def painel_projeto(projeto):
     return res
 
 
+class Execucoes:
+    """Uma execução por projeto: projetos diferentes trabalham ao mesmo tempo sem se misturar."""
+
+    def __init__(self):
+        self.limite = max(1, int(os.environ.get("JARVIS_MAX_PARALELO", "2")))
+        self._por_projeto = {}
+        self._lock = threading.Lock()
+
+    def de(self, projeto):
+        with self._lock:
+            return self._por_projeto.setdefault(projeto or "_geral", Execucao())
+
+    def ativos(self):
+        with self._lock:
+            return [(p, e) for p, e in self._por_projeto.items() if e.ocupado]
+
+    def pode_iniciar(self, projeto):
+        if self.de(projeto).ocupado:
+            return False, "Este projeto ainda está trabalhando no pedido anterior. Use /status ou /parar."
+        if len(self.ativos()) >= self.limite:
+            nomes = ", ".join(p for p, _ in self.ativos())
+            return False, (f"Já há {self.limite} projeto(s) trabalhando ao mesmo tempo ({nomes}). Espere um terminar "
+                           "ou use /parar nele. O limite fica em JARVIS_MAX_PARALELO no .env.claude.")
+        return True, ""
+
+    def resumo(self):
+        return [{"projeto": "pesquisa" if p == "_pesquisa" else p, "pedido": e.pedido,
+                 "segundos": int(time.time() - e.inicio) if e.inicio else 0} for p, e in self.ativos()]
+
+
 # ------------------------------------------------------------------ comandos "/"
 PROMPT_COMPACTAR = (
     "Resuma esta conversa para continuarmos depois numa sessão nova, em português, em no máximo 25 linhas: "
@@ -369,6 +399,10 @@ Design e sites
 Conhecimento
 • /ideia <texto> (ou diga "ideia: …" por áudio) · /lembrar <assunto> · /pesquisar <tema>
 
+Vários projetos
+• Mande no projeto A, troque (/projeto B) e mande outra: os dois trabalham juntos. As mensagens vêm marcadas [projeto].
+• /status mostra todos · /parar para só o projeto atual · limite padrão: 2 ao mesmo tempo
+
 Controle
 • /compactar (conversa longa) · /novo · /custo · /modelo sonnet · /parar · /audio · /agentes
 
@@ -382,7 +416,7 @@ INTERATIVOS = {"/mcp", "/login", "/logout", "/config", "/plugin", "/plugins", "/
 EQUIVALENTES = {"/compact": "/compactar", "/clear": "/novo", "/model": "/modelo"}
 
 
-def comando(estado, execucao, texto):
+def comando(estado, pool, texto):
     """Comandos do painel/Telegram. Retorna (resposta, acao) ou (None, None) se não for comando local.
     acao="compactar" pede para a interface rodar a compactação em segundo plano."""
     cmd, _, resto = texto.strip().partition(" ")
@@ -398,6 +432,7 @@ def comando(estado, execucao, texto):
     arg = resto.strip()
     est = estado.ler()
     proj = est["projeto"]
+    execucao = pool.de(proj)
     if cmd in ("/ideia", "/lembrar", "/sincronizar", "/pesquisar"):
         import kb  # import tardio (kb depende deste módulo)
         if cmd == "/ideia":
@@ -423,8 +458,9 @@ def comando(estado, execucao, texto):
         if cmd == "/pesquisar":
             if not arg:
                 return "Diga o tema: /pesquisar melhores gateways de pagamento PIX para PHP", None
-            if execucao.ocupado:
-                return "Espere o pedido atual terminar (ou use /parar) para pesquisar.", None
+            ok, motivo = pool.pode_iniciar("_pesquisa")
+            if not ok:
+                return motivo, None
             return f"🔎 Pesquisando “{arg}”… aviso quando terminar.", "pesquisar"
     if cmd == "/guia":
         return GUIA, None
@@ -440,9 +476,11 @@ def comando(estado, execucao, texto):
         estado.salvar(est)
         return f"✅ Projeto atual: {arg}", None
     if cmd == "/status":
-        if execucao.ocupado:
-            mins = int((time.time() - execucao.inicio) // 60)
-            return f"🔄 Rodando há {mins} min em {execucao.projeto}: “{execucao.pedido}”", None
+        ativos = pool.resumo()
+        if ativos:
+            linhas = "\n".join(f"🔄 {a['projeto']}: “{a['pedido']}” há {a['segundos'] // 60}m{a['segundos'] % 60:02d}s"
+                               for a in ativos)
+            return f"{linhas}\nProjeto atual: {proj or 'nenhum'} · limite: {pool.limite} ao mesmo tempo", None
         extra = " · conversa compactada (resumo pronto)" if est["resumos"].get(proj) else ""
         return f"💤 Livre · projeto: {proj or 'nenhum'} · modelo: {est.get('modelo') or 'padrão'}{extra}", None
     if cmd == "/novo":

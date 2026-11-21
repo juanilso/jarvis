@@ -27,7 +27,7 @@ API = f"https://api.telegram.org/bot{TOKEN}/"
 FILE_API = f"https://api.telegram.org/file/bot{TOKEN}/"
 
 estado = core.Estado("telegram")
-execucao = core.Execucao()
+pool = core.Execucoes()
 
 AJUDA = (
     "🤖 Jarvis no Telegram\n\n"
@@ -138,8 +138,9 @@ class Progresso:
         self._editar(self._texto(f"{'✅ Concluído' if ok else '⚠️ Terminou com problema'} em {s // 60}m{s % 60:02d}s"))
 
 
-def rodar(chat_id, texto, responder_audio, compactar=False):
-    prog = None if compactar else Progresso(chat_id, estado.ler()["projeto"])
+def rodar(chat_id, texto, responder_audio, compactar=False, proj=None):
+    proj = proj or estado.ler()["projeto"]
+    prog = None if compactar else Progresso(chat_id, proj)
 
     def ao_evento(ev):
         if ev["tipo"] in ("acao", "pensando"):
@@ -150,22 +151,23 @@ def rodar(chat_id, texto, responder_audio, compactar=False):
             return
         if ev["tipo"] in ("resposta", "erro") and prog:
             prog.fim(ev["tipo"] == "resposta" and not ev.get("erro"))
+        tag = f"[{proj}] "  # deixa claro de qual projeto é cada mensagem (vários podem rodar ao mesmo tempo)
         if ev["tipo"] == "agente_inicio":
-            enviar(chat_id, f"{ev['emoji']} {ev['agente']} começou: {ev['descricao']}")
+            enviar(chat_id, f"{tag}{ev['emoji']} {ev['agente']} começou: {ev['descricao']}")
         elif ev["tipo"] == "agente_fim":
             st = "⚠️ terminou com erro" if ev["erro"] else "✅ concluiu"
-            enviar(chat_id, f"{ev['emoji']} {ev['agente']} {st} ({ev['segundos']}s)")
+            enviar(chat_id, f"{tag}{ev['emoji']} {ev['agente']} {st} ({ev['segundos']}s)")
         elif ev["tipo"] == "info":
-            enviar(chat_id, ev["texto"])
+            enviar(chat_id, tag + ev["texto"])
         elif ev["tipo"] == "erro":
-            enviar(chat_id, "⚠️ " + ev["texto"])
+            enviar(chat_id, f"{tag}⚠️ " + ev["texto"])
         elif ev["tipo"] == "resposta":
             rodape = f"\n\n💲 custo estimado: US$ {ev['custo']:.4f}" if ev.get("custo") else ""
-            enviar(chat_id, ("⚠️ " if ev["erro"] else "") + ev["texto"] + rodape)
+            enviar(chat_id, f"📁 {proj}\n" + ("⚠️ " if ev["erro"] else "") + ev["texto"] + rodape)
             if ev["audio"]:
                 falar(chat_id, ev["resumo"])
 
-    execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
+    pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
 
 
 def pesquisar(chat_id, tema):
@@ -176,7 +178,7 @@ def pesquisar(chat_id, tema):
             enviar(chat_id, ev["texto"] + (f"\n\n💲 custo estimado: US$ {ev['custo']:.4f}" if ev.get("custo") else ""))
         elif ev["tipo"] in ("erro", "info"):
             enviar(chat_id, ev["texto"])
-    execucao.rodar(estado, prompt, False, ao_evento, cwd=kb.KB_DIR, usar_sessao=False)
+    pool.de("_pesquisa").rodar(estado, prompt, False, ao_evento, cwd=kb.KB_DIR, usar_sessao=False)
     kb.sincronizar()
     if os.path.exists(destino):
         enviar(chat_id, f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}")
@@ -186,11 +188,11 @@ def iniciar_pedido(chat_id, texto, veio_de_audio):
     est = estado.ler()
     if not est["projeto"]:
         enviar(chat_id, "Escolha um projeto antes: /projetos e depois /projeto <nome>")
-    elif execucao.ocupado:
-        enviar(chat_id, "Ainda estou trabalhando no pedido anterior. Use /status ou /parar.")
+    elif not pool.pode_iniciar(est["projeto"])[0]:
+        enviar(chat_id, pool.pode_iniciar(est["projeto"])[1])
     else:
         audio = est["audio"] == "sempre" or (est["audio"] == "auto" and veio_de_audio)
-        threading.Thread(target=rodar, args=(chat_id, texto, audio), daemon=True).start()
+        threading.Thread(target=rodar, args=(chat_id, texto, audio, False, est["projeto"]), daemon=True).start()
 
 
 def tratar_audio(chat_id, msg):
@@ -211,7 +213,7 @@ def tratar_audio(chat_id, msg):
     enviar(chat_id, f"📝 Entendi: “{texto}”")
     m = re.match(r"^\s*(ideia|anota|anote|anotar)\b[\s:,.-]*(.+)", texto, re.I | re.S)
     if m:  # "ideia: ..." por voz vira /ideia
-        enviar(chat_id, core.comando(estado, execucao, "/ideia " + m.group(2).strip())[0])
+        enviar(chat_id, core.comando(estado, pool, "/ideia " + m.group(2).strip())[0])
         return
     iniciar_pedido(chat_id, texto, veio_de_audio=True)
 
@@ -238,8 +240,9 @@ def processar_anexos(chat_id, msgs):
     if not est["projeto"]:
         enviar(chat_id, "Escolha um projeto antes de mandar arquivos: /projetos e depois /projeto <nome>")
         return
-    if execucao.ocupado:
-        enviar(chat_id, "Ainda estou trabalhando no pedido anterior. Mande o arquivo de novo quando terminar.")
+    ok, motivo = pool.pode_iniciar(est["projeto"])
+    if not ok:
+        enviar(chat_id, motivo + " Mande o arquivo de novo depois.")
         return
     os.makedirs(ANEXOS_DIR, exist_ok=True)
     caminhos, legenda = [], ""
@@ -270,7 +273,7 @@ def processar_anexos(chat_id, msgs):
     enviar(chat_id, f"📎 Recebi {len(caminhos)} arquivo(s): {nomes}" +
            ("" if legenda else "\nDica: escreva a pergunta na legenda da imagem."))
     audio = est["audio"] == "sempre"
-    threading.Thread(target=rodar, args=(chat_id, texto, audio), daemon=True).start()
+    threading.Thread(target=rodar, args=(chat_id, texto, audio, False, est["projeto"]), daemon=True).start()
 
 
 def tratar(msg):
@@ -294,10 +297,10 @@ def tratar(msg):
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
-        resposta, acao = core.comando(estado, execucao, texto)
+        resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
         if acao == "compactar":
-            threading.Thread(target=rodar, args=(chat_id, "", False, True), daemon=True).start()
+            threading.Thread(target=rodar, args=(chat_id, "", False, True, estado.ler()["projeto"]), daemon=True).start()
         elif acao == "pesquisar":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip()), daemon=True).start()
         return
@@ -320,17 +323,13 @@ def tratar(msg):
             estado.salvar(est)
             enviar(chat_id, f"✅ Projeto atual: {nome}")
     elif cmd == "/status":
-        if execucao.ocupado:
-            mins = int((time.time() - execucao.inicio) // 60)
-            enviar(chat_id, f"🔄 Rodando há {mins} min em {execucao.projeto}: “{execucao.pedido}”")
-        else:
-            enviar(chat_id, f"💤 Livre. Projeto atual: {est['projeto'] or 'nenhum'}")
+        enviar(chat_id, core.comando(estado, pool, "/status")[0])
     elif cmd == "/novo":
         est["sessoes"].pop(est["projeto"], None)
         estado.salvar(est)
         enviar(chat_id, "🆕 A próxima mensagem começa uma conversa nova.")
     elif cmd == "/parar":
-        enviar(chat_id, "Parando…" if execucao.parar() else "Nada rodando.")
+        enviar(chat_id, "Parando…" if pool.de(est["projeto"]).parar() else "Nada rodando neste projeto.")
     elif cmd == "/audio":
         if arg not in ("auto", "sempre", "nunca"):
             enviar(chat_id, f"Áudio está em: {est['audio']}. Use /audio auto, /audio sempre ou /audio nunca.")

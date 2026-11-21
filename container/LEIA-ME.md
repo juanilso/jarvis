@@ -110,3 +110,9 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - 🗺 Mapa do sistema (Floorplan) com /jarvis:mapa · ❔ Guia de uso no painel ou /guia.
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
+
+## Jarvis 1.6: vários projetos ao mesmo tempo
+- Cada projeto tem a sua própria execução: dá para mandar uma demanda no A, trocar para o B e mandar outra.
+- Limite padrão de 2 projetos simultâneos (`JARVIS_MAX_PARALELO` no `.env.claude`). Cada um consome memória e tokens.
+- Painel: projetos trabalhando aparecem com ⏳; Telegram: mensagens marcadas com [projeto]; /status lista todos.
+- Restauração: branch `versao-1.5.0`.
