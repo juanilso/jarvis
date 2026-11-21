@@ -424,7 +424,8 @@ def modelos_gateway(forcar=False):
         res["erro"] = "sem ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN neste serviço (confira o .env.claude)"
         return res
     cab = {"x-api-key": chave, "Authorization": f"Bearer {chave}", "anthropic-version": "2023-06-01",
-           "Accept": "application/json", "User-Agent": "jarvis"}
+           "Accept": "application/json",
+           "User-Agent": os.environ.get("JARVIS_USER_AGENT", "Jarvis/1.12 (+https://github.com/juanilso/jarvis)")}
     caminhos = ["/models"] if base.endswith("/v1") else ["/v1/models", "/models"]
     vistos = set()
     for caminho in caminhos:

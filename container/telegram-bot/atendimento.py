@@ -28,6 +28,7 @@ HORAS_HUMANO = float(os.environ.get("ATENDIMENTO_HORAS_HUMANO", "12"))
 LIMITE_MSGS = 15          # por conversa, a cada 10 minutos
 GUARDA_SEG = 24 * 3600    # histórico máximo
 _lock = threading.Lock()
+UA = os.environ.get("JARVIS_USER_AGENT", "Jarvis-Atendimento/1.12 (+https://github.com/juanilso/jarvis)")
 
 MODELO_FAQ = """# Atendimento — base de respostas
 <!-- Edite à vontade: o robô responde SÓ com base neste arquivo. Comentários como este são ignorados. -->
@@ -169,8 +170,9 @@ def _perguntar_modelo(historico, faq, extra=""):
     if not msgs:
         msgs = [{"role": "user", "content": "oi"}]
     sistema = REGRAS + faq_limpo + (("\n\nSITUAÇÃO ATUAL: " + extra) if extra else "")
+    # User-Agent próprio: proteções como a do Cloudflare (erro 1010) bloqueiam o "Python-urllib" padrão
     cab = {"content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": chave,
-           "authorization": f"Bearer {chave}"}
+           "authorization": f"Bearer {chave}", "user-agent": UA, "accept": "application/json"}
     erros = []
     for modelo in _modelos():  # o primeiro que o gateway aceitar fica guardado para as próximas
         corpo = {"model": modelo, "max_tokens": 450, "system": sistema, "messages": msgs}
@@ -187,8 +189,8 @@ def _perguntar_modelo(historico, faq, extra=""):
         except urllib.error.HTTPError as e:
             corpo_erro = e.read().decode("utf-8", "replace")[:200]
             erros.append(f"{modelo}: HTTP {e.code} {corpo_erro}")
-            if e.code in (401, 403):
-                break  # chave recusada: trocar de modelo não resolve
+            if e.code == 401 or (e.code == 403 and "1010" in corpo_erro):
+                break  # chave recusada ou bloqueio do Cloudflare: trocar de modelo não resolve
         except Exception as e:  # noqa: BLE001
             erros.append(f"{modelo}: {type(e).__name__}")
     print("atendimento: modelo falhou:", " | ".join(erros), flush=True)
