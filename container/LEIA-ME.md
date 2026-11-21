@@ -127,8 +127,9 @@ preencha a **Base de respostas** → no n8n, ative "Jarvis · Atendimento WhatsA
 
 **Como ele se comporta**
 - Responde só com o que está na base; se não souber, se o cliente pedir um atendente ou for reclamação/reembolso,
-  avisa você no Telegram e para de responder aquela conversa.
-- Quando você responde pelo WhatsApp, o robô se cala naquela conversa por 12 h. `#bot` na conversa (ou `/devolver <número>`)
+  avisa você no Telegram (1 vez a cada 2 h por conversa) e **continua conversando** com o cliente.
+- Só quando você responde pelo WhatsApp o robô se cala naquela conversa (por 12 h).
+- Modelo: tenta o rápido (haiku) e, se o gateway não tiver, usa o próximo (sonnet). Veja os nomes com `/modelos`. `#bot` na conversa (ou `/devolver <número>`)
   devolve ao robô. `/assumir <número>` faz o contrário. `/atendimento off` pausa tudo.
 - Ignora grupos, status e canais; não lê áudio/imagem (pede texto); limita mensagens em sequência.
 - **Segurança:** o modelo do atendimento não tem nenhuma ferramenta (não roda comandos, não lê projetos, não mexe no painel).

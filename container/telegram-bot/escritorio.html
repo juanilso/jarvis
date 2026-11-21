@@ -170,7 +170,7 @@ async function atualizar(){
   $("i-recepcao").innerHTML=!at.configurado?'<span class="num">desligado · <code>./whatsapp-configurar.sh</code></span>':
     `<span class="num">${at.ligado?"🤖 robô ligado":"⏸ robô pausado"}</span><span class="num"><b>${at.mensagens_hoje||0}</b>mensagens hoje</span>`+
     `<span class="num"><b>${at.respostas_hoje||0}</b>respostas</span><span class="num"><b>${at.humano_hoje||0}</b>para você</span>`+
-    ((at.aguardando||[]).length?`<span class="fila">🙋 com você: ${esc(at.aguardando.map(x=>x.nome||x.numero).join(", "))}</span>`:"");
+    ((at.aguardando||[]).length?`<span class="fila">🙋 precisam de você: ${esc(at.aguardando.map(x=>x.nome||x.numero).join(", "))}</span>`:"");
   const rs=d.rotinas||[],emCurso=rs.filter(r=>r.ok===null||r.ok===undefined),ult=rs.find(r=>r.ok!==null&&r.ok!==undefined);
   $("s-n8n").classList.toggle("ativa",d.n8n&&emCurso.length>0);
   $("i-n8n").innerHTML=!d.n8n?"desligado · <code>./automacoes-configurar.sh</code>":

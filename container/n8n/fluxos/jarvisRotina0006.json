@@ -33,7 +33,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ acao: \"atender\", evento: $json.body.event, chat: ($json.body.payload || {}).from, nome: (($json.body.payload || {})._data || {}).notifyName || \"\", texto: ($json.body.payload || {}).body || \"\", de_mim: !!($json.body.payload || {}).fromMe, tem_midia: !!($json.body.payload || {}).hasMedia, timestamp: ($json.body.payload || {}).timestamp, id: ($json.body.payload || {}).id, origem: ($json.body.payload || {}).source || \"\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ acao: \"atender\", evento: $json.body.event, chat: ($json.body.payload || {}).from, nome: (($json.body.payload || {})._data || {}).notifyName || \"\", texto: ($json.body.payload || {}).body || \"\", de_mim: !!($json.body.payload || {}).fromMe, tem_midia: !!($json.body.payload || {}).hasMedia, timestamp: ($json.body.payload || {}).timestamp, id: ($json.body.payload || {}).id, origem: ($json.body.payload || {}).source || \"\", telefone: (((($json.body.payload || {})._data || {}).key || {}).senderPn || ((($json.body.payload || {})._data || {}).key || {}).remoteJidAlt || \"\") }) }}",
         "options": {
           "timeout": 90000
         }
