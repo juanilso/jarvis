@@ -111,6 +111,14 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.8: voz do Hermes e cérebro com linhas de pensamento
+
+- **Voz do Hermes:** as respostas do `/hermes` vêm faladas com outro timbre (painel e Telegram). Troque em `HERMES_VOICE`
+  e `HERMES_VOICE_TOM` no `.env.claude`. Com 🔊 em "nunca", ele não fala.
+- **Cérebro novo:** linhas de pensamento viajam entre as regiões do cérebro; cada agente acende a sua região e o nome aparece ao lado.
+- **Para aplicar** (as imagens e a página ficam dentro da imagem do docker, por isso o `build` é necessário):
+  `git pull && docker compose build && docker compose --profile web --profile telegram up -d` e Ctrl+F5 no painel.
+
 ## Jarvis 1.7.1: correção do Hermes + holograma novo
 
 - **Erro "Anthropic rejected your API key / invalid x-api-key":** o Hermes ia direto para a Anthropic em vez do seu gateway.

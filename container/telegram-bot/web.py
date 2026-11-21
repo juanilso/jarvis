@@ -36,7 +36,7 @@ VOZ_DIR = tempfile.mkdtemp(prefix="jarvis-voz-")
 
 
 HIST_DIR = os.path.join(core.CONFIG_DIR, "historico-web")
-PERSISTIR = {"usuario", "resposta", "info", "erro", "agente_inicio", "agente_fim", "sistema"}
+PERSISTIR = {"hermes", "usuario", "resposta", "info", "erro", "agente_inicio", "agente_fim", "sistema"}
 _contador = [0]
 
 
@@ -78,6 +78,19 @@ def carregar_historico(limite=150):
             _contador[0] += 1
             ev["id"] = _contador[0]
             eventos.append(ev)
+
+
+def publicar_hermes(tipo, texto, proj):
+    """Resposta do Hermes no painel; fala com a voz dele, exceto com áudio em "nunca"."""
+    ev = {"tipo": tipo, "texto": texto}
+    if tipo == "hermes" and estado.ler()["audio"] != "nunca":
+        nome = secrets.token_hex(8) + ".mp3"
+        try:
+            if core.falar_hermes(texto, os.path.join(VOZ_DIR, nome)):
+                ev["voz"] = "/voz/" + nome
+        except Exception as e:  # noqa: BLE001
+            print("erro na voz do Hermes:", e, flush=True)
+    publicar(ev, proj)
 
 
 def rodar(texto, responder_audio, compactar=False, proj=None):
@@ -142,7 +155,7 @@ def iniciar(texto, veio_de_audio):
             elif acao == "hermes":
                 proj = estado.ler()["projeto"]
                 threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), proj,
-                                 lambda tipo, t: publicar({"tipo": tipo, "texto": t}, proj)), daemon=True).start()
+                                 lambda tipo, t: publicar_hermes(tipo, t, proj)), daemon=True).start()
             return None
     est = estado.ler()
     if not est["projeto"]:

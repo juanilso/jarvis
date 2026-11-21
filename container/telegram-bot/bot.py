@@ -75,11 +75,19 @@ def enviar(chat_id, texto):
             print("erro ao enviar:", e, flush=True)
 
 
-def falar(chat_id, texto):
+def responder_hermes(chat_id, tipo, texto):
+    if tipo != "hermes":
+        return enviar(chat_id, texto)
+    enviar(chat_id, "☤ Hermes:\n\n" + texto)
+    if estado.ler()["audio"] != "nunca":
+        falar(chat_id, texto, hermes=True)
+
+
+def falar(chat_id, texto, hermes=False):
     with tempfile.TemporaryDirectory() as tmp:
         mp3, ogg = os.path.join(tmp, "r.mp3"), os.path.join(tmp, "resposta.ogg")
         try:
-            if not core.gerar_mp3(texto, mp3):
+            if not (core.falar_hermes(texto, mp3) if hermes else core.gerar_mp3(texto, mp3)):
                 return
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", mp3, "-c:a", "libopus", "-b:a", "32k", ogg],
                            check=True, capture_output=True, timeout=120)
@@ -306,7 +314,7 @@ def tratar(msg):
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip()), daemon=True).start()
         elif acao == "hermes":
             threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
-                             lambda tipo, t: enviar(chat_id, t)), daemon=True).start()
+                             lambda tipo, t: responder_hermes(chat_id, tipo, t)), daemon=True).start()
         return
     est = estado.ler()
     cmd, _, resto = texto.partition(" ")

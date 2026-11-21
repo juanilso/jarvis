@@ -15,6 +15,9 @@ WORKSPACE = os.environ.get("JARVIS_WORKSPACE", "/workspace")
 TIMEOUT = int(os.environ.get("JARVIS_TIMEOUT_MIN", "120")) * 60
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
 TTS_VOICE = os.environ.get("TTS_VOICE", "pt-BR-AntonioNeural")
+# voz do Hermes: timbre diferente do Jarvis (veja as opções com: edge-tts --list-voices | grep pt-BR)
+HERMES_VOICE = os.environ.get("HERMES_VOICE", "pt-BR-ThalitaMultilingualNeural")
+HERMES_VOICE_TOM = os.environ.get("HERMES_VOICE_TOM", "")  # ex.: -6Hz (mais grave) ou +4Hz
 CONFIG_DIR = os.path.expanduser(os.environ.get("CLAUDE_CONFIG_DIR", "~/.claude"))
 
 EMOJI = {"arquiteto": "🏛️", "explorador": "🔎", "desenvolvedor": "💻", "dba": "🗄️", "android": "🤖",
@@ -128,14 +131,29 @@ def limpar_para_fala(texto):
     return re.sub(r"\s+", " ", texto).strip()[:900]
 
 
-def gerar_mp3(texto, destino):
-    """Gera a fala em MP3. Retorna True se conseguiu."""
+def gerar_mp3(texto, destino, voz=None, tom=""):
+    """Gera a fala em MP3 (voz padrão: a do Jarvis). Retorna True se conseguiu."""
     texto = limpar_para_fala(texto)
     if not texto:
         return False
-    subprocess.run(["edge-tts", "--voice", TTS_VOICE, "--text", texto, "--write-media", destino],
-                   check=True, capture_output=True, timeout=120)
-    return True
+    vozes = [voz or TTS_VOICE] + (["pt-BR-FranciscaNeural"] if voz and voz != "pt-BR-FranciscaNeural" else [])
+    for i, v in enumerate(vozes):  # se a voz escolhida não existir, usa uma reserva com timbre diferente do Jarvis
+        cmd = ["edge-tts", "--voice", v, "--text", texto, "--write-media", destino]
+        if tom:
+            cmd.insert(1, f"--pitch={tom}")
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+            return True
+        except subprocess.CalledProcessError:
+            if i == len(vozes) - 1:
+                raise
+    return False
+
+
+def falar_hermes(texto, destino):
+    """Fala do Hermes: só o começo da resposta, com a voz dele."""
+    trecho = texto.split("\n\n")[0] if len(texto) > 600 else texto
+    return gerar_mp3(trecho[:700], destino, voz=HERMES_VOICE, tom=HERMES_VOICE_TOM)
 
 
 # ------------------------------------------------------------------ claude
@@ -360,10 +378,11 @@ Todos têm contexto de 1 milhão de tokens. No gateway, a disponibilidade e os n
 Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)
 Seu gateway tem outros? /modelos lista o que ele oferece."""
 def rodar_hermes(pedido, projeto, avisar):
-    """Executa /hermes em segundo plano e entrega a resposta com avisar(tipo, texto)."""
+    """Executa /hermes em segundo plano e entrega a resposta com avisar(tipo, texto).
+    tipo "hermes" = resposta dele (a interface fala com a voz do Hermes)."""
     import hermes_cliente as hermes
     try:
-        avisar("info", "🤝 Hermes:\n\n" + hermes.perguntar(pedido, projeto))
+        avisar("hermes", hermes.perguntar(pedido, projeto))
     except hermes.ErroHermes as e:
         avisar("erro", f"Hermes: {e}")
 

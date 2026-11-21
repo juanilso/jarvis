@@ -32,7 +32,7 @@ main{display:grid;grid-template-columns:230px minmax(0,1fr) 270px;gap:12px;paddi
 .ag.ativo .robo .olho{filter:drop-shadow(0 0 3px var(--c))}.ag.ativo .robo .ant{animation:pl .5s infinite}
 .ag.ativo .st{color:var(--c)}
 .ag.ok .robo{--rc:var(--ok);--olho:var(--ok)}.ag.ok .st{color:var(--ok)}
-.ag.hermes{--c:#ffc45a}.ag.hermes .nm span:first-child{color:#ffc45a}
+.ag.hermes{--c:#ffc45a}.msg.hermes{border-color:#ffc45a66;background:linear-gradient(90deg,#ffc45a14,transparent)}.msg.hermes .quem{color:#ffc45a;font-size:11px;letter-spacing:2px;margin-bottom:4px}.ag.hermes .nm span:first-child{color:#ffc45a}
 .ag.erro .robo{--rc:var(--er);--olho:var(--er)}.ag.erro .st{color:var(--er)}
 @keyframes bob{50%{transform:translateY(-3px)}}
 @keyframes pl{50%{opacity:.35}}
@@ -217,6 +217,16 @@ footer{position:relative}
    Claude do seu gateway, que hoje programa e usa ferramentas melhor que os modelos Hermes. Se quiser o modelo e as ferramentas da Nous
    (busca, navegador, voz e imagens), rode <code>./hermes-configurar.sh --nous</code>: precisa de conta no Nous Portal, com cobrança à parte.
    Para voltar ao gateway: <code>./hermes-configurar.sh</code>.</details>
+  <details><summary>Dá para trocar a voz do Hermes (ou do Jarvis)?</summary>
+   Sim. No <code>.env.claude</code>: <code>HERMES_VOICE=</code> para o Hermes (padrão: <code>pt-BR-ThalitaMultilingualNeural</code>) e
+   <code>TTS_VOICE=</code> para o Jarvis (padrão: <code>pt-BR-AntonioNeural</code>). Outras opções: <code>pt-BR-FranciscaNeural</code>,
+   ou uma voz multilíngue como <code>en-US-AndrewMultilingualNeural</code> (fala português com sotaque). Para deixar mais grave ou agudo:
+   <code>HERMES_VOICE_TOM=-6Hz</code> ou <code>+4Hz</code>. Depois: <code>docker compose --profile web --profile telegram up -d</code>.
+   O Hermes fala as respostas do <code>/hermes</code>, exceto com 🔊 em "nunca".</details>
+  <details><summary>O que são as linhas no cérebro?</summary>
+   São os "pensamentos" do Jarvis: cada agente trabalhando acende uma região (arquiteto e revisor: frente; desenvolvedor e android: topo;
+   dba e documentador: lateral; testador: cerebelo; explorador: parte de trás; deploy: tronco; Hermes: topo de trás, em dourado) e as
+   linhas viajam entre as regiões. Quanto mais trabalho, mais linhas.</details>
   <details><summary>O Hermes testa como um usuário de verdade?</summary>
    Sim, nas tarefas com tela ou site: depois do testador, o Jarvis liga a prévia (👁) e pede ao Hermes para usar o sistema como um
    cliente e relatar o que quebrou. Cada problema vira tarefa e é corrigido e conferido. Você também pode pedir direto:
@@ -307,10 +317,12 @@ async function painel(){
 }
 
 /* ---------- eventos ---------- */
-function tocar(src,el){
+let hermesFala=false;
+function tocar(src,el,quem){
   const a=document.createElement("audio");a.controls=true;a.src=src;el.appendChild(a);
   if(ctx&&ctx.state==="running"){try{const s=ctx.createMediaElementSource(a);s.connect(analyser);}catch(e){}}
-  a.onplay=()=>setModo("falando");a.onended=a.onpause=()=>setModo(ocupado?"pensando":"espera");
+  a.onplay=()=>{hermesFala=quem==="hermes";setModo("falando",hermesFala?"Hermes":"")};
+  a.onended=a.onpause=()=>{hermesFala=false;setModo(ocupado?"pensando":"espera")};
   if(carregado)a.play().catch(()=>{});
 }
 let runDet=null,inicioRun=0,ver=0;
@@ -333,6 +345,7 @@ function mostrar(ev){
   else if(ev.tipo==="erro")add("msg jv err","⚠ "+esc(ev.texto)+h);
   else if(ev.tipo==="sistema")add("ev",esc(ev.texto));
   else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+h);if(carregado)painel()}
+  else if(ev.tipo==="hermes"){const d=add("msg jv hermes",'<div class="quem">☤ HERMES</div>'+fmt(ev.texto)+h);if(ev.voz)tocar(ev.voz,d,"hermes")}
   else if(ev.tipo==="resposta"){
     const custo=ev.custo?`<div class="hora">custo US$ ${Number(ev.custo).toFixed(4)}</div>`:"";
     const d=add("msg jv",(ev.erro?"⚠ ":"")+fmt(ev.texto)+custo+h);
@@ -504,7 +517,25 @@ function carregar(src,base){const im=new Image();im.src=src;const o={im,ok:false
     for(let k=0;k<9000&&o.pts.length<700;k++){const px=Math.floor(Math.random()*IW),py=Math.floor(Math.random()*(base.y-60))+30,i=(py*IW+px)*4;
       if(d[i]*.3+d[i+1]*.59+d[i+2]*.11>150&&Math.abs(px-300)<220)o.pts.push([px,py])}};
   return o}
-const imgC=carregar("/static/cerebro.jpg",{x:290,y:440}),imgR=carregar("/static/rosto.jpg",{x:293,y:498}),imgH=carregar("/static/hermes.jpg",{x:293,y:498});
+const imgC=carregar("/static/cerebro.jpg?v=172",{x:300,y:465}),imgR=carregar("/static/rosto.jpg?v=172",{x:293,y:498}),imgH=carregar("/static/hermes.jpg?v=172",{x:293,y:498});
+/* regiões do cérebro (coordenadas da imagem 600x600; frente à esquerda) e qual agente "acende" cada uma */
+const REG={frontal:{x:165,y:175,r:52,c:"120,220,255"},motor:{x:300,y:105,r:50,c:"150,170,255"},parietal:{x:410,y:135,r:46,c:"190,140,255"},
+  occipital:{x:468,y:228,r:38,c:"255,130,230"},temporal:{x:300,y:268,r:46,c:"110,255,220"},cerebelo:{x:420,y:318,r:36,c:"255,170,120"},
+  tronco:{x:360,y:372,r:20,c:"255,220,140"},centro:{x:290,y:200,r:30,c:"200,240,255"}};
+const REG_AG={jarvis:"centro",arquiteto:"frontal",revisor:"frontal",explorador:"occipital",desenvolvedor:"motor",android:"motor",
+  dba:"temporal",documentador:"temporal",testador:"cerebelo",deploy:"tronco",hermes:"parietal"};
+const NOMES_REG=Object.keys(REG);let pens=[],ativ={};NOMES_REG.forEach(n=>ativ[n]=0);
+function pontoEm(n){const R=REG[n],a=Math.random()*6.283,q=Math.sqrt(Math.random())*R.r;return[R.x+Math.cos(a)*q,R.y+Math.sin(a)*q*.8]}
+function novoPensamento(de){ /* uma linha de pensamento: região de origem → (centro) → outra região, em curvas */
+  const para=NOMES_REG.filter(n=>n!==de)[Math.floor(Math.random()*(NOMES_REG.length-1))];
+  const via=Math.random()<.3&&de!=="centro"&&para!=="centro"?["centro"]:[];
+  const nos=[de,...via,para].map(pontoEm),pts=[];
+  for(let i=0;i<nos.length-1;i++){const[a,b]=[nos[i],nos[i+1]],mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,dx=b[0]-a[0],dy=b[1]-a[1],
+    cx=mx-dy*(.25+Math.random()*.3)*(Math.random()<.5?-1:1),cy=my+dx*(.25+Math.random()*.3)*(Math.random()<.5?-1:1);
+    for(let t=0;t<1;t+=.05){const u=1-t;pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0],u*u*a[1]+2*u*t*cy+t*t*b[1]])}}
+  pts.push(nos[nos.length-1]);pens.push({pts,p:0,v:.006+Math.random()*.01,c:REG[de].c,fim:para})}
+function regioesAtivas(){const r=new Set();Object.entries(agEstado).forEach(([n,s])=>{if(s.c&&s.c.startsWith("ativo")&&REG_AG[n])r.add(REG_AG[n])});
+  if(hermesAtivo)r.add("parietal");if(modo==="pensando")r.add("centro");return[...r]}
 let morph=0,hm=0,ultimoT=0,acumulo=0,pulsos=[],brilhos=[],sobe=[];
 function novoPulso(o){if(o.pts.length<2)return;const a=o.pts[Math.floor(Math.random()*o.pts.length)];
   let b=null;for(let k=0;k<25;k++){const c=o.pts[Math.floor(Math.random()*o.pts.length)];const dd=Math.hypot(c[0]-a[0],c[1]-a[1]);if(dd>15&&dd<70){b=c;break}}
@@ -525,19 +556,45 @@ function frame(t){
   let alvo=modo==="falando"?amp(analyser)*2.6:modo==="ouvindo"?amp(window._micAn)*3:0;nivel+=(Math.min(alvo,1)-nivel)*.3;
   morph+=((modo==="falando"?1:0)-morph)*.06;const m=morph*morph*(3-2*morph);
   const resp=.5+.5*Math.sin(t/900);
-  hm+=((hermesAtivo?1:0)-hm)*.05;const hh=hm*hm*(3-2*hm);
+  hm+=((hermesAtivo||hermesFala?1:0)-hm)*.05;const hh=hm*hm*(3-2*hm);
   /* imagens: cérebro (pensando/espera), rosto (falando), rosto dourado (Hermes trabalhando) */
   desenharImg(imgC,(1-m)*(1-hh),k,ox,oy,0);
   desenharImg(imgR,m*(1-hh),k,ox,oy,nivel*9*m);
   desenharImg(imgH,hh,k,ox,oy,nivel*9*m*hh);
+  { /* escurece um pouco o cérebro para as linhas de pensamento aparecerem */
+    const wc=(1-m)*(1-hh);if(wc>.02){g.fillStyle=`rgba(2,6,18,${.42*wc})`;g.fillRect(ox,oy,IW*k,IH*k)}}
   /* brilho que respira e reage à voz */
   g.globalCompositeOperation="lighter";
   const o=hh>.5?imgH:m>.5?imgR:imgC,BASE=o.base;
-  if(o.brilho){g.globalAlpha=Math.min(.9,.18+.14*resp+nivel*.6+(modo==="pensando"?.12:0));g.drawImage(o.brilho,ox,oy,IW*k,IH*k);g.globalAlpha=1}
+  if(o.brilho){g.globalAlpha=Math.min(.9,.18+.14*resp+nivel*.6+(modo==="pensando"?.12:0))*(o===imgC?.45:1);g.drawImage(o.brilho,ox,oy,IW*k,IH*k);g.globalAlpha=1}
   if(modo==="ouvindo"){g.fillStyle=`rgba(255,120,40,${.06+nivel*.18})`;g.fillRect(ox,oy,IW*k,IH*k)}
-  /* sinapses (cérebro) e cintilação (ambos) */
+  /* cérebro: regiões acendem e linhas de pensamento viajam entre elas */
+  const wC=(1-m)*(1-hh);
+  if(wC>.05){const ativas=regioesAtivas(),taxa=(modo==="pensando"?9:1.6)+ativas.length*4;
+    ativas.forEach(n=>ativ[n]=Math.min(1,ativ[n]+dt*3));
+    if(Math.random()<dt*taxa)novoPensamento(ativas.length&&Math.random()<.75?ativas[Math.floor(Math.random()*ativas.length)]:NOMES_REG[Math.floor(Math.random()*NOMES_REG.length)]);
+    NOMES_REG.forEach(n=>{const R=REG[n],[X,Y]=P(R.x,R.y),i=ativ[n]*wC;ativ[n]=Math.max(0,ativ[n]-dt*.5);if(i<.02)return;
+      const rr=R.r*k*(1.1+.15*Math.sin(t/180+R.x)),gr=g.createRadialGradient(X,Y,0,X,Y,rr);
+      gr.addColorStop(0,`rgba(${R.c},${.38*i})`);gr.addColorStop(.5,`rgba(${R.c},${.12*i})`);gr.addColorStop(1,`rgba(${R.c},0)`);
+      g.fillStyle=gr;g.beginPath();g.arc(X,Y,rr,0,7);g.fill()});
+    g.lineCap="round";
+    pens=pens.filter(q=>{q.p+=q.v*(modo==="pensando"?1.6:1);const n=q.pts.length,cab=Math.min(n-1,Math.floor(q.p*n)),cauda=Math.max(0,cab-Math.floor(n*.5));
+      for(let j=cauda;j<cab;j++){const[x1,y1]=P(...q.pts[j]),[x2,y2]=P(...q.pts[j+1]),a=(j-cauda)/(cab-cauda+1);
+        g.strokeStyle=`rgba(${q.c},${a*.35*wC})`;g.lineWidth=(2+a*5)*d;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();
+        g.strokeStyle=`rgba(255,255,255,${a*.8*wC})`;g.lineWidth=(.6+a*1.3)*d;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()}
+      const[hx,hy]=P(...q.pts[cab]),hg=g.createRadialGradient(hx,hy,0,hx,hy,9*d);hg.addColorStop(0,`rgba(255,255,255,${.95*wC})`);hg.addColorStop(.4,`rgba(${q.c},${.7*wC})`);hg.addColorStop(1,`rgba(${q.c},0)`);
+      g.fillStyle=hg;g.fillRect(hx-9*d,hy-9*d,18*d,18*d);
+      if(q.p>=1){ativ[q.fim]=Math.min(1,ativ[q.fim]+.35);return false}return true});
+    if(pens.length>90)pens.splice(0,pens.length-90);
+    /* nome do agente ao lado da região que ele acendeu */
+    g.font=`${10*d}px ui-monospace,monospace`;g.textAlign="center";
+    Object.entries(agEstado).forEach(([n,s])=>{if(!(s.c&&s.c.startsWith("ativo"))||!REG_AG[n])return;const R=REG[REG_AG[n]],[X,Y]=P(R.x,R.y-R.r-6);
+      g.fillStyle=`rgba(${R.c},${.85*wC})`;g.fillText(n,X,Y)});
+    if(hermesAtivo){const R=REG.parietal,[X,Y]=P(R.x,R.y-R.r-6);g.fillStyle=`rgba(255,200,90,${.9*wC})`;g.fillText("hermes",X,Y)}
+  }
+  /* cintilação (todos) e sinapses curtas (rostos) */
   const ritmo={espera:3,ouvindo:10,pensando:30,falando:4}[modo];
-  acumulo+=dt*(ritmo+nivel*30);while(acumulo>1){acumulo--;novoPulso(o);if(o.pts.length)brilhos.push({p:o.pts[Math.floor(Math.random()*o.pts.length)],v:1})}
+  acumulo+=dt*(ritmo+nivel*30);while(acumulo>1){acumulo--;if(o!==imgC)novoPulso(o);if(o.pts.length)brilhos.push({p:o.pts[Math.floor(Math.random()*o.pts.length)],v:1})}
   const cor=modo==="ouvindo"?"255,170,90":hh>.5?"255,214,120":"170,255,240";
   pulsos=pulsos.filter(q=>{q.p+=q.v;const x=q.a[0]+(q.b[0]-q.a[0])*q.p,y=q.a[1]+(q.b[1]-q.a[1])*q.p,[X,Y]=P(x,y);
     const gr=g.createRadialGradient(X,Y,0,X,Y,7*d);gr.addColorStop(0,`rgba(${cor},.95)`);gr.addColorStop(1,`rgba(${cor},0)`);
