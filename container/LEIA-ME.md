@@ -111,6 +111,34 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.13: pagamentos FastFlow e autoatendimento com a API do painel
+
+**O que faz**
+- **Pagamento no Telegram** ("PAGAMENTO FASTFLOW RECEBIDO"): o Jarvis lê, confere o login no painel e manda WhatsApp ao cliente:
+  - "Nome informado" é um login válido e o FastFlow já renovou → só confirma ("ativo até …");
+  - login válido mas não renovado → renova pela API (se `PAINEL_ACAO_RENOVAR` existir) ou avisa você para renovar;
+  - sem login (ou era um nome) → pede o login no WhatsApp; quando o cliente responde, confere e conclui.
+  - Cada pagamento (#id) é processado uma única vez. Você recebe um resumo no Telegram.
+- **WhatsApp (autoatendimento):** "quando vence?" → consulta e responde; "quero teste" → cria teste
+  (1 por telefone a cada 30 dias, até `PAINEL_TESTES_DIA`=20 por dia); cancelar/alterar → chama você.
+- **n8n:** ações `pagamento`, `painel_consultar`, `painel_teste` no gatilho (exemplo: "Jarvis · Funções do painel").
+
+**Segurança:** quem chama a API é código com regras fixas, não a IA. A consulta mostra ao cliente só status e vencimento
+(nunca senha ou links). Renovação só a partir de um pagamento confirmado. O token fica só no `.env.atendimento`.
+
+**Ligar (na VPS):**
+```bash
+cd ~/jarvis/container && git pull
+docker compose build && docker compose --profile web --profile telegram up -d
+./painel-configurar.sh      # pede o token (sem mostrar), a tabela valor=meses e o grupo/canal dos pagamentos
+```
+**Onde chegam os pagamentos:** grupo (adicione o bot do Jarvis; no @BotFather `/setprivacy` → Disable) ou canal (bot como
+admin). Se chegam numa conversa privada com o bot do FastFlow, encaminhe as mensagens para o bot do Jarvis.
+
+**⚠️ API do painel:** chamar `api.php` sem token/ação cria uma conta de teste. Corrija para exigir token e `action`,
+e limite testes por telefone/IP. Para renovar pela API, crie uma action (ex.: `renew_client`) com token, `username`,
+`months` e `reference` (para não renovar 2 vezes o mesmo pagamento) e informe o nome no `./painel-configurar.sh`.
+
 ## Jarvis 1.11: atendimento automático no WhatsApp (WhatsApp Web)
 
 O número da empresa fica conectado pelo **WhatsApp Web** (WAHA Core, código aberto), sem a API da Meta.

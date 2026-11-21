@@ -1,0 +1,80 @@
+{
+  "id": "jarvisRotina0007",
+  "name": "Jarvis · Funções do painel (exemplo)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "108457fa-1c1d-4f88-b476-2de4722b72db",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"acao\": \"painel_consultar\",\n  \"login\": \"44296196\"\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "47c92bae-05ec-42c1-ba73-c7536c54e79e",
+      "name": "Consultar no painel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Funções do painel (exemplo)\nAções do gatilho do Jarvis para usar em qualquer fluxo:\n\n- `painel_consultar` + `login` → status e vencimento\n- `painel_teste` + `telefone` → cria teste e devolve a mensagem\n- `pagamento` + `texto` (mensagem FastFlow) → confere, renova/confirma e avisa o cliente no WhatsApp\n\nTroque o login e clique em **Executar fluxo** para testar.",
+        "height": 260,
+        "width": 420
+      },
+      "id": "785368ad-9c72-4e90-941f-0779b2b5f5d8",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Consultar no painel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

@@ -293,6 +293,12 @@ footer{position:relative}
    <code>/devolver &lt;número&gt;</code> para devolver. Comandos: <code>/atendimento</code> (status, on, off), <code>/assumir</code>.
    <b>Atenção:</b> não é a API oficial da Meta; use um número só da empresa, só para responder (nada de mensagens em massa),
    porque o WhatsApp pode bloquear números com uso automatizado.</details>
+  <details><summary>Como funcionam os pagamentos FastFlow e o autoatendimento?</summary>
+   Quando chega "PAGAMENTO FASTFLOW RECEBIDO" no Telegram (grupo/canal com o bot do Jarvis, ou mensagem encaminhada a ele),
+   o Jarvis confere o login no painel: se já está renovado, confirma ao cliente no WhatsApp; se não, renova (ou te avisa);
+   se não veio o login, pergunta ao cliente e conclui quando ele responder. No WhatsApp, o cliente também pode perguntar
+   "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure com <code>./painel-configurar.sh</code>.
+   Quem chama a API é código com regras fixas: a IA só entende o pedido.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>

@@ -3,7 +3,8 @@
 POST /api/gatilho  (cabeçalho: Authorization: Bearer <JARVIS_GATILHO_TOKEN>)
 {
   "rotina":  "Pesquisa semanal",          nome que aparece no escritório e nos avisos
-  "acao":    "hermes" | "jarvis" | "pesquisar" | "tendencias" | "ideia" | "avisar" | "status",
+  "acao":    "hermes" | "jarvis" | "pesquisar" | "tendencias" | "ideia" | "avisar" | "status" | "atender"
+             | "pagamento" (texto) | "painel_consultar" (login) | "painel_teste" (telefone),
   "texto":   "o pedido",
   "projeto": "pasta do projeto" (opcional; padrão: o projeto atual do painel),
   "avisar":  true                          manda o resultado no Telegram
@@ -26,7 +27,8 @@ import jarvis_core as core
 
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
-ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender"}
+ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
+         "pagamento", "painel_consultar", "painel_teste"}
 _lock = threading.Lock()
 
 
@@ -97,6 +99,18 @@ def executar(dados, publicar, pool, estado):
     if acao == "atender":  # WhatsApp: resposta rápida, sem registrar como rotina (seria ruído)
         import atendimento
         return 200, dict(atendimento.atender(dados), ok=True)
+    if acao == "pagamento":  # mensagem "PAGAMENTO FASTFLOW RECEBIDO" (Telegram ou n8n)
+        import pagamentos
+        r = pagamentos.processar(str(dados.get("texto", ""))[:4000], fonte=str(dados.get("fonte") or "gatilho"))
+        return (200 if r.get("ok") or r.get("repetido") else 422), r
+    if acao in ("painel_consultar", "painel_teste"):  # para fluxos do n8n
+        import painel_api
+        try:
+            if acao == "painel_consultar":
+                return 200, dict(painel_api.consultar(dados.get("login")), ok=True)
+            return 200, dict(painel_api.criar_teste(dados.get("telefone")), ok=True)
+        except painel_api.ErroPainel as e:
+            return 422, {"ok": False, "erro": str(e)}
     rotina = _limpar_nome(dados.get("rotina"))
     texto = str(dados.get("texto", ""))[:4000].strip()
     projeto = str(dados.get("projeto") or estado.ler()["projeto"] or "")

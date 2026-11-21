@@ -284,6 +284,42 @@ def processar_anexos(chat_id, msgs):
     threading.Thread(target=rodar, args=(chat_id, texto, audio, False, est["projeto"]), daemon=True).start()
 
 
+PAGAMENTOS_CHATS = {c.strip() for c in os.environ.get("PAGAMENTOS_CHAT_ID", "").split(",") if c.strip()}
+
+
+def encaminhar_pagamento(texto, origem):
+    """Passa a mensagem do FastFlow ao painel (é lá que ficam as chaves do WhatsApp e da API)."""
+    import urllib.request
+    token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+    if not token:
+        print("pagamento ignorado: falta JARVIS_GATILHO_TOKEN (rode ./automacoes-configurar.sh)", flush=True)
+        return None
+    req = urllib.request.Request("http://jarvisweb:8090/api/gatilho",
+                                 data=json.dumps({"acao": "pagamento", "texto": texto, "fonte": origem}).encode(),
+                                 headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            return json.loads(r.read().decode())
+    except Exception as e:  # noqa: BLE001
+        print("erro ao processar pagamento:", e, flush=True)
+        return {"ok": False, "erro": str(e)}
+
+
+def tratar_pagamento(msg):
+    """Mensagens de pagamento: do grupo/canal configurado ou encaminhadas por você. True = era pagamento."""
+    texto = msg.get("text") or msg.get("caption") or ""
+    if "FASTFLOW" not in texto.upper() or "RECEBIDO" not in texto.upper():
+        return False
+    chat_id = str(msg["chat"]["id"])
+    if chat_id not in PAGAMENTOS_CHATS and chat_id not in ALLOWED:
+        return False
+    r = encaminhar_pagamento(texto, "telegram")
+    if chat_id in ALLOWED and r is not None:  # você encaminhou: responde com o resultado
+        enviar(chat_id, "💰 " + ("já processado antes" if r.get("repetido") else
+                                 r.get("resumo") or r.get("erro") or "processado") + (f" · {r['whatsapp']}" if r.get("whatsapp") else ""))
+    return True
+
+
 def tratar(msg):
     chat_id = str(msg["chat"]["id"])
     if chat_id not in ALLOWED:
@@ -380,8 +416,14 @@ def main():
             r = tg("getUpdates", offset=offset, timeout=50)
             for upd in r.get("result", []):
                 offset = upd["update_id"] + 1
-                if "message" in upd:
-                    tratar(upd["message"])
+                if "channel_post" in upd:  # canal de pagamentos (o bot precisa ser admin do canal)
+                    tratar_pagamento(upd["channel_post"])
+                elif "message" in upd:
+                    if not tratar_pagamento(upd["message"]):
+                        if str(upd["message"]["chat"]["id"]) in PAGAMENTOS_CHATS and \
+                                str(upd["message"]["chat"]["id"]) not in ALLOWED:
+                            continue  # grupo de pagamentos: ignora o resto das conversas
+                        tratar(upd["message"])
         except Exception as e:  # noqa: BLE001
             print("erro no polling:", e, flush=True)
             time.sleep(5)

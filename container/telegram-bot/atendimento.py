@@ -27,7 +27,7 @@ SESSAO = os.environ.get("WAHA_SESSAO", "default")
 HORAS_HUMANO = float(os.environ.get("ATENDIMENTO_HORAS_HUMANO", "12"))
 LIMITE_MSGS = 15          # por conversa, a cada 10 minutos
 GUARDA_SEG = 24 * 3600    # histórico máximo
-_lock = threading.Lock()
+_lock = threading.RLock()  # reentrante: pagamentos chama o atendimento de volta
 UA = os.environ.get("JARVIS_USER_AGENT", "Jarvis-Atendimento/1.12 (+https://github.com/juanilso/jarvis)")
 
 MODELO_FAQ = """# Atendimento — base de respostas
@@ -68,6 +68,16 @@ REGRAS:
   responde em breve, e aproveite para entender melhor o pedido. Não repita a marca [[HUMANO]].
 
 BASE:
+"""
+
+REGRAS_PAINEL = """
+AÇÕES AUTOMÁTICAS (o sistema executa; você só escreve a marca, numa linha sozinha, sem mais nada na mensagem):
+- Cliente quer saber o vencimento / se o acesso está ativo: se ele já disse o login, escreva [[CONSULTAR:login]];
+  se não disse, mas o sistema conhece o login dele (veja SITUAÇÃO ATUAL), escreva [[CONSULTAR:]];
+  se ninguém sabe o login, pergunte qual é o usuário do aplicativo.
+- Cliente pede teste grátis: escreva [[TESTE]].
+- Renovar: explique como pagar conforme a BASE; o pagamento é confirmado automaticamente.
+- Cancelar ou qualquer alteração de acesso: chame o atendente (marca [[HUMANO]]).
 """
 
 PEDE_HUMANO = re.compile(r"\b(atendente|humano|pessoa (real|de verdade)|falar com (algu[eé]m|uma pessoa|o dono|voc[eê]s)|"
@@ -244,6 +254,89 @@ def _evento(e, chat, motivo, texto=""):
                                               "x": texto[:80]}])[-20:]
 
 
+def chat_do_telefone(telefone):
+    """Telefone -> chatId do WhatsApp (o WAHA resolve o nono dígito e o ID interno)."""
+    tel = re.sub(r"\D", "", str(telefone or ""))
+    try:
+        r = waha(f"/api/contacts/check-exists?phone={tel}&session={SESSAO}")
+        if r.get("numberExists") and r.get("chatId"):
+            chat = r["chatId"]
+        else:
+            chat = f"{tel}@c.us"
+    except Exception:  # noqa: BLE001
+        chat = f"{tel}@c.us"
+    with _lock:
+        e = _ler_estado()
+        e.setdefault("telefones", {})[chat] = tel
+        _salvar_estado(e)
+    return chat
+
+
+def enviar_sistema(chat, texto):
+    """Mensagem automática (pagamento, teste): envia e registra na conversa."""
+    enviar(chat, texto)
+    with _lock:
+        e = _ler_estado()
+        _guardar(chat, "bot", texto)
+        _evento(e, chat, "💰 mensagem automática enviada", texto)
+        _salvar_estado(e)
+
+
+def lembrar_login(chat, login, telefone=None):
+    with _lock:
+        e = _ler_estado()
+        e.setdefault("logins", {})[chat] = login
+        if telefone:
+            e.setdefault("telefones", {})[chat] = re.sub(r"\D", "", str(telefone))
+        _salvar_estado(e)
+
+
+def _acoes_painel(e, chat, resposta):
+    """Executa as marcas [[CONSULTAR:…]] e [[TESTE]] com regras fixas. Devolve a resposta final ao cliente."""
+    import painel_api
+    m = re.search(r"\[\[CONSULTAR:([^\]]*)\]\]", resposta)
+    if m:
+        login = m.group(1).strip() or e.get("logins", {}).get(chat, "")
+        if not login:
+            return "Me passa o seu *login (usuário)* do aplicativo que eu consulto pra você. 🙂"
+        try:
+            info = painel_api.consultar(login)
+        except painel_api.ErroPainel:
+            return f"Não encontrei o login *{login}*. 🤔 Confere e me manda de novo, por favor."
+        e.setdefault("logins", {})[chat] = login
+        if info.get("exp") and info["exp"] > time.time():
+            dias = info.get("dias") or 0
+            falta = f"faltam {int(dias)} dias" if dias >= 1 else "vence hoje"
+            return f"Seu acesso *{login}* está ativo até *{info['vencimento']}* ({falta}). ✅"
+        return (f"Seu acesso *{login}* venceu em *{info['vencimento']}*. 😕 Para renovar, é só fazer o pagamento "
+                "que a liberação é automática. Quer as instruções?")
+    if "[[TESTE]]" in resposta:
+        tel = e.get("telefones", {}).get(chat) or (chat.split("@")[0] if chat.endswith("@c.us") else "")
+        if not tel:
+            return "Para criar o seu teste, preciso falar com o atendente. Já avisei! 🙌"
+        testes = e.setdefault("testes", {})
+        if time.time() - testes.get(tel, 0) < 30 * 86400:
+            return "Você já fez um teste nos últimos 30 dias. 🙂 Se quiser, te passo como assinar!"
+        hoje = time.strftime("%Y-%m-%d")
+        dia = e.setdefault("testes_dia", {})
+        if dia.get("d") != hoje:
+            dia.clear()
+            dia["d"] = hoje
+        if dia.get("n", 0) >= int(os.environ.get("PAINEL_TESTES_DIA", "20")):
+            return "Os testes de hoje acabaram. 😕 Já avisei o atendente para te ajudar!"
+        try:
+            t = painel_api.criar_teste(tel)
+        except painel_api.ErroPainel as erro:
+            print("atendimento: teste falhou:", erro, flush=True)
+            return "Não consegui criar o teste agora. 😕 Já avisei o atendente!"
+        testes[tel] = time.time()
+        dia["n"] = dia.get("n", 0) + 1
+        if t.get("login"):
+            e.setdefault("logins", {})[chat] = t["login"]
+        return t["mensagem"]
+    return resposta
+
+
 def status_whatsapp():
     if not WAHA_KEY:
         return {"ok": False, "status": "DESLIGADO", "erro": "WhatsApp não configurado (./whatsapp-configurar.sh)"}
@@ -390,17 +483,29 @@ def atender(dados):
             aviso = "o cliente pediu um atendente e ele JÁ FOI AVISADO."
         elif chat in e.get("esperando", {}):
             aviso = "o atendente JÁ FOI AVISADO e vai responder em breve; continue ajudando e tranquilizando o cliente."
-        if not texto:
+        import painel_api
+        import pagamentos
+        pend = pagamentos.concluir_pendente(chat, texto) if texto and painel_api.configurado() else None
+        if pend:
+            resposta = pend
+            e.setdefault("logins", {}).update(_ler_estado().get("logins", {}))  # login gravado durante a conferência
+        elif not texto:
             resposta = "Por enquanto eu consigo ler só mensagens de texto 🙂 Pode me escrever?"
         else:
+            if painel_api.configurado():
+                login = e.get("logins", {}).get(chat)
+                aviso = (aviso + " " if aviso else "") + (f"O sistema conhece o login deste cliente: {login}." if login else "")
             try:
-                resposta = _perguntar_modelo(_historico(chat), ler_faq(), aviso)
+                resposta = _perguntar_modelo(_historico(chat), ler_faq() + (REGRAS_PAINEL if painel_api.configurado() else ""),
+                                             aviso)
             except Exception as erro:  # noqa: BLE001
                 detalhe = str(erro)[:160]
                 resposta = ("Recebi sua mensagem! 🙏 Tive uma instabilidade aqui, mas já avisei o atendente "
                             "e ele te responde em breve.")
                 _chamar_dono(e, chat, nome, f"o robô falhou ({detalhe})")
                 _evento(e, chat, f"⚠️ robô falhou: {detalhe}", texto)
+            if painel_api.configurado() and ("[[CONSULTAR" in resposta or "[[TESTE]]" in resposta):
+                resposta = _acoes_painel(e, chat, resposta)
             if "[[HUMANO]]" in resposta:
                 resposta = resposta.replace("[[HUMANO]]", "").strip() or "Já avisei o atendente, ele te responde em breve. 🙌"
                 _chamar_dono(e, chat, nome, "o pedido precisa de uma pessoa")
