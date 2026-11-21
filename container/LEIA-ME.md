@@ -111,6 +111,26 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.15: mensagens editáveis, liga/desliga e proteção do número
+
+No **📱** há três seções novas:
+- **Recursos (liga/desliga):** pagamentos automáticos, teste grátis e consulta de vencimento, cada um separado.
+  O robô inteiro continua no botão **⏸ Pausar robô**. Com os pagamentos desligados, você só recebe o aviso no Telegram.
+- **Mensagens automáticas:** edite cada mensagem com `{nome}` `{login}` `{valor}` `{vencimento}` `{falta}`. Escreva várias
+  versões separadas por `||` e o robô sorteia uma. "↺ voltar ao padrão" restaura o texto original.
+- **Proteção do número:** marca como visto e mostra "digitando…", pausa de 2 a 6 s (+ tempo de digitar), no máximo
+  12 respostas por minuto; mensagens que o robô **inicia** (pagamentos) saem por uma **fila** com 45 s de intervalo,
+  no máximo 30 por hora, e ficam guardadas no **horário de silêncio** (22h–8h) até o fim dele. A fila sobrevive a reinícios.
+
+**Boas práticas para não ter o número bloqueado** (o que o sistema não controla sozinho):
+- Use um número "aquecido" (com conversas normais há semanas), com foto e nome de empresa no perfil.
+- Não mande mensagens para quem nunca falou com você nem em massa. Pagamentos são exceção natural (o cliente acabou de pagar).
+- Evite links na primeira mensagem que o robô inicia; prefira mandar o link depois que o cliente responder.
+- Peça aos clientes para salvarem o número: contatos salvos e respostas rápidas melhoram a reputação.
+- Se o número receber denúncias/bloqueios, pause o robô e aumente intervalos.
+
+**Aplicar:** `git pull && docker compose build && docker compose --profile web up -d jarvisweb` (Ctrl+F5 no painel).
+
 ## Jarvis 1.14: API do painel no 📱, robô volta após 30 min e leitor do @DastDePixPartnerBot
 
 - **📱 → Painel (API) e regras:** endereço do `api.php`, token (fica guardado num volume só do painel; a tela nunca mostra),

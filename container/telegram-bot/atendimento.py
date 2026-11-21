@@ -10,12 +10,14 @@ Privacidade: guarda só as últimas mensagens de cada conversa por até 24 h.
 import hashlib
 import json
 import os
+import random
 import re
 import threading
 import time
 import urllib.error
 import urllib.request
 
+import atend_config as C
 import jarvis_core as core
 
 DIR = os.path.join(core.CONFIG_DIR, "atendimento")
@@ -234,7 +236,39 @@ def _id_msg(j):
     return str(i or "")
 
 
-def enviar(chat, texto):
+_envios = []          # horários das últimas respostas do robô (limite por minuto)
+_envio_lock = threading.Lock()
+
+
+def _como_pessoa(chat, texto):
+    """Proteção do número: marca como visto, mostra "digitando…", pausa proporcional ao texto e limite por minuto."""
+    p = C.protecao()
+    with _envio_lock:
+        agora = time.time()
+        _envios[:] = [t for t in _envios if t > agora - 60]
+        limite = max(1, int(p.get("max_por_minuto") or 12))
+        espera = (_envios[0] + 60 - agora) if len(_envios) >= limite else 0
+        _envios.append(agora + max(0, espera))
+    if espera > 0:
+        time.sleep(min(espera, 60))
+    if not p.get("digitando", True):
+        return
+    for caminho in ("/api/sendSeen", "/api/startTyping"):
+        try:
+            waha(caminho, {"session": SESSAO, "chatId": chat}, tempo=10)
+        except Exception:  # noqa: BLE001
+            pass
+    a, b = sorted((float(p.get("atraso_min") or 0), float(p.get("atraso_max") or 0)))
+    time.sleep(min(random.uniform(a, b) + min(len(texto) / 35.0, 6.0), 20))
+    try:
+        waha("/api/stopTyping", {"session": SESSAO, "chatId": chat}, tempo=10)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def enviar(chat, texto, proteger=True):
+    if proteger:
+        _como_pessoa(chat, texto)
     with _lock:
         e = _ler_estado()
         e.setdefault("enviadas", {}).setdefault(chat, [])
@@ -278,14 +312,98 @@ def chat_do_telefone(telefone):
     return chat
 
 
+FILA = os.path.join(DIR, "fila.json")
+_fila_lock = threading.Lock()
+_fila_viva = threading.Event()
+
+
+def _no_silencio(p, agora=None):
+    ini, fim = p.get("silencio_inicio") or "", p.get("silencio_fim") or ""
+    if not ini or not fim or ini == fim:
+        return False
+    h = time.strftime("%H:%M", time.localtime(agora or time.time()))
+    return (ini <= h < fim) if ini < fim else (h >= ini or h < fim)
+
+
+def _ler_fila():
+    try:
+        return json.load(open(FILA, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"itens": [], "enviadas": []}
+
+
+def _salvar_fila(f):
+    os.makedirs(DIR, exist_ok=True)
+    tmp = FILA + ".tmp"
+    json.dump(f, open(tmp, "w", encoding="utf-8"), ensure_ascii=False)
+    os.replace(tmp, FILA)
+
+
 def enviar_sistema(chat, texto):
-    """Mensagem automática (pagamento, teste): envia e registra na conversa."""
-    enviar(chat, texto)
-    with _lock:
-        e = _ler_estado()
-        _guardar(chat, "bot", texto)
-        _evento(e, chat, "💰 mensagem automática enviada", texto)
-        _salvar_estado(e)
+    """Mensagem que o ROBÔ inicia (pagamento): entra na fila protegida. Devolve um texto de situação."""
+    with _fila_lock:
+        f = _ler_fila()
+        f["itens"].append({"chat": chat, "texto": texto, "ts": time.time()})
+        _salvar_fila(f)
+        pos = len(f["itens"])
+    iniciar_fila()
+    p = C.protecao()
+    if _no_silencio(p):
+        return f"WhatsApp na fila (horário de silêncio até {p.get('silencio_fim')})"
+    return "WhatsApp enviado" if pos == 1 else f"WhatsApp na fila ({pos}º, sai em instantes)"
+
+
+def _trabalhar_fila():
+    while True:
+        try:
+            p = C.protecao()
+            with _fila_lock:
+                f = _ler_fila()
+                agora = time.time()
+                f["enviadas"] = [t for t in f.get("enviadas", []) if t > agora - 3600]
+                pode = (f["itens"] and not _no_silencio(p)
+                        and len(f["enviadas"]) < max(1, int(p.get("max_proativas_hora") or 30))
+                        and agora - max(f["enviadas"], default=0) >= int(p.get("intervalo_proativas") or 45))
+                item = f["itens"][0] if pode else None
+            if not item:
+                time.sleep(5)
+                continue
+            try:
+                enviar(item["chat"], item["texto"])
+                with _lock:
+                    e = _ler_estado()
+                    _guardar(item["chat"], "bot", item["texto"])
+                    _evento(e, item["chat"], "💰 mensagem automática enviada", item["texto"])
+                    _salvar_estado(e)
+                ok = True
+            except Exception as erro:  # noqa: BLE001
+                print("fila do WhatsApp: falha ao enviar:", erro, flush=True)
+                ok = False
+            with _fila_lock:
+                f = _ler_fila()
+                if f["itens"] and f["itens"][0].get("ts") == item["ts"]:
+                    x = f["itens"].pop(0)
+                    if not ok and x.get("tentativas", 0) < 3:  # tenta de novo mais tarde, no fim da fila
+                        x["tentativas"] = x.get("tentativas", 0) + 1
+                        f["itens"].append(x)
+                f.setdefault("enviadas", []).append(time.time())
+                _salvar_fila(f)
+        except Exception as erro:  # noqa: BLE001
+            print("fila do WhatsApp:", erro, flush=True)
+            time.sleep(10)
+
+
+def iniciar_fila():
+    """Liga o trabalhador da fila (uma vez, só no serviço do painel, que tem a chave do WhatsApp)."""
+    if WAHA_KEY and not _fila_viva.is_set():
+        _fila_viva.set()
+        threading.Thread(target=_trabalhar_fila, daemon=True, name="fila-whatsapp").start()
+
+
+def fila_resumo():
+    f = _ler_fila()
+    return {"na_fila": len(f.get("itens", [])), "ultima_hora": len([t for t in f.get("enviadas", []) if t > time.time() - 3600]),
+            "silencio": _no_silencio(C.protecao())}
 
 
 def lembrar_login(chat, login, telefone=None):
@@ -303,26 +421,30 @@ def _acoes_painel(e, chat, resposta):
     m = re.search(r"\[\[CONSULTAR:([^\]]*)\]\]", resposta)
     if m:
         login = m.group(1).strip() or e.get("logins", {}).get(chat, "")
+        if not C.recurso("consulta"):
+            return "Já avisei o atendente para conferir o seu acesso. 🙏"
         if not login:
             return "Me passa o seu *login (usuário)* do aplicativo que eu consulto pra você. 🙂"
         try:
             info = painel_api.consultar(login)
         except painel_api.ErroPainel:
-            return f"Não encontrei o login *{login}*. 🤔 Confere e me manda de novo, por favor."
+            return C.msg("login_nao_encontrado", login=login)
         e.setdefault("logins", {})[chat] = login
         if info.get("exp") and info["exp"] > time.time():
             dias = info.get("dias") or 0
             falta = f"faltam {int(dias)} dias" if dias >= 1 else "vence hoje"
-            return f"Seu acesso *{login}* está ativo até *{info['vencimento']}* ({falta}). ✅"
-        return (f"Seu acesso *{login}* venceu em *{info['vencimento']}*. 😕 Para renovar, é só fazer o pagamento "
-                "que a liberação é automática. Quer as instruções?")
+            return C.msg("consulta_ativo", login=login, vencimento=info["vencimento"], falta=falta,
+                         nome=e.get("nomes", {}).get(chat, ""))
+        return C.msg("consulta_vencido", login=login, vencimento=info["vencimento"], nome=e.get("nomes", {}).get(chat, ""))
     if "[[TESTE]]" in resposta:
+        if not C.recurso("teste"):
+            return "No momento os testes estão pausados. 😕 Se quiser, te passo como assinar!"
         tel = e.get("telefones", {}).get(chat) or (chat.split("@")[0] if chat.endswith("@c.us") else "")
         if not tel:
             return "Para criar o seu teste, preciso falar com o atendente. Já avisei! 🙌"
         testes = e.setdefault("testes", {})
         if time.time() - testes.get(tel, 0) < 30 * 86400:
-            return "Você já fez um teste nos últimos 30 dias. 🙂 Se quiser, te passo como assinar!"
+            return C.msg("teste_ja_fez", nome=e.get("nomes", {}).get(chat, ""))
         hoje = time.strftime("%Y-%m-%d")
         dia = e.setdefault("testes_dia", {})
         if dia.get("d") != hoje:
@@ -504,8 +626,15 @@ def atender(dados):
                 login = e.get("logins", {}).get(chat)
                 aviso = (aviso + " " if aviso else "") + (f"O sistema conhece o login deste cliente: {login}." if login else "")
             try:
-                resposta = _perguntar_modelo(_historico(chat), ler_faq() + (REGRAS_PAINEL if painel_api.configurado() else ""),
-                                             aviso)
+                regras = ""
+                if painel_api.configurado():
+                    regras = REGRAS_PAINEL
+                    if not C.recurso("teste"):
+                        regras = regras.replace("- Cliente pede teste grátis: escreva [[TESTE]].",
+                                                "- Testes grátis estão PAUSADOS: diga isso com gentileza.")
+                    if not C.recurso("consulta"):
+                        regras += "\n- Consulta de vencimento está desligada: chame o atendente ([[HUMANO]]).\n"
+                resposta = _perguntar_modelo(_historico(chat), ler_faq() + regras, aviso)
             except Exception as erro:  # noqa: BLE001
                 detalhe = str(erro)[:160]
                 resposta = ("Recebi sua mensagem! 🙏 Tive uma instabilidade aqui, mas já avisei o atendente "
@@ -542,7 +671,8 @@ def resumo():
     hoje = s if s.get("dia") == time.strftime("%Y-%m-%d") else {}
     return {"ligado": e.get("ligado", True), "aguardando": aguardando, "mensagens_hoje": hoje.get("mensagens", 0),
             "respostas_hoje": hoje.get("respostas", 0), "humano_hoje": hoje.get("humano", 0),
-            "configurado": bool(WAHA_KEY), "faq": FAQ, "eventos": list(reversed(e.get("eventos", [])))[:12]}
+            "configurado": bool(WAHA_KEY), "faq": FAQ, "eventos": list(reversed(e.get("eventos", [])))[:12],
+            "fila": fila_resumo()}
 
 
 def ligar(valor):

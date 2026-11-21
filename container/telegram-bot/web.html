@@ -83,6 +83,9 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 .waNums{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.waNum{border:1px solid var(--ln);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--m)}.waNum b{display:block;font-size:18px;color:var(--t)}
 .waCfg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}@media (max-width:700px){.waCfg{grid-template-columns:1fr}}
 .waCfg label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--m)}.waCfg label.inteira{grid-column:1/-1}
+.waLiga{display:flex;gap:16px;flex-wrap:wrap;margin:4px 0 8px}.waLiga label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--t)}
+.waMsgs details{border:1px solid var(--ln);border-radius:8px;padding:6px 10px;margin:6px 0}.waMsgs summary{cursor:pointer;font-size:13px}
+.waMsgs textarea{width:100%;min-height:70px;margin-top:6px;padding:8px;font:13px/1.45 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 .waCfg input{padding:7px 9px;font:13px var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 #waFaq{width:100%;min-height:300px;resize:vertical;padding:10px;font:13px/1.5 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 .waAg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--ln);font-size:13px}.waAg button{margin-left:auto}
@@ -175,6 +178,28 @@ footer{position:relative}
     <label>Minutos sem você para o robô voltar<input id="cfgMin" type="number" min="1" max="1440"></label>
   </div>
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><button id="cfgSalvar" class="prim">💾 Salvar</button><button id="cfgTestar">🔌 Testar conexão</button><span class="waDica" id="cfgMsg"></span></div>
+  <h3>RECURSOS (LIGA / DESLIGA)</h3>
+  <div class="waLiga">
+    <label><input type="checkbox" id="recPag"> 💰 Pagamentos automáticos (confirmar / pedir login)</label>
+    <label><input type="checkbox" id="recTeste"> 🎁 Teste grátis</label>
+    <label><input type="checkbox" id="recCons"> 📅 Consulta de vencimento</label>
+  </div>
+  <div class="waDica">O robô inteiro liga e desliga no botão <b>⏸ Pausar robô</b> lá em cima.</div>
+  <h3>PROTEÇÃO DO NÚMERO</h3>
+  <div class="waCfg">
+    <label><span><input type="checkbox" id="prDig"> Marcar como visto e mostrar "digitando…"</span></label>
+    <label>Pausa antes de responder (segundos, mín–máx)<span style="display:flex;gap:6px"><input id="prMin" type="number" min="0" max="60" style="flex:1"><input id="prMax" type="number" min="0" max="60" style="flex:1"></span></label>
+    <label>Respostas por minuto (máximo)<input id="prMinuto" type="number" min="1" max="60"></label>
+    <label>Intervalo entre mensagens que o robô inicia (s)<input id="prInt" type="number" min="10" max="3600"></label>
+    <label>Mensagens que o robô inicia por hora (máx.)<input id="prHora" type="number" min="1" max="500"></label>
+    <label>Horário de silêncio (o robô não inicia conversas)<span style="display:flex;gap:6px"><input id="prSilIni" placeholder="22:00" style="flex:1"><input id="prSilFim" placeholder="08:00" style="flex:1"></span></label>
+  </div>
+  <div class="waDica" id="waFila"></div>
+  <h3>MENSAGENS AUTOMÁTICAS</h3>
+  <div class="waDica">Variáveis: <code>{nome}</code> <code>{login}</code> <code>{valor}</code> <code>{vencimento}</code> <code>{falta}</code>.
+    Escreva várias versões separadas por <code>||</code>: o robô sorteia uma (mensagens sempre iguais chamam a atenção do filtro do WhatsApp).</div>
+  <div class="waMsgs" id="waModelos"></div>
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="atSalvar" class="prim">💾 Salvar recursos, proteção e mensagens</button><span class="waDica" id="atMsg"></span></div>
   <h3>ÚLTIMOS EVENTOS</h3><div id="waEventos"><div class="waDica">nenhuma mensagem ainda</div></div>
   <h3>BASE DE RESPOSTAS</h3>
   <div class="waDica" style="margin:0 0 6px">O robô responde <b>só</b> com o que estiver aqui. Coloque preços, horários, como pagar, regras e quando chamar você.</div>
@@ -314,6 +339,15 @@ footer{position:relative}
    se não veio o login, pergunta ao cliente e conclui quando ele responder. No WhatsApp, o cliente também pode perguntar
    "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure em 📱 → <b>Painel (API) e regras</b>; o leitor de pagamentos liga com <code>./pagamentos-configurar.sh</code>.
    Quem chama a API é código com regras fixas: a IA só entende o pedido.</details>
+  <details><summary>Como evitar que o WhatsApp bloqueie o número?</summary>
+   No 📱 → <b>Proteção do número</b>: "digitando…", pausas como de uma pessoa, limite de respostas por minuto e uma fila para as
+   mensagens que o robô inicia (intervalo, máximo por hora e horário de silêncio). Escreva várias versões de cada mensagem com
+   <code>||</code>. E siga as boas práticas: número com foto e nome de empresa, sem mensagens em massa, sem link na primeira
+   mensagem que o robô inicia, e peça para os clientes salvarem o contato.</details>
+  <details><summary>Como mudar as mensagens ou desligar uma função?</summary>
+   📱 → <b>Mensagens automáticas</b> (com <code>{nome}</code>, <code>{login}</code>, <code>{valor}</code>, <code>{vencimento}</code>,
+   <code>{falta}</code>) e 📱 → <b>Recursos</b> (pagamentos, teste grátis, consulta). Para parar tudo: ⏸ <b>Pausar robô</b>.
+   O leitor de pagamentos desliga com <code>docker compose --profile pagamentos stop leitor</code>.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>
@@ -535,6 +569,7 @@ async function waAtualizar(){
   $("waAguard").innerHTML=a.aguardando.length?a.aguardando.map(x=>x.tipo==="esperando"
     ?`<div class="waAg">⏳ <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · esperando você há ${Math.max(1,Math.round(x.desde/60))} min · o robô segue conversando</span><button data-n="${esc(x.numero)}">✓ resolvido</button></div>`
     :`<div class="waAg">🙋 <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · com você · o robô volta em ${Math.max(1,Math.round(x.ate/60))} min sem resposta sua</span><button data-n="${esc(x.numero)}">🤖 devolver ao robô</button></div>`).join(""):'<div class="waDica">ninguém esperando</div>';
+  if(a.fila)$("waFila").innerHTML=`📤 Fila de mensagens do robô: <b>${a.fila.na_fila}</b> aguardando · <b>${a.fila.ultima_hora}</b> enviadas na última hora`+(a.fila.silencio?" · 🌙 horário de silêncio (saem no fim dele)":"");
   $("waEventos").innerHTML=(a.eventos||[]).length?a.eventos.map(x=>`<div class="waAg"><span class="waDica" style="margin:0;min-width:58px">${esc(x.h)}</span><b>${esc(x.nome||x.n)}</b> <span>${esc(x.m)}</span>${x.x?`<span class="waDica" style="margin:0 0 0 auto;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“${esc(x.x)}”</span>`:""}</div>`).join(""):'<div class="waDica">nenhuma mensagem ainda</div>';
   $("waAguard").querySelectorAll("button").forEach(b=>b.onclick=async()=>{await api("/api/whatsapp/acao",{acao:"devolver",numero:b.dataset.n});waAtualizar()});
 }
@@ -547,7 +582,20 @@ $("cfgSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"p
   acao_renovar:$("cfgRenovar").value,planos:$("cfgPlanos").value,teste_horas:$("cfgHoras").value,testes_dia:$("cfgTestesDia").value,minutos_humano:$("cfgMin").value}});
   $("cfgMsg").textContent=r.ok?"✔ salvo":"❌ "+(r.erro||"erro ao salvar");if(r.ok)cfgCarregar()};
 $("cfgTestar").onclick=async()=>{$("cfgMsg").textContent="⏳ testando…";const r=await api("/api/whatsapp/acao",{acao:"painel_testar"});$("cfgMsg").textContent=r.msg||r.erro||"?"};
-$("btnWa").onclick=async()=>{$("wa").classList.add("aberto");cfgCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
+let atPadrao={};
+async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
+  $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;
+  const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prMinuto").value=p.max_por_minuto;
+  $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
+  $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
+    <button class="waRestaura" data-k="${k}" style="margin-top:4px">↺ voltar ao padrão</button></details>`).join("");
+  $("waModelos").querySelectorAll(".waRestaura").forEach(b=>b.onclick=()=>{$("waModelos").querySelector(`textarea[data-k="${b.dataset.k}"]`).value=atPadrao[b.dataset.k]||""})}
+$("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("textarea").forEach(t=>m[t.dataset.k]=t.value);
+  const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked},
+    protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,max_por_minuto:$("prMinuto").value,
+      intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},mensagens:m}});
+  $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
+$("btnWa").onclick=async()=>{$("wa").classList.add("aberto");cfgCarregar();atCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)};
 function waFechar(){$("wa").classList.remove("aberto");clearInterval(waTimer)}
 $("waFechar").onclick=waFechar;$("wa").onclick=e=>{if(e.target.id==="wa")waFechar()};

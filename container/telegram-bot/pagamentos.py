@@ -13,6 +13,7 @@ import re
 import threading
 import time
 
+import atend_config as C
 import jarvis_core as core
 
 ARQ = os.path.join(core.CONFIG_DIR, "atendimento", "pagamentos.json")
@@ -87,23 +88,24 @@ def _primeiro_nome(nome):
 
 
 def liberar(login, pag, ja_conferido=None):
+    nome = _primeiro_nome(pag.get("pagador"))
     """Confere/renova um login para um pagamento. Devolve (mensagem_cliente, resumo_para_voce, ok)."""
     import painel_api
     meses = planos().get(pag.get("valor"))
     valor = f"R$ {pag.get('valor'):.2f}".replace(".", ",") if pag.get("valor") else "o valor"
     info = ja_conferido or painel_api.consultar(login)
     if meses and info.get("dias") is not None and info["dias"] >= meses * 30 - 5:
-        return (f"✅ Pagamento de {valor} recebido! Seu acesso *{login}* já está ativo até *{info['vencimento']}*. "
-                "Obrigado! 🙌", f"já estava renovado até {info['vencimento']}", True)
+        return (C.msg("pag_confirmado", valor=valor, login=login, vencimento=info["vencimento"], nome=nome),
+                f"já estava renovado até {info['vencimento']}", True)
     if not meses:
-        return ("✅ Pagamento recebido! Já estou conferindo e libero seu acesso em instantes. 🙏",
+        return (C.msg("pag_liberando", valor=valor, login=login, nome=nome),
                 f"⚠️ valor {valor} não está na tabela PAINEL_PLANOS: renove manualmente", False)
     try:
         novo = painel_api.renovar(login, meses, referencia=f"fastflow-{pag['id']}")
-        return (f"✅ Pagamento de {valor} recebido e acesso *{login}* renovado até *{novo['vencimento']}*! "
-                "Obrigado! 🙌", f"renovado pela API até {novo['vencimento']}", True)
+        return (C.msg("pag_renovado", valor=valor, login=login, vencimento=novo["vencimento"], nome=nome),
+                f"renovado pela API até {novo['vencimento']}", True)
     except painel_api.ErroPainel as e:
-        return ("✅ Pagamento recebido! Estou liberando seu acesso e confirmo por aqui em instantes. 🙏",
+        return (C.msg("pag_liberando", valor=valor, login=login, nome=nome),
                 f"⚠️ renove manualmente: {e} (vence {info.get('vencimento')})", False)
 
 
@@ -121,6 +123,10 @@ def processar(texto, fonte="telegram"):
             return {"ok": True, "repetido": True, "id": pag["id"]}
         d["processados"][pag["id"]] = time.time()
         _salvar(d)
+    if not C.recurso("pagamentos"):  # automação desligada no 📱: só avisa você
+        rotinas.avisar_telegram(f"💰 FastFlow #{pag['id']} · {pag['pagador']} · +{pag['telefone']} · R$ {pag.get('valor') or '?'}"
+                                f"\nLogin informado: {pag['nome_informado'] or '-'}\n(automação de pagamentos DESLIGADA no 📱: nada foi enviado)")
+        return {"ok": True, "id": pag["id"], "resumo": "automação desligada: só avisei você", "whatsapp": "não enviado"}
     chat = atendimento.chat_do_telefone(pag["telefone"])
     nome = _primeiro_nome(pag["pagador"])
     login, info = None, None
@@ -140,12 +146,10 @@ def processar(texto, fonte="telegram"):
             d["pendentes"][chat] = dict(pag, ts=time.time(), tentativas=0)
             _salvar(d)
         valor = f"R$ {pag['valor']:.2f}".replace(".", ",") if pag.get("valor") else "seu pagamento"
-        msg = (f"Olá{(' ' + nome) if nome else ''}! ✅ Recebemos seu pagamento de {valor}. "
-               "Para eu liberar seu acesso, me envia o seu *login (usuário)* do aplicativo, por favor.")
+        msg = C.msg("pag_pedir_login", valor=valor, nome=nome)
         resumo, ok = "pedi o login no WhatsApp", True
     try:
-        atendimento.enviar_sistema(chat, msg)
-        enviado = "WhatsApp enviado"
+        enviado = atendimento.enviar_sistema(chat, msg)  # vai para a fila protegida (intervalo, limite, silêncio)
     except Exception as e:  # noqa: BLE001
         enviado, ok = f"⚠️ WhatsApp não enviado ({type(e).__name__})", False
     rotinas.avisar_telegram(f"💰 FastFlow #{pag['id']} · {pag['pagador']} · +{pag['telefone']} · "
@@ -194,5 +198,4 @@ def concluir_pendente(chat, texto):
         rotinas.avisar_telegram(f"💰 FastFlow #{p['id']}: o cliente (+{p.get('telefone')}) não informou um login válido "
                                 f"em 3 tentativas. Última mensagem: {texto[:200]}")
         return "Não consegui achar esse login. 😕 Já avisei o atendente, ele te ajuda em instantes!"
-    return ("Não encontrei esse login. 🤔 Confere e me manda só o *usuário* do aplicativo "
-            "(do jeito que aparece no app), por favor.")
+    return C.msg("login_nao_encontrado")

@@ -25,6 +25,8 @@ import kb  # noqa: E402
 import hermes_cliente as hermes  # noqa: E402
 import rotinas  # noqa: E402
 import atendimento  # noqa: E402
+import atend_config  # noqa: E402
+atendimento.iniciar_fila()  # mensagens que o robô inicia saem por uma fila protegida
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -281,6 +283,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(png)))
             self.end_headers()
             return self.wfile.write(png)
+        if url.path == "/api/atendimento/config":
+            return self._json(dict(atend_config.carregar(), nomes=atend_config.NOMES_MENSAGENS,
+                                   padrao=atend_config.MENSAGENS))
         if url.path == "/api/painel/config":
             import painel_api
             return self._json(painel_api.publico())
@@ -378,6 +383,8 @@ class Handler(BaseHTTPRequestHandler):
             if a == "faq":
                 atendimento.salvar_faq(str(d.get("texto", "")))
                 return self._json({"ok": True})
+            if a == "atend_salvar":
+                return self._json({"ok": True, "config": atend_config.salvar(d.get("config") or {})})
             if a in ("painel_salvar", "painel_testar"):
                 import painel_api
                 if a == "painel_salvar":
