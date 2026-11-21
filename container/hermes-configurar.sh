@@ -11,6 +11,17 @@ ENV=.env.claude
 [ -f "$ENV" ] || { echo "Não achei $ENV nesta pasta."; exit 1; }
 
 ler() { { grep -E "^$1=" "$ENV" || true; } | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"; }
+# o aviso "install out of sync (pnpm…)" é só da interface de terminal do Hermes; não afeta a API
+H() { docker compose --profile hermes exec -T hermes hermes "$@" 2>&1 | grep -v "install out of sync" || true; }
+esperar() {  # espera a API do Hermes responder (até ~3 min)
+  local i
+  printf "   aguardando o Hermes ligar"
+  for i in $(seq 1 60); do
+    docker compose exec -T dev jarvis-hermes --status >/dev/null 2>&1 && return 0
+    printf "."; sleep 3
+  done
+  echo; return 1
+}
 
 CHAVE_GW="$(ler ANTHROPIC_API_KEY)"; [ -n "$CHAVE_GW" ] || CHAVE_GW="$(ler ANTHROPIC_AUTH_TOKEN)"
 BASE_GW="$(ler ANTHROPIC_BASE_URL)"
@@ -34,7 +45,7 @@ if [ "${1:-}" = "--nous" ]; then
   docker compose --profile hermes exec -it hermes hermes setup --portal
   docker compose --profile hermes restart hermes
   docker compose --profile web --profile telegram up -d
-  sleep 12
+  esperar || true
   docker compose exec -T dev jarvis-hermes "Responda apenas: OK" && echo "✅ Hermes usando o Nous Portal." \
     || echo "⚠️ Não respondeu. Veja: docker compose --profile hermes logs --tail 80 hermes"
   exit 0
@@ -64,7 +75,6 @@ docker compose --profile hermes pull hermes
 docker compose --profile hermes up -d --force-recreate hermes
 sleep 8
 
-H() { docker compose --profile hermes exec -T hermes hermes "$@"; }
 modo_anthropic() {
   echo "→ Modo 1: API da Anthropic pelo gateway · $MODELO${BASE_GW:+ · $BASE_GW}"
   H config set model.provider anthropic >/dev/null
@@ -79,8 +89,14 @@ modo_openai() {
   H config set model.base_url "$url" >/dev/null
   H config set model.default "$MODELO" >/dev/null
 }
-testar() {
-  docker compose --profile hermes restart hermes >/dev/null; sleep 12
+testar() {  # 0 = funcionou · 1 = o gateway recusou · 2 = o Hermes não ligou
+  docker compose --profile hermes restart hermes >/dev/null 2>&1
+  if ! esperar; then
+    echo "   O Hermes não ligou. Últimas linhas do registro:"
+    docker compose --profile hermes logs --tail 25 hermes 2>&1 | grep -v "install out of sync"
+    return 2
+  fi
+  echo " ligado"
   local r; r="$(docker compose exec -T dev jarvis-hermes "Responda apenas: OK" 2>&1 || true)"
   echo "   resposta: $(echo "$r" | head -c 300)"
   echo "$r" | grep -qiE "401|403|invalid|rejected|recusou|não consegui|error|erro" && return 1
@@ -96,7 +112,10 @@ if [ "$MODO" = "openai" ] || [ -z "$BASE_GW" ]; then
   testar && OK=1 || OK=0
 else
   modo_anthropic
-  if testar; then OK=1; else
+  RC=0; testar || RC=$?
+  if [ "$RC" = 0 ]; then OK=1
+  elif [ "$RC" = 2 ]; then OK=0
+  else
     echo "   O modo 1 não funcionou; tentando o modo 2…"
     modo_openai
     if testar; then OK=1; grep -q '^HERMES_MODO=' "$ENV" || echo "HERMES_MODO=openai" >> "$ENV"; else OK=0; fi
