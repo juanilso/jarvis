@@ -8,6 +8,13 @@ claude plugin marketplace add anthropics/claude-plugins-official 2>/dev/null || 
 claude plugin marketplace update claude-plugins-official 2>/dev/null || true
 claude plugin marketplace update jarvis-marketplace 2>/dev/null || true
 
+claude plugin marketplace add heydamir/unslop 2>/dev/null || true
+claude plugin marketplace add haydenschmitty/floorplan 2>/dev/null || true
+for p in unslop@heydamir floorplan@floorplan; do
+  echo "-> $p"
+  claude plugin install "$p" || echo "   (não consegui instalar $p agora; tente de novo depois)"
+done
+
 for p in frontend-design canva; do
   echo "-> $p"
   claude plugin install "$p@claude-plugins-official" || echo "   (não consegui instalar $p agora; tente de novo depois)"

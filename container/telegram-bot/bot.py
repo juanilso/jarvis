@@ -95,11 +95,61 @@ def baixar_arquivo(file_id, destino):
 
 
 # ---------------------------------------------------------------- pedidos
+class Progresso:
+    """Uma única mensagem no Telegram, atualizada a cada poucos segundos com o que está acontecendo."""
+
+    def __init__(self, chat_id, projeto):
+        self.chat_id, self.projeto, self.linhas, self.inicio = chat_id, projeto, [], time.time()
+        self.msg_id, self.ativo, self.mudou = None, True, True
+        try:
+            r = tg("sendMessage", chat_id=chat_id, text=f"⏳ Trabalhando em {projeto}…")
+            self.msg_id = r["result"]["message_id"]
+        except Exception as e:  # noqa: BLE001
+            print("erro ao criar progresso:", e, flush=True)
+        threading.Thread(target=self._laco, daemon=True).start()
+
+    def add(self, linha):
+        self.linhas = (self.linhas + [linha])[-5:]
+        self.mudou = True
+
+    def _texto(self, fim=None):
+        s = int(time.time() - self.inicio)
+        cab = fim or f"⏳ Trabalhando em {self.projeto} · {s // 60}m{s % 60:02d}s"
+        return cab + ("\n\n" + "\n".join(self.linhas) if self.linhas else "")
+
+    def _editar(self, texto):
+        if self.msg_id:
+            try:
+                tg("editMessageText", chat_id=self.chat_id, message_id=self.msg_id, text=texto[:3900])
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _laco(self):
+        ultimo = 0
+        while self.ativo:
+            time.sleep(1)
+            if self.ativo and (self.mudou and time.time() - ultimo >= 4 or time.time() - ultimo >= 15):
+                self._editar(self._texto())
+                ultimo, self.mudou = time.time(), False
+
+    def fim(self, ok=True):
+        self.ativo = False
+        s = int(time.time() - self.inicio)
+        self._editar(self._texto(f"{'✅ Concluído' if ok else '⚠️ Terminou com problema'} em {s // 60}m{s % 60:02d}s"))
+
+
 def rodar(chat_id, texto, responder_audio, compactar=False):
-    if not compactar:
-        enviar(chat_id, f"⏳ Trabalhando em {estado.ler()['projeto']}…")
+    prog = None if compactar else Progresso(chat_id, estado.ler()["projeto"])
 
     def ao_evento(ev):
+        if ev["tipo"] in ("acao", "pensando"):
+            if prog:
+                prog.add(f"{ev.get('emoji', '🧠')} {ev.get('agente', 'jarvis')} · {ev['texto'][:140]}")
+            return
+        if ev["tipo"] == "inicio":
+            return
+        if ev["tipo"] in ("resposta", "erro") and prog:
+            prog.fim(ev["tipo"] == "resposta" and not ev.get("erro"))
         if ev["tipo"] == "agente_inicio":
             enviar(chat_id, f"{ev['emoji']} {ev['agente']} começou: {ev['descricao']}")
         elif ev["tipo"] == "agente_fim":
@@ -242,7 +292,7 @@ def tratar(msg):
     if texto.startswith("/jarvis_"):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
-                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar") \
+                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, execucao, texto)
         enviar(chat_id, resposta)

@@ -16,6 +16,8 @@ Carregue a skill `orquestrador`. Nada de código é alterado neste fluxo.
    - DECISOES.md com ADR-000 "Estado herdado": riscos e dívidas técnicas encontrados.
    - BACKLOG.md vazio, exceto tarefas de segurança críticas encontradas (marcadas `aguardando_decisao`).
    - Recomenda o perfil de modelos (sistemas com pagamento → `maximo` nas tarefas que tocam pagamento).
+2.5. **Mapa do sistema** (se a skill `floorplan` estiver instalada): siga o fluxo `/mapa`
+   (mapa em `docs/mapa.html` + check-up de segurança). Inclua os principais riscos do check-up no ADR-000.
 3. Se não houver testes, proponha como primeira tarefa testes de caracterização para as áreas críticas
    (pagamento, autenticação), que travam o comportamento atual antes de qualquer refatoração.
 4. Resumo em até 15 linhas: o que o sistema faz, pontos de risco e a sugestão de próxima ação

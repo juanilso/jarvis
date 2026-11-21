@@ -25,3 +25,9 @@ SOFTWARE.
 
 ## skill-scanner (https://github.com/getsentry/skills), licença Apache 2.0
 Ver `skills/skill-scanner/LICENSE` e `skills/skill-scanner/NOTICE.md`.
+
+## unslop (https://github.com/heydamir/unslop), por Damir Sokolovsky, licença CC BY 4.0
+Instalado como plugin pelo `jarvis-extras` (não copiado para o Jarvis). Usado pelo agente designer.
+
+## Floorplan (https://github.com/haydenschmitty/floorplan), por Hayden Smith, licença MIT
+Instalado como plugin pelo `jarvis-extras` (não copiado para o Jarvis). Usado por `/jarvis:mapa` e `/jarvis:adotar`.

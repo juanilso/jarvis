@@ -29,6 +29,42 @@ INSTRUCAO_AUDIO = (
 
 _whisper = {"model": None, "lock": threading.Lock()}
 
+VERBOS = {"Read": "lendo", "Edit": "editando", "MultiEdit": "editando", "Write": "criando", "NotebookEdit": "editando",
+          "Bash": "executando", "Grep": "procurando", "Glob": "listando arquivos", "WebSearch": "pesquisando na web",
+          "WebFetch": "lendo a página", "TodoWrite": "planejando as etapas", "Skill": "usando a skill",
+          "browser_navigate": "abrindo no navegador", "browser_take_screenshot": "tirando print",
+          "browser_snapshot": "lendo a página no navegador", "browser_click": "clicando", "browser_resize": "mudando o tamanho da tela",
+          "browser_type": "digitando", "browser_fill_form": "preenchendo formulário", "browser_evaluate": "inspecionando a página"}
+
+
+def descrever_ferramenta(nome, ent):
+    """Frase curta e humana para o que uma ferramenta está fazendo."""
+    curto = nome.split("__")[-1]
+    verbo = VERBOS.get(nome) or VERBOS.get(curto) or curto.replace("_", " ")
+    alvo = (ent.get("file_path") or ent.get("path") or ent.get("notebook_path") or ent.get("url")
+            or ent.get("query") or ent.get("pattern") or ent.get("skill") or ent.get("description")
+            or ent.get("command") or "")
+    if isinstance(alvo, str) and alvo:
+        if alvo.startswith("/workspace/"):
+            alvo = "/".join(alvo.split("/")[3:]) or alvo
+        alvo = " ".join(alvo.split())[:90]
+        return f"{verbo}: {alvo}"
+    return verbo
+
+
+ORQUESTRADOR = """Você está atendendo pelo painel/Telegram do Jarvis. Siga as regras da skill `orquestrador` do plugin
+jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com o time de subagentes do plugin jarvis:
+- Pergunta sobre o código ou o projeto: use o subagente explorador para levantar os fatos antes de responder.
+- Qualquer alteração de código: explorador → executor da área (desenvolvedor, dba, android ou designer) → testador →
+  revisor → commit local. Sem pular o testador e o revisor.
+- Evolução, escopo, arquitetura ou decisão técnica: arquiteto primeiro.
+- Tela, site, layout ou visual: designer.
+- Ao concluir um ciclo com alterações: documentador atualiza docs/ESTADO.md e a base de conhecimento.
+- Só responda sem agentes em conversa simples (saudação, dúvida geral que não depende do código).
+- Antes de cada etapa, escreva UMA linha curta dizendo o que vai fazer e qual agente vai trabalhar: o usuário
+  acompanha isso ao vivo. No fim, diga quais agentes participaram.
+- Respeite os portões de decisão do Jarvis e nunca faça push nem deploy."""
+
 
 # ------------------------------------------------------------------ estado
 class Estado:
@@ -147,10 +183,13 @@ class Execucao:
         cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"]
         if est.get("modelo"):
             cmd += ["--model", est["modelo"]]
+        if usar_sessao and not compactar:
+            cmd += ["--append-system-prompt", ORQUESTRADOR]
         if est["sessoes"].get(projeto):
             cmd += ["--resume", est["sessoes"][projeto]]
         agentes, resultado, code, erro = {}, None, None, ""
         try:
+            ao_evento({"tipo": "inicio", "projeto": projeto})
             with self._lock:
                 self.proc = subprocess.Popen(cmd, cwd=cwd or os.path.join(WORKSPACE, projeto), stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE, text=True, bufsize=1)
@@ -163,20 +202,31 @@ class Execucao:
                 except json.JSONDecodeError:
                     continue
                 conteudo = (ev.get("message") or {}).get("content") or []
-                if ev.get("type") == "assistant" and est["agentes"]:
+                pai = ev.get("parent_tool_use_id")
+                quem = agentes.get(pai, ("jarvis", 0))[0] if pai else "jarvis"
+                if ev.get("type") == "assistant":
                     for c in conteudo:
                         if c.get("type") == "tool_use" and c.get("name") in ("Task", "Agent"):
                             ent = c.get("input") or {}
                             nome = (ent.get("subagent_type") or "agente").split(":")[-1]
                             agentes[c.get("id")] = (nome, time.time())
-                            ao_evento({"tipo": "agente_inicio", "agente": nome, "emoji": EMOJI.get(nome, "🧩"),
-                                       "descricao": ent.get("description", "")})
-                elif ev.get("type") == "user" and est["agentes"]:
+                            if est["agentes"]:
+                                ao_evento({"tipo": "agente_inicio", "agente": nome, "emoji": EMOJI.get(nome, "🧩"),
+                                           "descricao": ent.get("description", "")})
+                        elif c.get("type") == "tool_use":
+                            ao_evento({"tipo": "acao", "agente": quem, "emoji": EMOJI.get(quem, "🧠"),
+                                       "texto": descrever_ferramenta(c.get("name", ""), c.get("input") or {})})
+                        elif c.get("type") == "text" and (c.get("text") or "").strip():
+                            t = " ".join(c["text"].split())
+                            ao_evento({"tipo": "pensando", "agente": quem, "emoji": EMOJI.get(quem, "🧠"),
+                                       "texto": t[:220] + ("…" if len(t) > 220 else "")})
+                elif ev.get("type") == "user":
                     for c in conteudo:
                         if c.get("type") == "tool_result" and c.get("tool_use_id") in agentes:
                             nome, ini = agentes.pop(c["tool_use_id"])
-                            ao_evento({"tipo": "agente_fim", "agente": nome, "emoji": EMOJI.get(nome, "🧩"),
-                                       "erro": bool(c.get("is_error")), "segundos": int(time.time() - ini)})
+                            if est["agentes"]:
+                                ao_evento({"tipo": "agente_fim", "agente": nome, "emoji": EMOJI.get(nome, "🧩"),
+                                           "erro": bool(c.get("is_error")), "segundos": int(time.time() - ini)})
                 elif ev.get("type") == "result":
                     resultado = ev
             self.proc.wait()
@@ -272,6 +322,7 @@ PROMPT_COMPACTAR = (
 MODELOS = {"sonnet", "opus", "haiku", "padrao"}
 COMANDOS = [
     ("/ajuda", "Lista os comandos"),
+    ("/guia", "Como usar o Jarvis, com exemplos"),
     ("/ideia", "Guarda uma ideia na base de conhecimento"),
     ("/lembrar", "Procura na base de conhecimento"),
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
@@ -298,6 +349,31 @@ COMANDOS = [
     ("/jarvis:modelos", "Jarvis: perfil de modelos dos agentes"),
     ("/jarvis:jarvis", "Jarvis: pedido livre"),
 ]
+GUIA = """📘 Como usar o Jarvis
+
+1) Escolha o projeto: /projetos e depois /projeto nome. Cada projeto tem a sua conversa.
+2) Peça em linguagem natural (texto ou áudio). O Jarvis distribui o trabalho entre os agentes e mostra o andamento.
+
+Demandas
+• corrige o erro da renovação quando o cliente paga duas vezes
+• /jarvis:evoluir <mudança>: traz opções antes de mexer
+• /jarvis:executar: toca o backlog sozinho · /jarvis:status: como estamos
+• /jarvis:decidir: responde as decisões pendentes
+• /jarvis:adotar: estuda um projeto existente · /jarvis:novo <ideia>: projeto novo
+
+Design e sites
+• /jarvis:redesenhar <url> <o que mudar>: 3 versões (veja no 👁 do painel)
+• /jarvis:qa <url> <foco>: testa como usuário e corrige (--so-testar só relata)
+• /jarvis:mapa: mapa do sistema + check-up de segurança (🗺 no painel)
+
+Conhecimento
+• /ideia <texto> (ou diga "ideia: …" por áudio) · /lembrar <assunto> · /pesquisar <tema>
+
+Controle
+• /compactar (conversa longa) · /novo · /custo · /modelo sonnet · /parar · /audio · /agentes
+
+No Telegram, os comandos do Jarvis usam _ no lugar de : (ex.: /jarvis_status)."""
+
 LOCAIS = {c for c, _ in COMANDOS if not c.startswith("/jarvis:")}
 # comandos que só existem na tela interativa do Claude Code (terminal)
 INTERATIVOS = {"/mcp", "/login", "/logout", "/config", "/plugin", "/plugins", "/permissions", "/doctor", "/hooks",
@@ -350,6 +426,8 @@ def comando(estado, execucao, texto):
             if execucao.ocupado:
                 return "Espere o pedido atual terminar (ou use /parar) para pesquisar.", None
             return f"🔎 Pesquisando “{arg}”… aviso quando terminar.", "pesquisar"
+    if cmd == "/guia":
+        return GUIA, None
     if cmd == "/ajuda":
         return "\n".join(f"{c} — {d}" for c, d in COMANDOS), None
     if cmd == "/projetos":

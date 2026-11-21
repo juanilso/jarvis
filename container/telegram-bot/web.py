@@ -5,6 +5,7 @@ Mesmo motor do bot do Telegram (jarvis_core). Acesse pelo Tailscale (HTTPS) ou t
 Variáveis: JARVIS_WEB_PASSWORD (ou PASSWORD), JARVIS_WEB_PORT (padrão 8090) e as do núcleo.
 """
 import hmac
+import re
 import json
 import os
 import secrets
@@ -33,15 +34,53 @@ eventos, ev_lock = [], threading.Lock()
 VOZ_DIR = tempfile.mkdtemp(prefix="jarvis-voz-")
 
 
-def publicar(ev):
+HIST_DIR = os.path.join(core.CONFIG_DIR, "historico-web")
+PERSISTIR = {"usuario", "resposta", "info", "erro", "agente_inicio", "agente_fim", "sistema"}
+_contador = [0]
+
+
+def _arquivo_hist(projeto):
+    return os.path.join(HIST_DIR, re.sub(r"[^A-Za-z0-9._-]", "_", projeto or "_geral") + ".jsonl")
+
+
+def publicar(ev, projeto=None):
+    """Registra um evento no histórico do projeto (cada projeto tem o seu, salvo em disco)."""
     with ev_lock:
-        ev["id"] = len(eventos) + 1
-        ev["hora"] = time.strftime("%H:%M")
+        _contador[0] += 1
+        ev["id"] = _contador[0]
+        ev["hora"] = ev.get("hora") or time.strftime("%d/%m %H:%M")
+        ev["projeto"] = ev.get("projeto") or projeto or estado.ler()["projeto"] or "_geral"
         eventos.append(ev)
-        del eventos[:-300]  # guarda só os últimos 300
+        del eventos[:-3000]
+        if ev["tipo"] in PERSISTIR:
+            try:
+                os.makedirs(HIST_DIR, exist_ok=True)
+                with open(_arquivo_hist(ev["projeto"]), "a", encoding="utf-8") as f:
+                    f.write(json.dumps({k: v for k, v in ev.items() if k not in ("id", "voz")}, ensure_ascii=False) + "\n")
+            except OSError as e:
+                print("erro ao salvar histórico:", e, flush=True)
+
+
+def carregar_historico(limite=150):
+    if not os.path.isdir(HIST_DIR):
+        return
+    for nome in sorted(os.listdir(HIST_DIR)):
+        try:
+            linhas = open(os.path.join(HIST_DIR, nome), encoding="utf-8").read().splitlines()[-limite:]
+        except OSError:
+            continue
+        for l in linhas:
+            try:
+                ev = json.loads(l)
+            except json.JSONDecodeError:
+                continue
+            _contador[0] += 1
+            ev["id"] = _contador[0]
+            eventos.append(ev)
 
 
 def rodar(texto, responder_audio, compactar=False):
+    proj = estado.ler()["projeto"]
     def ao_evento(ev):
         if ev["tipo"] == "resposta" and ev.get("audio"):
             nome = secrets.token_hex(8) + ".mp3"
@@ -50,7 +89,7 @@ def rodar(texto, responder_audio, compactar=False):
                     ev["voz"] = "/voz/" + nome
             except Exception as e:  # noqa: BLE001
                 print("erro no áudio:", e, flush=True)
-        publicar(ev)
+        publicar(ev, proj)
 
     execucao.rodar(estado, texto, responder_audio, ao_evento, compactar=compactar)
 
@@ -80,11 +119,12 @@ def previa(acao):
 
 
 def pesquisar(tema):
+    proj = estado.ler()["projeto"]
     destino, prompt = kb.prompt_pesquisa(tema)
-    execucao.rodar(estado, prompt, False, publicar, cwd=kb.KB_DIR, usar_sessao=False)
+    execucao.rodar(estado, prompt, False, lambda ev: publicar(ev, proj), cwd=kb.KB_DIR, usar_sessao=False)
     kb.sincronizar()
     if os.path.exists(destino):
-        publicar({"tipo": "info", "texto": f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}"})
+        publicar({"tipo": "info", "texto": f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}"}, proj)
 
 
 def iniciar(texto, veio_de_audio):
@@ -189,11 +229,24 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/painel":
             return self._json(core.painel_projeto(estado.ler()["projeto"]))
         if url.path == "/api/eventos":
-            desde = int(urllib.parse.parse_qs(url.query).get("desde", ["0"])[0])
+            q = urllib.parse.parse_qs(url.query)
+            desde = int(q.get("desde", ["0"])[0])
+            proj = q.get("projeto", [""])[0] or estado.ler()["projeto"] or "_geral"
             with ev_lock:
-                novos = [e for e in eventos if e["id"] > desde]
-                ultimo = eventos[-1]["id"] if eventos else 0
-            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": execucao.ocupado})
+                novos = [e for e in eventos if e["id"] > desde and e.get("projeto") == proj]
+                ultimo = _contador[0]
+            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": execucao.ocupado,
+                               "projeto_ocupado": execucao.projeto, "pedido": execucao.pedido,
+                               "desde_inicio": int(time.time() - execucao.inicio) if execucao.inicio else 0})
+        if url.path == "/api/mapa":
+            proj = estado.ler()["projeto"]
+            caminho = os.path.join(core.WORKSPACE, proj or "", "docs", "mapa.html")
+            if not proj or not os.path.isfile(caminho):
+                return self._html("<body style='font-family:sans-serif;background:#05090f;color:#d6f1ff;padding:30px'>"
+                                  "<h2>Mapa ainda não gerado</h2><p>No painel, envie <b>/jarvis:mapa</b> para gerar o "
+                                  "mapa deste projeto (requer o Floorplan, instalado pelo <code>jarvis-extras</code>).</p></body>", 404)
+            with open(caminho, encoding="utf-8") as f:
+                return self._html(f.read())
         if url.path.startswith("/voz/"):
             nome = os.path.basename(url.path)
             caminho = os.path.join(VOZ_DIR, nome)
@@ -339,6 +392,7 @@ def main():
     if not SENHA:
         raise SystemExit("Defina PASSWORD (ou JARVIS_WEB_PASSWORD) no .env.claude")
     print(f"Jarvis Web na porta {PORTA}", flush=True)
+    carregar_historico()
     threading.Thread(target=kb.garantir, daemon=True).start()
     kb.iniciar_sincronizacao_periodica(10)
     ThreadingHTTPServer(("0.0.0.0", PORTA), Handler).serve_forever()

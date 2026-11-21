@@ -100,3 +100,13 @@ Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.
 A branch `versao-1.3.0` guarda o Jarvis antes das adaptações do gstack. Para voltar, dentro do contêiner dev:
 `claude plugin marketplace remove jarvis-marketplace && claude plugin marketplace add juanilso/jarvis#versao-1.3.0 && claude plugin install jarvis@jarvis-marketplace`
 Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arquivos do Jarvis).
+
+## Jarvis 1.5: histórico por projeto, atividade ao vivo, agentes ativos, mapa e guia
+- Cada projeto tem o seu histórico no painel (salvo em ~/.claude/historico-web/). Trocar de projeto troca a conversa.
+- Ao lado do holograma: cronômetro e os últimos passos (que arquivo está sendo lido, que agente trabalha).
+  No Telegram, uma única mensagem de progresso é atualizada a cada poucos segundos.
+- Modo ativo: no painel, no Telegram e no terminal, toda demanda passa pelo time (explorador, executor da área,
+  testador, revisor; arquiteto em decisões; designer em telas; documentador no fim do ciclo).
+- 🗺 Mapa do sistema (Floorplan) com /jarvis:mapa · ❔ Guia de uso no painel ou /guia.
+- unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
+- Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.

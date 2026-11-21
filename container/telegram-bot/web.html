@@ -60,8 +60,15 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #mic,#enviar{width:50px;height:46px;font-size:20px;padding:0}
 #mic.gravando{background:rgba(251,113,133,.25);border-color:var(--er);animation:pl 1s infinite}
 #btnPainel{display:none}
-#gestao,#kb{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#gestao.aberto,#kb.aberto{display:flex}
+#aoVivo{margin-top:10px;font:12px var(--mono);color:var(--m);letter-spacing:0;text-transform:none;max-width:280px}
+#aoVivo #cron{color:var(--wa);margin-bottom:4px}#aoVivo .fl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.55}#aoVivo .fl:last-child{opacity:1;color:var(--c2)}
+.det{align-self:stretch}.det details{border:1px dashed var(--ln);border-radius:8px;padding:4px 10px}.det summary{cursor:pointer;color:var(--m);font:12px var(--mono)}
+.det .linhas div{font:12px var(--mono);color:var(--m);padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#guia .caixa{width:min(860px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;line-height:1.6}
+#guia h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 6px}#guia h3{font:500 13px var(--mono);color:var(--c);margin:18px 0 6px;letter-spacing:.08em}
+#guia code{background:#081420;padding:1px 5px;border-radius:4px}#guia li{margin:3px 0}#guia .fechar{position:absolute;right:12px;top:10px}
+#gestao,#kb,#guia{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#gestao.aberto,#kb.aberto,#guia.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
 #kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
@@ -134,6 +141,38 @@ footer{position:relative}
   <h3>Pesquisar na internet</h3>
   <div class="lin"><input type="text" id="kbTema" placeholder="tema da pesquisa (o resultado é salvo com as fontes)"><button class="prim" id="kbPesquisar">🔎 Pesquisar</button></div>
 </div></div>
+<div id="guia"><div class="caixa">
+  <button class="fechar" id="guiaFechar" title="Fechar">✕</button>
+  <h2>GUIA DO JARVIS</h2>
+  <p>Escolha o projeto no topo e converse normalmente, por texto ou pelo 🎙️. Cada projeto tem o seu histórico. O Jarvis
+  distribui o trabalho entre os agentes, e você acompanha cada passo ao vivo ao lado do holograma.</p>
+  <h3>PEDIR DEMANDAS</h3><ul>
+   <li><b>Corrigir:</b> <code>corrige o erro da renovação quando o cliente paga duas vezes</code></li>
+   <li><b>Funcionalidade nova:</b> <code>/jarvis:evoluir cliente que pagar pelo meu link passa a ser meu</code> (ele traz opções antes de mexer)</li>
+   <li><b>Tocar o backlog sozinho:</b> <code>/jarvis:executar</code> · <b>como estamos:</b> <code>/jarvis:status</code></li>
+   <li><b>Decisões pendentes:</b> <code>/jarvis:decidir</code> ou clique numa decisão no painel da direita</li>
+   <li><b>Projeto existente pela 1ª vez:</b> <code>/jarvis:adotar</code> · <b>projeto novo:</b> <code>/jarvis:novo ideia…</code></li></ul>
+  <h3>DESIGN E SITES</h3><ul>
+   <li><code>/jarvis:redesenhar https://site.com.br mais moderno, tons escuros</code> → 3 versões; veja no 👁</li>
+   <li><code>/jarvis:qa https://site.com.br login e pagamento</code> → testa como usuário e corrige bugs (com <code>--so-testar</code> só relata)</li>
+   <li>Peças do Canva: <code>crie um post do Instagram no Canva sobre…</code></li></ul>
+  <h3>ENTENDER O SISTEMA</h3><ul>
+   <li><code>/jarvis:mapa</code> → mapa interativo + check-up de segurança; abra pelo 🗺</li></ul>
+  <h3>CONHECIMENTO (🧠)</h3><ul>
+   <li><code>/ideia app de agendamento…</code> guarda uma ideia · <code>/lembrar gateway</code> procura no que já foi guardado</li>
+   <li><code>/pesquisar melhores gateways PIX para PHP</code> pesquisa na web e salva com as fontes</li>
+   <li>Tudo fica no repositório privado <code>jarvis-conhecimento</code> do seu GitHub</li></ul>
+  <h3>PROJETOS E GITHUB (📁)</h3><ul>
+   <li>Criar projeto, enviar .zip, clonar do GitHub, criar repositório, salvar e enviar (commit + push), atualizar (pull)</li></ul>
+  <h3>CONTROLE E ECONOMIA</h3><ul>
+   <li><code>/compactar</code> quando a conversa ficar longa · <code>/novo</code> zera a conversa do projeto</li>
+   <li><code>/custo</code> mostra o gasto · <code>/modelo sonnet</code> troca o modelo principal · <code>/parar</code> interrompe</li>
+   <li>🔊 no topo: resposta em áudio (auto, sempre, nunca) · 👥: avisos dos agentes</li>
+   <li>Digite <code>/</code> para ver todos os comandos. <code>/mcp</code>, <code>/login</code> e <code>/plugin</code> são só do terminal (VS Code web).</li></ul>
+  <h3>TELEGRAM</h3><ul>
+   <li>Os mesmos comandos (os do Jarvis como <code>/jarvis_status</code>). Áudio: mande mensagem de voz; diga “ideia: …” para guardar uma ideia.</li>
+   <li>Foto ou arquivo com a pergunta na legenda; <code>/projeto nome</code> troca de projeto.</li></ul>
+</div></div>
 <div id="app">
   <header>
     <div class="logo">JARVIS<small>orquestrador de projetos</small></div>
@@ -145,6 +184,8 @@ footer{position:relative}
     <button id="btnGestao" title="Projetos e GitHub">📁</button>
     <button id="btnKb" title="Base de conhecimento">🧠</button>
     <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
+    <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺</button>
+    <button id="btnGuia" title="Guia de uso do Jarvis">❔</button>
     <button id="btnPainel" title="Mostrar painéis">📋</button>
     <button id="novo" title="Conversa nova neste projeto">🆕</button>
     <button id="parar" title="Parar">⛔</button>
@@ -152,7 +193,7 @@ footer{position:relative}
   <main id="main">
     <section class="pn" id="agentes"><h3>Agentes</h3><div id="listaAg"></div></section>
     <section id="centro">
-      <div id="orbbox"><canvas id="orb"></canvas><div id="estadoOrb">em espera<small id="estadoTxt"></small></div></div>
+      <div id="orbbox"><canvas id="orb"></canvas><div id="estadoOrb">em espera<small id="estadoTxt"></small><div id="aoVivo"><div id="cron"></div><div id="feed"></div></div></div></div>
       <div class="pn" id="logbox"><h3>Registro</h3><div id="log"></div></div>
     </section>
     <section class="pn" id="projeto"><h3>Projeto</h3><div id="infoProj" class="vazio">Escolha um projeto.</div></section>
@@ -210,8 +251,20 @@ function tocar(src,el){
   a.onplay=()=>setModo("falando");a.onended=a.onpause=()=>setModo(ocupado?"pensando":"espera");
   if(carregado)a.play().catch(()=>{});
 }
+let runDet=null,inicioRun=0,ver=0;
+function linhaFeed(t){const f=$("feed");const d=document.createElement("div");d.className="fl";d.textContent=t;f.appendChild(d);while(f.children.length>5)f.firstChild.remove()}
+function linhaRun(t){if(!runDet)runDet=add("ev det",`<details open><summary>⚙ atividade</summary><div class="linhas"></div></details>`);
+  const l=runDet.querySelector(".linhas"),d=document.createElement("div");d.textContent=t;l.appendChild(d);
+  runDet.querySelector("summary").textContent=`⚙ atividade · ${l.children.length} passo(s)`}
+function fecharRun(){if(runDet){const d=runDet.querySelector("details");if(d)d.open=false;runDet=null}}
 function mostrar(ev){
   const h=`<div class="hora">${ev.hora}</div>`;
+  if(ev.tipo==="inicio"){fecharRun();$("feed").innerHTML="";inicioRun=Date.now();if(carregado)setModo("pensando","");linhaRun("▶ começou");return}
+  if(ev.tipo==="acao"||ev.tipo==="pensando"){
+    const t=`${ev.emoji||"🧠"} ${ev.agente||"jarvis"} · ${ev.texto}`;linhaRun(t);linhaFeed(t);
+    if(ev.agente&&ev.agente!=="jarvis"&&agEstado[ev.agente]&&agEstado[ev.agente].c==="ativo"){agEstado[ev.agente].d=ev.texto;desenharAgentes()}
+    if(carregado&&modo!=="falando"&&modo!=="ouvindo")setModo("pensando",ev.agente!=="jarvis"?ev.agente:"");return}
+  if(ev.tipo==="resposta"||ev.tipo==="erro")fecharRun();
   if(ev.tipo==="usuario")add("msg eu",esc(ev.texto)+h);
   else if(ev.tipo==="agente_inicio"){add("ev",`${ev.emoji} ${esc(ev.agente)} › ${esc(ev.descricao)}`);agente(ev);if(carregado)setModo("pensando",`${ev.agente}: ${ev.descricao}`)}
   else if(ev.tipo==="agente_fim"){add("ev "+(ev.erro?"erro":"ok"),`${ev.emoji} ${esc(ev.agente)} ${ev.erro?"✕ erro":"✓ concluiu"} (${ev.segundos}s)`);agente(ev)}
@@ -225,11 +278,19 @@ function mostrar(ev){
     if(carregado)painel();
   }
 }
+let ocupadoEm=null;
 async function poll(){
-  try{const r=await api("/api/eventos?desde="+ultimo);(r.eventos||[]).forEach(mostrar);ultimo=r.ultimo||ultimo;
-    if(r.ocupado!==ocupado){ocupado=r.ocupado;if(modo!=="falando"&&modo!=="ouvindo")setModo(ocupado?"pensando":"espera")}}catch(e){}
+  const v=ver;
+  try{const r=await api("/api/eventos?desde="+ultimo+"&projeto="+encodeURIComponent($("projetoSel").value||""));
+    if(v===ver){(r.eventos||[]).forEach(mostrar);ultimo=r.ultimo||ultimo;
+      const meu=r.ocupado&&r.projeto_ocupado===$("projetoSel").value;ocupadoEm=r.ocupado&&!meu?r.projeto_ocupado:null;
+      if(meu&&!inicioRun)inicioRun=Date.now()-(r.desde_inicio||0)*1000;
+      if(meu!==ocupado){ocupado=meu;if(!ocupado){inicioRun=0;fecharRun()}if(modo!=="falando"&&modo!=="ouvindo")setModo(ocupado?"pensando":"espera")}}}catch(e){}
   carregado=true;setTimeout(poll,1500);
 }
+setInterval(()=>{const c=$("cron");
+  if(ocupado&&inicioRun){const s=Math.floor((Date.now()-inicioRun)/1000);c.textContent=`⏱ trabalhando há ${s>=60?Math.floor(s/60)+"m":""}${String(s%60).padStart(s>=60?2:1,"0")}s`}
+  else c.textContent=ocupadoEm?`⏳ ocupado no projeto ${ocupadoEm}`:"";},1000);
 async function estado(){
   const e=await api("/api/estado");
   $("projetoSel").innerHTML='<option value="">Escolha o projeto…</option>'+e.projetos.map(p=>`<option ${p===e.projeto?"selected":""}>${esc(p)}</option>`).join("");
@@ -267,7 +328,11 @@ $("texto").addEventListener("keydown",e=>{
     if(e.key==="Escape"){$("menuCmd").style.display="none";filtrados=[];return}
   }
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();enviar()}});
-$("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.value});add("ev","projeto › "+esc(e.target.value));estado()};
+$("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.value});ver++;ultimo=0;runDet=null;inicioRun=0;ocupado=false;
+  $("log").innerHTML="";$("feed").innerHTML="";for(const k in agEstado)delete agEstado[k];desenharAgentes();estado()};
+$("btnMapa").onclick=()=>window.open("/api/mapa","_blank");
+$("btnGuia").onclick=()=>$("guia").classList.add("aberto");$("guiaFechar").onclick=()=>$("guia").classList.remove("aberto");
+$("guia").onclick=e=>{if(e.target.id==="guia")$("guia").classList.remove("aberto")};
 $("audio").onchange=e=>api("/api/config",{audio:e.target.value});
 $("agentesBtn").onclick=async()=>{agentesOn=!agentesOn;await api("/api/config",{agentes:agentesOn});$("agentesBtn").textContent="👥 "+(agentesOn?"on":"off")};
 $("btnPainel").onclick=()=>$("main").classList.toggle("abrir");

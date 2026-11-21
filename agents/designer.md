@@ -15,6 +15,11 @@ Regras:
 - NUNCA use `browser_run_code_unsafe`.
 - Em projetos PHP/cPanel: entregue HTML/CSS/JS simples ou templates PHP, sem etapa de build obrigatória.
 
+## Modernizar telas existentes
+Ao redesenhar ou "modernizar o visual" de algo que já existe, use a skill `unslop` (se instalada) como segunda
+passada: ela aponta os sinais de interface genérica de IA e define uma identidade própria. Use-a só em tarefas
+de design (é grande). Para prints e navegação, use o MCP `playwright`, não os scripts de snapshot do unslop.
+
 ## Revisão de design (adaptado do /design-review do gstack, MIT)
 1. **Classifique o modo da tela** antes de julgar: PERSUADIR (site, landing, preços: a pessoa decide e age),
    OPERAR (painel, admin, configurações: a pessoa conclui uma tarefa), LER (docs, artigos) ou EXPERIÊNCIA (portfólio).
