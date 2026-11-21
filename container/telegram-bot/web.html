@@ -66,7 +66,9 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 .det .linhas div{font:12px var(--mono);color:var(--m);padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #guia .caixa{width:min(860px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;line-height:1.6}
 #guia h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 6px}#guia h3{font:500 13px var(--mono);color:var(--c);margin:18px 0 6px;letter-spacing:.08em}
-#guia code{background:#081420;padding:1px 5px;border-radius:4px}#guia li{margin:3px 0}#guia .fechar{position:absolute;right:12px;top:10px}
+#guia code{background:#081420;padding:1px 5px;border-radius:4px}#guia li{margin:3px 0}#guia table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0}
+#guia th,#guia td{border-bottom:1px dashed var(--ln);padding:5px 6px;text-align:left;vertical-align:top}#guia th{color:var(--c2);font-weight:500}
+#guia details{border:1px dashed var(--ln);border-radius:8px;padding:6px 10px;margin:6px 0}#guia summary{cursor:pointer;color:var(--t)}#guia .fechar{position:absolute;right:12px;top:10px}
 #gestao,#kb,#guia{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
 #gestao.aberto,#kb.aberto,#guia.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
@@ -143,7 +145,7 @@ footer{position:relative}
 </div></div>
 <div id="guia"><div class="caixa">
   <button class="fechar" id="guiaFechar" title="Fechar">✕</button>
-  <h2>GUIA DO JARVIS</h2>
+  <h2>GUIA E PERGUNTAS FREQUENTES</h2>
   <p>Escolha o projeto no topo e converse normalmente, por texto ou pelo 🎙️. Cada projeto tem o seu histórico. O Jarvis
   distribui o trabalho entre os agentes, e você acompanha cada passo ao vivo ao lado do holograma.</p>
   <h3>PEDIR DEMANDAS</h3><ul>
@@ -173,6 +175,34 @@ footer{position:relative}
    <li><code>/custo</code> mostra o gasto · <code>/modelo sonnet</code> troca o modelo principal · <code>/parar</code> interrompe</li>
    <li>🔊 no topo: resposta em áudio (auto, sempre, nunca) · 👥: avisos dos agentes</li>
    <li>Digite <code>/</code> para ver todos os comandos. <code>/mcp</code>, <code>/login</code> e <code>/plugin</code> são só do terminal (VS Code web).</li></ul>
+  <h3>MODELOS QUE VOCÊ PODE USAR</h3>
+  <table><tr><th>Apelido</th><th>Modelo</th><th>Preço (entrada / saída, por milhão de tokens)</th><th>Quando usar</th></tr>
+   <tr><td><code>haiku</code></td><td>Claude Haiku 5.5</td><td>US$ 0,10 / 0,50 (pedidos até 100 mil tokens)</td><td>Buscas, testes, documentação, tarefas repetitivas</td></tr>
+   <tr><td><code>sonnet</code></td><td>Claude Sonnet 5.5</td><td>US$ 2 / 10</td><td>O padrão: programar, orquestrar, revisar</td></tr>
+   <tr><td><code>opus</code></td><td>Claude Opus 5.5</td><td>US$ 4 / 20</td><td>Arquitetura, pagamentos, bugs difíceis, decisões</td></tr>
+   <tr><td><code>fable</code></td><td>Claude Fable 5.2</td><td>US$ 8 / 40</td><td>O mais forte (classe Mythos). Só quando os outros não resolvem</td></tr></table>
+  <p style="font-size:13px;color:var(--m)">Todos têm contexto de 1 milhão de tokens. Preços de referência da API da Anthropic (nov/2026); no seu gateway podem ser diferentes. Use <code>/custo</code> para ver o gasto real.</p>
+  <h3>PERGUNTAS FREQUENTES</h3>
+  <details><summary>Qual a diferença entre <code>/modelo</code> e <code>/jarvis:modelos</code>?</summary>
+   <code>/modelo</code> troca o modelo da conversa principal (o orquestrador que fala com você). <code>/jarvis:modelos</code> escolhe o
+   perfil dos agentes do projeto: <b>econômico</b> (quase tudo em Haiku/Sonnet), <b>equilibrado</b> (Opus só no arquiteto) ou <b>máximo</b>
+   (Opus nos executores e no revisor). Recomendação: conversa em <code>sonnet</code> e perfil <b>equilibrado</b>.</details>
+  <details><summary>Quando vale usar o Opus ou o Fable?</summary>
+   Opus: mudanças em pagamento, permissões, arquitetura nova, bug que o Sonnet não resolveu em duas tentativas (o Jarvis já sobe de
+   modelo sozinho depois de 2 falhas). Fable: só em problemas realmente difíceis; custa o dobro do Opus. Para uma única tarefa,
+   prefira marcar <code>[modelo:opus]</code> no título da tarefa a trocar tudo.</details>
+  <details><summary>O gateway aceita todos esses modelos?</summary>
+   Depende do provedor. Se <code>/modelo fable</code> der erro, o gateway não oferece esse modelo ou usa outro nome. Nesse caso use o ID
+   completo que o provedor informar (ex.: <code>/modelo claude-fable-5-2</code>) ou mapeie os apelidos no <code>.env.claude</code> com
+   <code>ANTHROPIC_DEFAULT_OPUS_MODEL</code>, <code>ANTHROPIC_DEFAULT_SONNET_MODEL</code> e <code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code>.</details>
+  <details><summary>Como gastar menos?</summary>
+   Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
+   assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>
+  <details><summary>Os agentes não estão trabalhando, o que faço?</summary>
+   Veja a caixa ao lado do holograma: ela mostra cada passo e o agente ativo. Se o Jarvis respondeu sem usar agentes numa demanda de
+   código, peça de novo citando o fluxo (ex.: <code>use o explorador e o revisor</code>) ou use <code>/jarvis:jarvis &lt;pedido&gt;</code>.</details>
+  <details><summary>Perdi a conversa ao trocar de projeto?</summary>
+   Não. Cada projeto guarda o seu histórico; ao voltar para ele, a conversa reaparece. <code>/novo</code> começa do zero só no projeto atual.</details>
   <h3>TELEGRAM</h3><ul>
    <li>Os mesmos comandos (os do Jarvis como <code>/jarvis_status</code>). Áudio: mande mensagem de voz; diga “ideia: …” para guardar uma ideia.</li>
    <li>Foto ou arquivo com a pergunta na legenda; <code>/projeto nome</code> troca de projeto.</li></ul>

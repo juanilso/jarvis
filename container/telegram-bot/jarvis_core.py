@@ -349,7 +349,15 @@ PROMPT_COMPACTAR = (
     "objetivo, o que já foi feito, decisões tomadas, arquivos importantes, pendências e próximo passo. "
     "Responda apenas com o resumo, sem executar nenhuma ação."
 )
-MODELOS = {"sonnet", "opus", "haiku", "padrao"}
+MODELOS = {"sonnet", "opus", "haiku", "padrao", "fable"}
+APELIDOS_MODELO = {"fable": "claude-fable-5-2"}
+TABELA_MODELOS = """🧠 Modelos disponíveis (preço por milhão de tokens: entrada / saída)
+• haiku → Claude Haiku 5.5 · US$ 0,10 / 0,50 (até 100 mil tokens por pedido) · rápido e barato: buscas, testes, docs
+• sonnet → Claude Sonnet 5.5 · US$ 2 / 10 · equilíbrio: o padrão para programar e orquestrar
+• opus → Claude Opus 5.5 · US$ 4 / 20 · raciocínio profundo: arquitetura, pagamentos, bugs difíceis
+• fable → Claude Fable 5.2 · US$ 8 / 40 · o mais forte (classe Mythos); use só em casos realmente difíceis
+Todos têm contexto de 1 milhão de tokens. No gateway, a disponibilidade e os nomes podem variar.
+Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)"""
 COMANDOS = [
     ("/ajuda", "Lista os comandos"),
     ("/guia", "Como usar o Jarvis, com exemplos"),
@@ -363,7 +371,7 @@ COMANDOS = [
     ("/compactar", "Resume a conversa e libera contexto (economiza tokens)"),
     ("/novo", "Começa uma conversa nova, sem resumo"),
     ("/parar", "Interrompe o trabalho em andamento"),
-    ("/modelo", "Modelo da sessão: sonnet, opus, haiku ou padrao"),
+    ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable ou padrao (sem nome: lista e preços)"),
     ("/custo", "Gasto estimado do projeto atual"),
     ("/audio", "Resposta em áudio: auto, sempre ou nunca"),
     ("/agentes", "Avisos dos agentes: on ou off"),
@@ -402,6 +410,10 @@ Conhecimento
 Vários projetos
 • Mande no projeto A, troque (/projeto B) e mande outra: os dois trabalham juntos. As mensagens vêm marcadas [projeto].
 • /status mostra todos · /parar para só o projeto atual · limite padrão: 2 ao mesmo tempo
+
+Modelos (/modelo sem nome mostra a lista e os preços)
+• haiku: barato e rápido · sonnet: o padrão · opus: casos difíceis · fable: o mais forte e o mais caro
+• Os agentes do Jarvis seguem o perfil do projeto (/jarvis:modelos): econômico, equilibrado ou máximo
 
 Controle
 • /compactar (conversa longa) · /novo · /custo · /modelo sonnet · /parar · /audio · /agentes
@@ -498,9 +510,11 @@ def comando(estado, pool, texto):
         return "🗜️ Compactando a conversa…", "compactar"
     if cmd == "/modelo":
         a = arg.lower()
-        if a not in MODELOS:
-            return f"Modelo atual: {est.get('modelo') or 'padrão'}. Use /modelo sonnet, opus, haiku ou padrao.", None
-        est["modelo"] = None if a == "padrao" else a
+        if not a:
+            return f"Modelo atual: {est.get('modelo') or 'padrão'}\n\n{TABELA_MODELOS}", None
+        if a not in MODELOS and not re.match(r"^claude-[a-z0-9.-]+$", a):
+            return f"Não conheço “{arg}”.\n\n{TABELA_MODELOS}", None
+        est["modelo"] = None if a == "padrao" else APELIDOS_MODELO.get(a, a)
         estado.salvar(est)
         return f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)", None
     if cmd == "/custo":
