@@ -175,12 +175,37 @@ def waha(caminho, corpo=None, metodo=None, bruto=False, tempo=20, aceitar="appli
         return conteudo if bruto else (json.loads(conteudo.decode() or "{}") if conteudo else {})
 
 
+def _id_msg(j):
+    i = j.get("id") if isinstance(j, dict) else None
+    if isinstance(i, dict):
+        i = i.get("_serialized") or i.get("id")
+    return str(i or "")
+
+
 def enviar(chat, texto):
-    e = _ler_estado()
-    e.setdefault("enviadas", {}).setdefault(chat, [])
-    e["enviadas"][chat] = [h for h in e["enviadas"][chat] if h[1] > time.time() - 600][-10:] + [[_hash(texto), time.time()]]
-    _salvar_estado(e)
-    return waha("/api/sendText", {"session": SESSAO, "chatId": chat, "text": texto})
+    with _lock:
+        e = _ler_estado()
+        e.setdefault("enviadas", {}).setdefault(chat, [])
+        e["enviadas"][chat] = [h for h in e["enviadas"][chat] if h[1] > time.time() - 600][-10:] + [[_hash(texto), time.time()]]
+        _salvar_estado(e)
+    r = waha("/api/sendText", {"session": SESSAO, "chatId": chat, "text": texto})
+    mid = _id_msg(r)
+    if mid:
+        with _lock:
+            e = _ler_estado()
+            ids = [x for x in e.setdefault("ids_robo", []) if x[1] > time.time() - 600][-50:]
+            e["ids_robo"] = ids + [[mid, time.time()]]
+            _salvar_estado(e)
+    return r
+
+
+def _evento(e, chat, motivo, texto=""):
+    """Últimos acontecimentos para o painel (número parcialmente escondido)."""
+    n = chat.split("@")[0]
+    oculto = (n[:4] + "…" + n[-4:]) if len(n) > 8 else n
+    e["eventos"] = (e.get("eventos", []) + [{"h": time.strftime("%H:%M:%S"), "n": oculto,
+                                              "nome": e.get("nomes", {}).get(chat, ""), "m": motivo,
+                                              "x": texto[:80]}])[-20:]
 
 
 def status_whatsapp():
@@ -268,18 +293,27 @@ def atender(dados):
     with _lock:
         e = _ler_estado()
         if de_mim:
-            recentes = {h for h, t in e.get("enviadas", {}).get(chat, []) if t > time.time() - 600}
-            if _hash(texto) in recentes:
+            enviadas = [x for x in e.get("enviadas", {}).get(chat, []) if x[1] > time.time() - 600]
+            ids = {x[0] for x in e.get("ids_robo", [])}
+            origem = str(dados.get("origem") or "").lower()
+            mid = str(dados.get("id") or "")
+            ultimo_envio = max((x[1] for x in enviadas), default=0)
+            if (origem == "api" or (mid and (mid in ids or any(mid.endswith(i) or i.endswith(mid) for i in ids if i)))
+                    or _hash(texto) in {x[0] for x in enviadas} or time.time() - ultimo_envio < 20):
                 return {"responder": False, "motivo": "eco da resposta do robô"}
             if texto.lower().startswith("#bot"):
                 e.get("humano", {}).pop(chat, None)
+                _evento(e, chat, "🤖 você devolveu ao robô (#bot)")
                 _salvar_estado(e)
                 return {"responder": False, "motivo": "conversa devolvida ao robô"}
             e.setdefault("humano", {})[chat] = time.time() + HORAS_HUMANO * 3600  # você respondeu: o robô se cala
             _guardar(chat, "dono", texto)
+            _evento(e, chat, "🙋 você respondeu pelo WhatsApp: robô calado nesta conversa", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "você assumiu a conversa"}
         if not e.get("ligado", True):
+            _evento(e, chat, "⏸ não respondeu: robô pausado", texto)
+            _salvar_estado(e)
             return {"responder": False, "motivo": "atendimento desligado"}
         if time.time() - ts > 300:
             return {"responder": False, "motivo": "mensagem antiga (reconexão)"}
@@ -289,10 +323,12 @@ def atender(dados):
         _contar(e, "mensagens")
         ate = e.get("humano", {}).get(chat)
         if ate and ate > time.time():
+            _evento(e, chat, "🔇 não respondeu: conversa está com você (📱 → devolver ao robô)", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "aguardando atendente"}
         recentes = [m for m in _historico(chat) if m["p"] == "cliente" and m["t"] > time.time() - 600]
         if len(recentes) > LIMITE_MSGS:
+            _evento(e, chat, "🔇 não respondeu: muitas mensagens seguidas", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "muitas mensagens seguidas"}
         if not texto:
@@ -311,6 +347,8 @@ def atender(dados):
                 resposta = resposta.replace("[[HUMANO]]", "").strip() or "Vou chamar um atendente para te ajudar. 🙌"
                 _passar_para_humano(e, chat, nome, "o robô não soube responder ou é caso para uma pessoa")
         resposta = resposta[:1500]
+        ate = e.get("humano", {}).get(chat)
+        _evento(e, chat, "💬 respondeu e passou para você" if ate and ate > time.time() else "💬 respondeu", texto)
         _guardar(chat, "bot", resposta)
         _contar(e, "respostas")
         _salvar_estado(e)
@@ -331,7 +369,7 @@ def resumo():
     hoje = s if s.get("dia") == time.strftime("%Y-%m-%d") else {}
     return {"ligado": e.get("ligado", True), "aguardando": aguardando, "mensagens_hoje": hoje.get("mensagens", 0),
             "respostas_hoje": hoje.get("respostas", 0), "humano_hoje": hoje.get("humano", 0),
-            "configurado": bool(WAHA_KEY), "faq": FAQ}
+            "configurado": bool(WAHA_KEY), "faq": FAQ, "eventos": list(reversed(e.get("eventos", [])))[:12]}
 
 
 def ligar(valor):
