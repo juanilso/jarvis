@@ -124,12 +124,24 @@ def executar(dados, publicar, pool, estado):
         concluir(True, f"Nota salva: {caminho}")
         return 200, {"ok": True, "caminho": caminho}
 
-    publicar({"tipo": "sistema", "texto": f"🔁 Rotina “{rotina}” começou ({acao})"}, projeto or None)
+    publicar({"tipo": "sistema", "texto": f"🔁 Rotina “{rotina}” recebida ({acao})"}, projeto or None)
     registrar(dict(base, ok=None, resultado="iniciada"))
     pronto, saida = threading.Event(), {}
 
+    chave = projeto if acao == "jarvis" else "_pesquisa" if acao in ("pesquisar", "tendencias") else None
+
     def tarefa():
         try:
+            if chave:  # projeto ocupado: espera a vez (até 30 min) em vez de falhar
+                limite, avisado = time.time() + 1800, False
+                while not pool.pode_iniciar(chave)[0]:
+                    if time.time() > limite:
+                        raise RuntimeError("o projeto ficou ocupado por mais de 30 minutos; rotina cancelada")
+                    if not avisado:
+                        publicar({"tipo": "sistema", "texto": f"🔁 Rotina “{rotina}” na fila: esperando o trabalho atual terminar"},
+                                 projeto or None)
+                        avisado = True
+                    time.sleep(15)
             if acao == "hermes":
                 import hermes_cliente as hermes
                 try:
@@ -163,19 +175,11 @@ def executar(dados, publicar, pool, estado):
             concluir(saida.get("ok", False), saida.get("resultado", ""))
             pronto.set()
 
-    if acao == "jarvis":
-        if not projeto:
-            return 400, {"erro": "informe o projeto"}
-        ok, motivo = pool.pode_iniciar(projeto)
-        if not ok:
-            registrar(dict(base, ok=False, resultado=motivo))
-            return 409, {"erro": motivo}
-    if acao in ("pesquisar", "tendencias"):
-        ok, motivo = pool.pode_iniciar("_pesquisa")
-        if not ok:
-            return 409, {"erro": motivo}
+    if acao == "jarvis" and not projeto:
+        return 400, {"erro": "informe o projeto"}
+    na_fila = bool(chave) and not pool.pode_iniciar(chave)[0]
     threading.Thread(target=tarefa, daemon=True).start()
     if esperar:
         pronto.wait(timeout=900)
         return 200, {"ok": saida.get("ok", False), "resultado": saida.get("resultado", "ainda rodando")}
-    return 202, {"ok": True, "status": "iniciada", "rotina": rotina}
+    return 202, {"ok": True, "status": "na fila" if na_fila else "iniciada", "rotina": rotina}
