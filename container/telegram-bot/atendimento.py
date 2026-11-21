@@ -162,8 +162,8 @@ def _perguntar_modelo(historico, faq):
 
 
 # ------------------------------------------------------------------ WhatsApp (WAHA)
-def waha(caminho, corpo=None, metodo=None, bruto=False, tempo=20):
-    cab = {"X-Api-Key": WAHA_KEY, "Accept": "application/json"}
+def waha(caminho, corpo=None, metodo=None, bruto=False, tempo=20, aceitar="application/json"):
+    cab = {"X-Api-Key": WAHA_KEY, "Accept": aceitar}
     dados = None
     if corpo is not None:
         dados = json.dumps(corpo).encode()
@@ -212,7 +212,21 @@ def iniciar_sessao():
 
 
 def qr_png():
-    return waha(f"/api/{SESSAO}/auth/qr?format=image", bruto=True)
+    """QR code em PNG. O WAHA devolve a imagem direto (Accept: image/png) ou em JSON com base64; aceita os dois."""
+    import base64
+    dados = waha(f"/api/{SESSAO}/auth/qr?format=image", bruto=True, aceitar="image/png")
+    if dados[:8] == b"\x89PNG\r\n\x1a\n":
+        return dados
+    try:
+        j = json.loads(dados.decode("utf-8", "replace"))
+    except json.JSONDecodeError:
+        raise RuntimeError("resposta do QR não é imagem nem JSON")
+    b64 = j.get("data") or j.get("image") or ""
+    if "," in b64[:40]:  # data:image/png;base64,....
+        b64 = b64.split(",", 1)[1]
+    if not b64:
+        raise RuntimeError("QR ainda não disponível")
+    return base64.b64decode(b64)
 
 
 # ------------------------------------------------------------------ regras do atendimento

@@ -503,7 +503,10 @@ async function waAtualizar(){
   $("waMsgs").textContent=a.mensagens_hoje;$("waResp").textContent=a.respostas_hoje;$("waHum").textContent=a.humano_hoje;
   waLigado=a.ligado;$("waLigar").textContent=a.ligado?"⏸ Pausar robô":"▶️ Ligar robô";$("waLigar").className=a.ligado?"":"prim";
   const q=$("waQr");
-  if(w.status==="SCAN_QR_CODE"){q.classList.add("qr");q.textContent="";q.style.backgroundImage=`url(/api/whatsapp/qr?t=${Date.now()})`}
+  if(w.status==="SCAN_QR_CODE"){const u=`/api/whatsapp/qr?t=${Date.now()}`,im=new Image();
+    im.onload=()=>{q.classList.add("qr");q.textContent="";q.style.backgroundImage=`url(${u})`};
+    im.onerror=()=>{q.classList.remove("qr");q.style.backgroundImage="";q.textContent="⏳ gerando o QR code… (se demorar, clique em Conectar)"};
+    im.src=u}
   else{q.classList.remove("qr");q.style.backgroundImage="";q.textContent=w.status==="WORKING"?"✅ WhatsApp conectado":(st[0])}
   $("waConectar").style.display=w.status==="WORKING"?"none":"";
   $("waAguard").innerHTML=a.aguardando.length?a.aguardando.map(x=>`<div class="waAg">🙋 <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · ${Math.round(x.ate/3600)}h restantes</span><button data-n="${esc(x.numero)}">🤖 devolver ao robô</button></div>`).join(""):'<div class="waDica">ninguém aguardando</div>';
