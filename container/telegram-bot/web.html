@@ -232,6 +232,18 @@ footer{position:relative}
    cliente e relatar o que quebrou. Cada problema vira tarefa e é corrigido e conferido. Você também pode pedir direto:
    <code>/hermes teste como usuário o cadastro em http://jarvisweb:8081</code>. Para clicar em telas ele precisa do navegador
    (vem com <code>--nous</code>); sem ele, testa lendo as páginas.</details>
+  <details><summary>O que é o escritório (🏢)?</summary>
+   Uma planta com uma sala para cada agente: quando ele trabalha, a sala acende, o robô se mexe e o balão mostra o que está fazendo.
+   A sala de comando é o Jarvis, a consultoria é o Hermes, e à direita fica o quadro com as rotinas automáticas e os resultados.</details>
+  <details><summary>Como criar rotinas (n8n)?</summary>
+   Na VPS, rode <code>./automacoes-configurar.sh</code> uma vez e publique na VPN com
+   <code>sudo tailscale serve --bg --https=5678 http://127.0.0.1:5678</code>. Abra o n8n pelo botão ⚙ no escritório, crie o usuário e
+   ative os fluxos de exemplo (pesquisa semanal, check-up diário, segurança semanal, alerta de erro). Para criar outros, copie um
+   exemplo e troque o texto: as ações possíveis são <code>hermes</code>, <code>jarvis</code> (só analisa, testa e relata),
+   <code>pesquisar</code>, <code>ideia</code> e <code>avisar</code> (Telegram).</details>
+  <details><summary>Uma rotina pode alterar meu código ou publicar?</summary>
+   Não. Em rotina, o Jarvis roda sem as ferramentas de edição e com commit, push, deploy, banco e envio de arquivos bloqueados; ele só
+   devolve um relatório com sugestões. O Hermes continua só lendo. Para aplicar uma sugestão, peça você mesmo no painel.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>
@@ -256,6 +268,7 @@ footer{position:relative}
     <button id="btnKb" title="Base de conhecimento">🧠</button>
     <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
     <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺</button>
+    <button onclick="location.href='/escritorio'" title="Escritório virtual: agentes e rotinas">🏢</button>
     <button id="btnGuia" title="Guia de uso do Jarvis">❔</button>
     <button id="btnPainel" title="Mostrar painéis">📋</button>
     <button id="novo" title="Conversa nova neste projeto">🆕</button>
@@ -278,7 +291,7 @@ footer{position:relative}
 </div>
 <script>
 const $=id=>document.getElementById(id);
-const AGENTES=[["hermes","☤"],["arquiteto","🏛️"],["explorador","🔎"],["desenvolvedor","💻"],["dba","🗄️"],["android","🤖"],["testador","🧪"],["revisor","🧐"],["deploy","🚀"],["documentador","📝"]];
+const AGENTES=[["hermes","☤"],["arquiteto","🏛️"],["explorador","🔎"],["desenvolvedor","💻"],["dba","🗄️"],["android","🤖"],["testador","🧪"],["revisor","🧐"],["designer","🎨"],["deploy","🚀"],["documentador","📝"]];
 let ultimo=0,agentesOn=true,ocupado=false,gravador=null,pedacos=[],t0=0,timerG=null,modo="espera",nivel=0,ctx=null,analyser=null,carregado=false;
 const agEstado={};
 
@@ -523,7 +536,7 @@ const REG={frontal:{x:165,y:175,r:52,c:"120,220,255"},motor:{x:300,y:105,r:50,c:
   occipital:{x:468,y:228,r:38,c:"255,130,230"},temporal:{x:300,y:268,r:46,c:"110,255,220"},cerebelo:{x:420,y:318,r:36,c:"255,170,120"},
   tronco:{x:360,y:372,r:20,c:"255,220,140"},centro:{x:290,y:200,r:30,c:"200,240,255"}};
 const REG_AG={jarvis:"centro",arquiteto:"frontal",revisor:"frontal",explorador:"occipital",desenvolvedor:"motor",android:"motor",
-  dba:"temporal",documentador:"temporal",testador:"cerebelo",deploy:"tronco",hermes:"parietal"};
+  dba:"temporal",documentador:"temporal",testador:"cerebelo",deploy:"tronco",hermes:"parietal",designer:"occipital"};
 const NOMES_REG=Object.keys(REG);let pens=[],ativ={};NOMES_REG.forEach(n=>ativ[n]=0);
 function pontoEm(n){const R=REG[n],a=Math.random()*6.283,q=Math.sqrt(Math.random())*R.r;return[R.x+Math.cos(a)*q,R.y+Math.sin(a)*q*.8]}
 function novoPensamento(de){ /* uma linha de pensamento: região de origem → (centro) → outra região, em curvas */

@@ -125,7 +125,35 @@ services:
     volumes:
       - hermes-data:/opt/data                         # config, memória e skills do Hermes
       - ${PROJETOS_DIR:-../../projetos}:/workspace:ro # lê os projetos, não altera
+      - ${PROJETOS_DIR:-../../projetos}/.hermes-saida:/saida  # único lugar onde ele grava (zips, relatórios)
+      - ./hermes/SOUL.md:/opt/jarvis-hermes/SOUL.md:ro         # personalidade em português (copiada pelo script)
     mem_limit: 2g
+    restart: unless-stopped
+
+  # n8n: rotinas e integrações (agendamentos, webhooks, WhatsApp, planilhas…). ./automacoes-configurar.sh
+  # Fala com o Jarvis/Hermes só pelo gatilho protegido (/api/gatilho). Acesso pelo Tailscale, porta 5678.
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: jarvis-n8n
+    profiles: ["automacoes"]
+    env_file:
+      - path: .env.n8n          # criado pelo script: chave de criptografia e token do gatilho
+        required: false
+    environment:
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      TZ: America/Sao_Paulo
+      N8N_PORT: "5678"
+      N8N_SECURE_COOKIE: "false"           # acesso só pela VPN (Tailscale)
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false" # os fluxos leem o token com {{$env.JARVIS_TOKEN}}
+      JARVIS_GATILHO_URL: http://jarvisweb:8090/api/gatilho
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n:/opt/jarvis-n8n:ro            # fluxos de exemplo para importar
+    ports:
+      - "127.0.0.1:5678:5678"
+    mem_limit: 1g
     restart: unless-stopped
 
   mariadb:
@@ -161,6 +189,7 @@ services:
 volumes:
   claude-config:
   hermes-data:
+  n8n-data:
   code-server-data:
   dev-home:
   mariadb-data:

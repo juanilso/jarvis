@@ -111,6 +111,39 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.9: escritório virtual, rotinas (n8n) e Hermes em português
+
+**Hermes em português.** Ele recebe uma personalidade em português (`container/hermes/SOUL.md`), o pedido sempre lembra o idioma
+e, se mesmo assim a resposta vier em inglês, o Jarvis pede a tradução antes de mostrar e falar. Ele também ganhou uma pasta onde
+pode gravar arquivos (zip de projeto, relatórios): `/workspace/.hermes-saida`.
+
+**Escritório virtual (🏢 no painel).** Uma sala por agente (acende quando trabalha, com o que está fazendo e há quanto tempo),
+a sala de comando do Jarvis, a consultoria do Hermes, a sala de automação e o quadro de rotinas com os resultados.
+
+**Rotinas com n8n.** O n8n roda num contêiner separado e chama o Jarvis/Hermes por um gatilho protegido por token
+(`/api/gatilho`). Em rotina, o Jarvis roda sem as ferramentas de edição e com commit, push, deploy, banco e envio de arquivos
+bloqueados: só analisa, testa e manda relatório (painel e Telegram).
+
+**Aplicar (na VPS):**
+```bash
+cd ~/jarvis/container && git pull
+docker compose build
+docker compose --profile web --profile telegram up -d
+./hermes-configurar.sh --portugues      # só atualiza a personalidade do Hermes (mantém o modelo)
+./automacoes-configurar.sh              # liga o n8n, cria o token e importa 4 rotinas de exemplo (desativadas)
+sudo tailscale serve --bg --https=5678 http://127.0.0.1:5678
+```
+Abra `https://<sua-vps>.ts.net:5678`, crie o usuário do n8n, revise as rotinas "Jarvis · …" e ative as que quiser.
+Ctrl+F5 no painel e clique em 🏢.
+
+**Rotinas de exemplo:** pesquisa semanal (Hermes, segunda 8h) · check-up diário do projeto (Jarvis, 7h30) ·
+revisão de segurança (Hermes, sexta 18h) · alerta de erro por webhook (Jarvis analisa o log e avisa no Telegram).
+
+**Criar outra rotina:** duplique um exemplo no n8n e troque o JSON do nó HTTP: `acao` = `hermes`, `jarvis`, `pesquisar`,
+`ideia` ou `avisar`; `texto` = o pedido; `projeto` = pasta (vazio = projeto atual); `avisar: true` manda no Telegram.
+
+**Desligar:** `docker compose --profile automacoes stop n8n` (o resto continua igual).
+
 ## Jarvis 1.8: voz do Hermes e cérebro com linhas de pensamento
 
 - **Voz do Hermes:** as respostas do `/hermes` vêm faladas com outro timbre (painel e Telegram). Troque em `HERMES_VOICE`

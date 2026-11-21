@@ -1,0 +1,91 @@
+{
+  "id": "jarvisRotina0002",
+  "name": "Jarvis · Check-up diário do projeto",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "19e5af2e-d98f-4357-8489-a213d6dbe59d",
+      "name": "Todo dia 7h30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Check-up diário\",\n  \"acao\": \"jarvis\",\n  \"projeto\": \"\",\n  \"avisar\": true,\n  \"texto\": \"Faça um check-up do projeto: rode os testes existentes e o lint (php -l), veja o docs/ESTADO.md e o git status. Relate em até 10 linhas: o que está quebrado, riscos e o próximo passo sugerido. Não altere nada.\"\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "53bc395d-2493-4d74-9723-f80bb643d698",
+      "name": "Pedir ao Jarvis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Check-up diário\nTodo dia às 7h30 o Jarvis roda testes e verificações **sem alterar nada** e manda um relatório.\n\n- Em **projeto**, coloque o nome da pasta (vazio = projeto atual do painel).\n- Ative no botão **Active**.",
+        "height": 260,
+        "width": 420
+      },
+      "id": "3b777da4-073f-44a7-b110-01fa8e386d58",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Todo dia 7h30": {
+      "main": [
+        [
+          {
+            "node": "Pedir ao Jarvis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

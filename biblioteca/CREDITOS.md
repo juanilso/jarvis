@@ -35,3 +35,7 @@ Instalado como plugin pelo `jarvis-extras` (não copiado para o Jarvis). Usado p
 ## Hermes Agent (https://github.com/NousResearch/hermes-agent), por Nous Research, licença MIT
 Usado como serviço separado a partir da imagem oficial `nousresearch/hermes-agent`. Nenhum código do Hermes
 foi copiado para o Jarvis; o Jarvis só conversa com a API dele (formato OpenAI) pelo `jarvis-hermes`.
+
+## n8n (https://github.com/n8n-io/n8n), licença Sustainable Use License (fair-code)
+Usado como serviço separado a partir da imagem oficial, para uso interno do próprio usuário. Nenhum código do n8n foi
+copiado; o Jarvis traz só fluxos de exemplo (JSON) que chamam o gatilho do Jarvis.

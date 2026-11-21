@@ -5,6 +5,7 @@ no formato OpenAI em http://hermes:8642/v1. Ele enxerga /workspace só para leit
 """
 import json
 import os
+import re
 import threading
 import urllib.error
 import urllib.request
@@ -16,8 +17,20 @@ REGRAS = (
     "Você é o Hermes, ajudante do Jarvis (o orquestrador de projetos do usuário). Responda em português do Brasil, "
     "de forma objetiva. A pasta /workspace é somente leitura para você: não tente alterar projetos, só analise e "
     "devolva o resultado. Nunca exponha chaves, senhas ou tokens. Ao pesquisar na internet, liste as fontes (links). "
-    "Se o pedido exigir mudar código, descreva o que mudar e o Jarvis executa."
+    "Se o pedido exigir mudar código, descreva o que mudar e o Jarvis executa. "
+    "Arquivos que o usuário pedir (zip, relatório, planilha) você salva em /saida (ele vê em /workspace/.hermes-saida). "
+    "Faça o que foi pedido usando as suas ferramentas antes de pesquisar na internet."
 )
+LEMBRETE = "[Responda SEMPRE em português do Brasil, mesmo que as fontes estejam em inglês.]\n\n"
+_EN = set("the and is are of to for with this that you your can not there these which from have has be by on as it".split())
+_PT = set("o a os as de do da dos das para com que não é são um uma você seu sua por no na nos se mais como".split())
+
+
+def em_ingles(texto):
+    """Heurística simples: mais palavras comuns do inglês que do português."""
+    pal = re.findall(r"[a-zA-ZÀ-ú]+", texto.lower())[:400]
+    en, pt = sum(p in _EN for p in pal), sum(p in _PT for p in pal)
+    return en >= 8 and en > pt * 1.5
 _ocupado = threading.Lock()
 MARCA = "/tmp/jarvis-hermes.ocupado"  # visível para o painel quando um agente chama o jarvis-hermes
 
@@ -94,7 +107,7 @@ def perguntar(texto, projeto=None):
         contexto = f"\nProjeto atual: /workspace/{projeto} (somente leitura)." if projeto else ""
         j = _pedir("/v1/chat/completions", {
             "model": modelo, "stream": False,
-            "messages": [{"role": "system", "content": REGRAS + contexto}, {"role": "user", "content": texto}],
+            "messages": [{"role": "system", "content": REGRAS + contexto}, {"role": "user", "content": LEMBRETE + texto}],
         }, tempo=TEMPO)
         try:
             resposta = j["choices"][0]["message"]["content"]
@@ -102,7 +115,18 @@ def perguntar(texto, projeto=None):
             raise ErroHermes(f"resposta inesperada: {str(j)[:300]}")
         if isinstance(resposta, list):  # alguns servidores devolvem partes
             resposta = "".join(p.get("text", "") for p in resposta if isinstance(p, dict))
-        return (resposta or "").strip() or "(o Hermes respondeu vazio)"
+        resposta = (resposta or "").strip() or "(o Hermes respondeu vazio)"
+        if em_ingles(resposta):  # o Hermes às vezes segue o idioma das fontes; pede a tradução uma vez
+            try:
+                t = _pedir("/v1/chat/completions", {"model": modelo, "stream": False, "messages": [
+                    {"role": "user", "content": "Traduza para português do Brasil, mantendo links, listas e código. "
+                                                "Responda só com a tradução:\n\n" + resposta}]}, tempo=300)
+                traducao = (t["choices"][0]["message"]["content"] or "").strip()
+                if traducao:
+                    resposta = traducao
+            except (ErroHermes, KeyError, IndexError, TypeError):
+                pass
+        return resposta
     finally:
         _ocupado.release()
         try:

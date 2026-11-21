@@ -1,0 +1,85 @@
+{
+  "id": "jarvisRotina0004",
+  "name": "Jarvis · Alerta de erro (webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-alerta",
+        "options": {}
+      },
+      "id": "007e98c5-33a6-4977-9515-3e3237b125d1",
+      "name": "Recebe alerta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "e311b7ce-af5d-4a65-a822-ba330f595bd9"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ rotina: \"Alerta de erro\", acao: \"jarvis\", projeto: $json.body.projeto || \"\", avisar: true, texto: \"Chegou este alerta/log de erro. Descubra a causa provável no código, sem alterar nada, e sugira a correção:\\n\\n\" + String($json.body.log || JSON.stringify($json.body)).slice(0, 3000) }) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "f27b04a4-46ac-4af9-a411-3f61b1f71fcb",
+      "name": "Jarvis analisa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Alerta de erro\nQuando um sistema seu manda um POST para este webhook (ex.: `{\"projeto\":\"meu-painel\",\"log\":\"...\"}`), o Jarvis analisa a causa e avisa no Telegram.\n\n- Endereço: abra o nó *Recebe alerta* e copie a **Production URL**.\n- Só funciona dentro da VPN (Tailscale). Ative no botão **Active**.",
+        "height": 260,
+        "width": 420
+      },
+      "id": "e0bac899-77b9-4602-8279-868fdc6fb08a",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Recebe alerta": {
+      "main": [
+        [
+          {
+            "node": "Jarvis analisa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

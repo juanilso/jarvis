@@ -22,12 +22,24 @@ esperar() {  # espera a API do Hermes responder (até ~3 min)
   done
   echo; return 1
 }
+personalidade() {  # SOUL.md em português (guarda a anterior, se existir) + pasta /saida gravável
+  docker compose --profile hermes exec -T -u root hermes sh -c 'mkdir -p /saida && chmod 777 /saida' >/dev/null 2>&1 || true
+  docker compose --profile hermes exec -T hermes sh -c \
+    'H=${HERMES_HOME:-/opt/data}; [ -f "$H/SOUL.md" ] && ! cmp -s "$H/SOUL.md" /opt/jarvis-hermes/SOUL.md && cp "$H/SOUL.md" "$H/SOUL.md.anterior"; cp /opt/jarvis-hermes/SOUL.md "$H/SOUL.md"' \
+    && echo "✔ Personalidade do Hermes em português (SOUL.md)" || echo "   (não consegui copiar o SOUL.md; o Jarvis ainda pede português em cada pedido)"
+}
 
 CHAVE_GW="$(ler ANTHROPIC_API_KEY)"; [ -n "$CHAVE_GW" ] || CHAVE_GW="$(ler ANTHROPIC_AUTH_TOKEN)"
 BASE_GW="$(ler ANTHROPIC_BASE_URL)"
 MODELO="${1:-$(ler HERMES_MODELO)}"; [ -n "$MODELO" ] || MODELO="$(ler ANTHROPIC_DEFAULT_SONNET_MODEL)"
 [ -n "$MODELO" ] || MODELO="claude-sonnet-5-5"
 [ -n "$CHAVE_GW" ] || { echo "Falta ANTHROPIC_API_KEY (ou ANTHROPIC_AUTH_TOKEN) no $ENV."; exit 1; }
+
+# Opção: só atualizar a personalidade (português) sem mexer no modelo
+if [ "${1:-}" = "--portugues" ]; then
+  docker compose --profile hermes up -d hermes; sleep 5; personalidade
+  docker compose --profile hermes restart hermes; exit 0
+fi
 
 # Opção: usar o modelo e as ferramentas da própria Nous (Nous Portal, conta e créditos separados)
 if [ "${1:-}" = "--nous" ]; then
@@ -43,6 +55,7 @@ if [ "${1:-}" = "--nous" ]; then
   sleep 8
   echo "→ Abra o link que aparecer, entre na sua conta Nous e autorize (modelo + busca, navegador, voz e imagens)."
   docker compose --profile hermes exec -it hermes hermes setup --portal
+  personalidade
   docker compose --profile hermes restart hermes
   docker compose --profile web --profile telegram up -d
   esperar || true
@@ -103,6 +116,7 @@ testar() {  # 0 = funcionou · 1 = o gateway recusou · 2 = o Hermes não ligou
   echo "$r" | grep -qi "ok"
 }
 
+personalidade
 echo "→ Reiniciando o painel e o Telegram (para lerem a chave nova)…"
 docker compose --profile web --profile telegram up -d >/dev/null
 

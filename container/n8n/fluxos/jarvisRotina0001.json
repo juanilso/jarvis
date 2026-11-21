@@ -1,0 +1,93 @@
+{
+  "id": "jarvisRotina0001",
+  "name": "Jarvis · Hermes pesquisa toda segunda",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "4e25ed2f-b7fc-4e8f-9d87-c7a181bd0a2c",
+      "name": "Toda segunda 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Pesquisa semanal\",\n  \"acao\": \"hermes\",\n  \"avisar\": true,\n  \"texto\": \"Pesquise as novidades da semana sobre gateways de pagamento PIX, segurança em PHP e cPanel que possam afetar meus projetos. Traga um resumo em tópicos, com links das fontes.\"\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "c0d4eddf-f47f-48c8-8e9b-80992ee599fd",
+      "name": "Pedir ao Hermes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Pesquisa semanal com o Hermes\nToda segunda às 8h o Hermes pesquisa e o resultado chega no Telegram e no painel.\n\n- Troque o **texto** no nó *Pedir ao Hermes* pelo tema que quiser.\n- Ative o fluxo no botão **Active** (canto superior direito).",
+        "height": 260,
+        "width": 420
+      },
+      "id": "8ed22d41-8517-414f-85ee-765616d57f64",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Toda segunda 8h": {
+      "main": [
+        [
+          {
+            "node": "Pedir ao Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

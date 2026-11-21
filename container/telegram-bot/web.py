@@ -23,6 +23,7 @@ import jarvis_core as core  # noqa: E402
 import projetos  # noqa: E402
 import kb  # noqa: E402
 import hermes_cliente as hermes  # noqa: E402
+import rotinas  # noqa: E402
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -44,6 +45,21 @@ def _arquivo_hist(projeto):
     return os.path.join(HIST_DIR, re.sub(r"[^A-Za-z0-9._-]", "_", projeto or "_geral") + ".jsonl")
 
 
+ESCRITORIO = {}  # agente -> {projeto, descricao, acao, desde, estado, fim}
+
+
+def _escritorio(ev):
+    ag = ev.get("agente")
+    if ev["tipo"] == "agente_inicio" and ag:
+        ESCRITORIO[ag] = {"projeto": ev["projeto"], "descricao": ev.get("descricao", ""), "acao": "",
+                          "desde": time.time(), "estado": "ativo"}
+    elif ev["tipo"] == "agente_fim" and ag:
+        e = ESCRITORIO.setdefault(ag, {"projeto": ev["projeto"], "descricao": "", "acao": "", "desde": time.time()})
+        e.update(estado="erro" if ev.get("erro") else "ok", fim=time.time())
+    elif ev["tipo"] in ("acao", "pensando") and ag and ag in ESCRITORIO and ESCRITORIO[ag].get("estado") == "ativo":
+        ESCRITORIO[ag]["acao"] = ev.get("texto", "")[:120]
+
+
 def publicar(ev, projeto=None):
     """Registra um evento no histórico do projeto (cada projeto tem o seu, salvo em disco)."""
     with ev_lock:
@@ -53,6 +69,7 @@ def publicar(ev, projeto=None):
         ev["projeto"] = ev.get("projeto") or projeto or estado.ler()["projeto"] or "_geral"
         eventos.append(ev)
         del eventos[:-3000]
+        _escritorio(ev)
         if ev["tipo"] in PERSISTIR:
             try:
                 os.makedirs(HIST_DIR, exist_ok=True)
@@ -248,6 +265,17 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/modelos":
             forcar = urllib.parse.parse_qs(url.query).get("atualizar", [""])[0] == "1"
             return self._json({"texto": core.texto_modelos_gateway(forcar)})
+        if url.path == "/api/escritorio":
+            agora = time.time()
+            agentes = {n: dict(e, segundos=int(agora - e["desde"])) for n, e in ESCRITORIO.items()
+                       if e.get("estado") == "ativo" or agora - e.get("fim", agora) < 60}
+            return self._json({"agentes": agentes, "rodando": pool.resumo(), "hermes": hermes.ocupado(),
+                               "hermes_ligado": hermes.configurado(), "rotinas": rotinas.listar(20),
+                               "n8n": bool(os.environ.get("JARVIS_GATILHO_TOKEN")), "projeto": estado.ler()["projeto"]})
+        if url.path == "/escritorio":
+            caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), "escritorio.html")
+            with open(caminho, encoding="utf-8") as f:
+                return self._html(f.read())
         if url.path == "/api/comandos":
             return self._json([{"cmd": c, "desc": d} for c, d in core.COMANDOS])
         if url.path == "/api/painel":
@@ -299,6 +327,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.end_headers()
             time.sleep(1.5)
             return self._html(LOGIN.replace("<!--erro-->", "<p class='erro'>Senha incorreta.</p>"), 401)
+        if url.path == "/api/gatilho":  # rotinas (n8n): autenticação por token, não por cookie
+            if not rotinas.autorizado(self.headers.get("Authorization")):
+                time.sleep(1)
+                return self._json({"erro": "token inválido ou gatilho desligado"}, 401)
+            try:
+                dados = json.loads(self._corpo() or b"{}")
+            except json.JSONDecodeError:
+                return self._json({"erro": "JSON inválido"}, 400)
+            codigo, resp = rotinas.executar(dados, publicar, pool, estado)
+            return self._json(resp, codigo)
         if not self._logado():
             return self._json({"erro": "login"}, 401)
 

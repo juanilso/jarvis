@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05090f">
+<title>Jarvis · Escritório</title>
+<style>
+:root{--bg:#05090f;--pn:rgba(10,24,38,.72);--ln:rgba(56,189,248,.22);--ln2:rgba(56,189,248,.5);--c:#38bdf8;--c2:#7dd3fc;
+--t:#d6f1ff;--m:#6b8aa3;--ok:#34d399;--er:#fb7185;--ou:#ffc45a;--mono:ui-monospace,"Cascadia Code",Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--t);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{background-image:linear-gradient(rgba(56,189,248,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.04) 1px,transparent 1px);background-size:32px 32px}
+a{color:var(--c2)}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--ln);max-width:1500px;margin:0 auto}
+.logo{font-family:var(--mono);letter-spacing:.35em;font-size:16px;color:var(--c2);margin-right:auto}
+.logo small{display:block;letter-spacing:.12em;font-size:10px;color:var(--m)}
+.pill{font:11px var(--mono);padding:4px 9px;border:1px solid var(--ln);border-radius:20px;color:var(--m)}
+.pill.on{color:var(--ok);border-color:rgba(52,211,153,.4)}.pill.ouro{color:var(--ou);border-color:rgba(255,196,90,.45)}
+.btn{font:inherit;color:var(--t);background:rgba(8,20,32,.9);border:1px solid var(--ln);border-radius:6px;padding:6px 10px;text-decoration:none;cursor:pointer}
+.btn:hover{border-color:var(--ln2)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:14px 16px;max-width:1500px;margin:0 auto}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+h2{margin:0 0 10px;font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);text-transform:uppercase}
+/* planta do escritório */
+.planta{position:relative;border:1px solid var(--ln);border-radius:12px;padding:14px;background:
+  radial-gradient(ellipse at 50% 0%,rgba(56,189,248,.08),transparent 60%),
+  repeating-linear-gradient(0deg,rgba(56,189,248,.05) 0 1px,transparent 1px 48px),
+  repeating-linear-gradient(90deg,rgba(56,189,248,.05) 0 1px,transparent 1px 48px),rgba(6,14,24,.8)}
+.salas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media(max-width:760px){.salas{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sala{position:relative;border:1px solid var(--ln);border-radius:10px;padding:10px 10px 8px;background:rgba(9,22,35,.85);
+  min-height:168px;display:flex;flex-direction:column;transition:border-color .4s,box-shadow .4s;--cor:var(--c)}
+.sala .porta{position:absolute;bottom:-1px;left:50%;width:34px;height:3px;margin-left:-17px;background:var(--bg)}
+.sala h3{margin:0;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--m)}
+.sala .papel{font-size:11px;color:var(--m);margin-bottom:4px}
+.sala.ativa{border-color:var(--cor);box-shadow:0 0 22px -6px var(--cor),inset 0 0 30px -18px var(--cor)}
+.sala.ativa h3{color:var(--cor)}
+.sala.ok{border-color:rgba(52,211,153,.5)}.sala.erro{border-color:rgba(251,113,133,.6)}
+.mesa{position:relative;height:72px;margin:4px 0}
+.mesa svg{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:150px;height:72px;overflow:visible}
+.tampo{fill:#0d2233;stroke:#24455e}.pe{stroke:#24455e;stroke-width:2}
+.monitor{fill:#071420;stroke:#2b4a60;stroke-width:1.4}.tela{fill:#0a1a28;transition:fill .4s}
+.sala.ativa .tela{fill:var(--cor);opacity:.85;animation:tela 1.6s infinite}
+@keyframes tela{0%,100%{opacity:.6}50%{opacity:.95}}
+.codigo{stroke:#04111c;stroke-width:1.6;opacity:0}.sala.ativa .codigo{opacity:.9;animation:dig 1.2s infinite}
+.codigo:nth-of-type(2){animation-delay:.3s}.codigo:nth-of-type(3){animation-delay:.6s}
+@keyframes dig{0%{stroke-dasharray:0 40}60%,100%{stroke-dasharray:40 0}}
+.rb .cab,.rb .corpo,.rb .orelha{fill:#0a1824;stroke:#2b4a60;stroke-width:1.4}.rb .olho,.rb .ant{fill:#1e3a4f}.rb .haste,.rb .boca{stroke:#2b4a60;stroke-width:1.4}
+.sala.ativa .rb .cab,.sala.ativa .rb .corpo,.sala.ativa .rb .orelha{stroke:var(--cor)}
+.sala.ativa .rb .olho,.sala.ativa .rb .ant{fill:var(--cor)}.sala.ativa .rb{animation:bob .9s ease-in-out infinite}
+.sala.ok .rb .olho{fill:var(--ok)}.sala.erro .rb .olho{fill:var(--er)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.balao{font-size:11px;line-height:1.35;color:var(--t);background:rgba(56,189,248,.08);border:1px solid var(--ln);border-radius:8px;
+  padding:5px 7px;min-height:32px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sala:not(.ativa) .balao{color:var(--m);background:transparent;border-style:dashed}
+.rodape{display:flex;justify-content:space-between;margin-top:5px;font:10px var(--mono);color:var(--m)}
+.sala.ativa .rodape .tempo{color:var(--cor)}
+/* salas especiais */
+.comando{grid-column:span 2;--cor:#7dd3fc}
+.comando .cerebro{height:104px;width:124px;margin:0 auto;background:url(/static/cerebro.jpg?v=180) center 40%/150% no-repeat;filter:saturate(.6) brightness(.55);transition:filter .5s;
+  -webkit-mask:radial-gradient(closest-side,#000 55%,transparent 100%);mask:radial-gradient(closest-side,#000 55%,transparent 100%)}
+.comando.ativa .cerebro{filter:none;animation:pulsa 1.8s infinite}
+@keyframes pulsa{0%,100%{filter:brightness(.9)}50%{filter:brightness(1.25) drop-shadow(0 0 10px #38bdf8)}}
+.consultoria{grid-column:span 2;--cor:var(--ou)}
+.consultoria .hermes{height:104px;width:124px;margin:0 auto;background:url(/static/hermes.jpg?v=180) center 38%/150% no-repeat;filter:grayscale(.7) brightness(.45);transition:filter .5s;
+  -webkit-mask:radial-gradient(closest-side,#000 55%,transparent 100%);mask:radial-gradient(closest-side,#000 55%,transparent 100%)}
+.consultoria.ativa .hermes{filter:none;animation:pulsaO 1.8s infinite}
+@keyframes pulsaO{0%,100%{filter:brightness(.9)}50%{filter:brightness(1.2) drop-shadow(0 0 10px #ffc45a)}}
+.consultoria.desligado{opacity:.55}
+.automacao{grid-column:span 2;--cor:var(--ok)}
+.relogio{display:flex;align-items:center;gap:12px;margin:6px 0}
+.relogio svg{width:58px;height:58px;flex:none}.relogio .aro{fill:none;stroke:#24455e;stroke-width:2}
+.relogio .pont{stroke:var(--m);stroke-width:2;stroke-linecap:round;transform-origin:30px 30px}
+.automacao.ativa .relogio .aro{stroke:var(--ok)}.automacao.ativa .pont{stroke:var(--ok)}
+.relogio .pont.min{animation:gira 6s linear infinite}.relogio .pont.hora{animation:gira 72s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.automacao .info{font-size:12px;color:var(--m)}.automacao .info b{color:var(--t);font-weight:600}
+.lista{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font:10px var(--mono);padding:2px 7px;border-radius:12px;border:1px solid var(--ln);color:var(--c2)}
+/* quadro de rotinas */
+.quadro{border:1px solid var(--ln);border-radius:12px;padding:12px;background:var(--pn);align-self:start;position:sticky;top:10px}
+.rot{border-bottom:1px dashed rgba(56,189,248,.12);padding:8px 2px}
+.rot .lin{display:flex;gap:8px;align-items:baseline}
+.rot .st{font-size:13px;width:16px;flex:none}
+.rot .nm{font-weight:600;font-size:13px}.rot .q{margin-left:auto;font:10px var(--mono);color:var(--m);white-space:nowrap}
+.rot .ac{font:10px var(--mono);color:var(--m);text-transform:uppercase;letter-spacing:.08em}
+.rot details{font-size:12px;color:#b6d3e6;margin-top:3px}.rot summary{cursor:pointer;color:var(--m);font-size:11px}
+.rot pre{white-space:pre-wrap;font:12px/1.45 system-ui,sans-serif;margin:6px 0 0;max-height:240px;overflow:auto}
+.vazio{color:var(--m);font-size:13px}
+.dica{font-size:12px;color:var(--m);margin-top:10px;border-top:1px solid var(--ln);padding-top:10px}
+code{font:12px var(--mono);color:var(--c2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ESCRITÓRIO<small>jarvis · agentes · rotinas</small></div>
+  <span class="pill" id="pRod">—</span><span class="pill" id="pHer">Hermes</span><span class="pill" id="pN8n">n8n</span>
+  <a class="btn" id="abrirN8n" target="_blank" rel="noopener">⚙ n8n</a>
+  <a class="btn" href="/">← painel</a>
+</header>
+<main>
+  <section>
+    <h2>Planta</h2>
+    <div class="planta"><div class="salas" id="salas"></div></div>
+  </section>
+  <aside class="quadro">
+    <h2>Quadro de rotinas</h2>
+    <div id="rotinas"><div class="vazio">carregando…</div></div>
+    <div class="dica">Rotinas são criadas no <b>n8n</b> (⚙ no topo). Elas chamam o Jarvis ou o Hermes pelo gatilho seguro:
+      o Jarvis em rotina só analisa, testa e relata, sem alterar código.</div>
+  </aside>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const EQUIPE=[
+  ["arquiteto","Planeja e quebra o trabalho","#7dd3fc"],["explorador","Lê e mapeia o código","#f0abfc"],
+  ["desenvolvedor","Escreve o código","#93c5fd"],["dba","Bancos e migrations","#5eead4"],
+  ["android","App Android","#a3e635"],["designer","Telas e sites","#f9a8d4"],
+  ["testador","Testa tudo","#fdba74"],["revisor","Revisa antes de entregar","#c4b5fd"],
+  ["deploy","Prepara a publicação","#fde68a"],["documentador","Docs e memória","#67e8f9"]];
+const RB=`<g class="rb" transform="translate(57 2)"><line class="haste" x1="18" y1="3" x2="18" y2="8"/><circle class="ant" cx="18" cy="2" r="2.4"/>
+ <rect class="orelha" x="2" y="13" width="4" height="7" rx="1.5"/><rect class="orelha" x="30" y="13" width="4" height="7" rx="1.5"/>
+ <rect class="cab" x="6" y="8" width="24" height="17" rx="5"/><circle class="olho" cx="13" cy="16" r="2.6"/><circle class="olho" cx="23" cy="16" r="2.6"/>
+ <line class="boca" x1="14" y1="21" x2="22" y2="21"/><rect class="corpo" x="10" y="27" width="16" height="12" rx="3"/></g>`;
+const MESA=`<svg viewBox="0 0 150 72">${RB}<rect class="tampo" x="8" y="44" width="134" height="8" rx="2"/>
+ <line class="pe" x1="18" y1="52" x2="18" y2="72"/><line class="pe" x1="132" y1="52" x2="132" y2="72"/>
+ <rect class="monitor" x="94" y="16" width="44" height="28" rx="2"/><rect class="tela" x="97" y="19" width="38" height="22" rx="1"/>
+ <line class="codigo" x1="100" y1="25" x2="126" y2="25"/><line class="codigo" x1="100" y1="30" x2="132" y2="30"/><line class="codigo" x1="100" y1="35" x2="118" y2="35"/>
+ <rect class="monitor" x="113" y="44" width="6" height="0"/></svg>`;
+function tempo(s){s=Math.max(0,s|0);return s<60?s+"s":Math.floor(s/60)+"m"+String(s%60).padStart(2,"0")+"s"}
+function montar(){
+  $("salas").innerHTML=
+   `<div class="sala comando" id="s-jarvis"><h3>Sala de comando · Jarvis</h3><div class="papel">Orquestra os agentes e fala com você</div>
+     <div class="cerebro"></div><div class="lista" id="projAtivos"></div><span class="porta"></span></div>
+    <div class="sala consultoria" id="s-hermes"><h3>Consultoria · Hermes</h3><div class="papel">Pesquisa, segunda opinião e teste real</div>
+     <div class="hermes"></div><div class="balao" id="b-hermes">—</div><span class="porta"></span></div>`+
+   EQUIPE.map(([n,p,c])=>`<div class="sala" id="s-${n}" style="--cor:${c}"><h3>${n}</h3><div class="papel">${p}</div>
+     <div class="mesa">${MESA}</div><div class="balao" id="b-${n}">livre</div>
+     <div class="rodape"><span id="p-${n}"></span><span class="tempo" id="t-${n}"></span></div><span class="porta"></span></div>`).join("")+
+   `<div class="sala automacao" id="s-n8n"><h3>Automação · n8n</h3><div class="papel">Rotinas agendadas e alertas</div>
+     <div class="relogio"><svg viewBox="0 0 60 60"><circle class="aro" cx="30" cy="30" r="26"/><line class="pont hora" x1="30" y1="30" x2="30" y2="16"/>
+     <line class="pont min" x1="30" y1="30" x2="30" y2="9"/></svg><div class="info" id="i-n8n">—</div></div><span class="porta"></span></div>`;
+  const h=location.hostname;$("abrirN8n").href=`${location.protocol}//${h}:5678/`;
+}
+async function atualizar(){
+  let d;try{const r=await fetch("/api/escritorio");if(r.status===401){location.href="/";return}d=await r.json()}catch(e){return}
+  const rod=d.rodando||[];
+  $("pRod").textContent=rod.length?`⏳ ${rod.length} trabalhando`:"💤 livre";$("pRod").className="pill"+(rod.length?" on":"");
+  $("pHer").textContent=d.hermes_ligado?(d.hermes?"☤ Hermes trabalhando":"☤ Hermes livre"):"☤ Hermes desligado";
+  $("pHer").className="pill"+(d.hermes?" ouro":"");
+  $("pN8n").textContent=d.n8n?"⚙ rotinas ligadas":"⚙ rotinas desligadas";$("pN8n").className="pill"+(d.n8n?" on":"");
+  const cmd=$("s-jarvis");cmd.classList.toggle("ativa",rod.length>0);
+  $("projAtivos").innerHTML=rod.length?rod.map(r=>`<span class="chip">📁 ${esc(r.projeto)} · ${tempo(r.segundos)}</span>`).join("")
+    :`<span class="chip" style="color:var(--m)">projeto atual: ${esc(d.projeto||"nenhum")}</span>`;
+  const hs=$("s-hermes");hs.classList.toggle("ativa",!!d.hermes);hs.classList.toggle("desligado",!d.hermes_ligado);
+  $("b-hermes").textContent=d.hermes?"atendendo um pedido…":d.hermes_ligado?"disponível":"desligado (./hermes-configurar.sh)";
+  EQUIPE.forEach(([n])=>{const a=(d.agentes||{})[n],s=$("s-"+n);s.classList.remove("ativa","ok","erro");
+    if(!a){$("b-"+n).textContent="livre";$("p-"+n).textContent="";$("t-"+n).textContent="";return}
+    s.classList.add(a.estado==="ativo"?"ativa":a.estado);
+    $("b-"+n).textContent=a.estado==="ativo"?(a.acao||a.descricao||"trabalhando…"):(a.estado==="ok"?"✓ concluiu: ":"✕ erro: ")+(a.descricao||"");
+    $("p-"+n).textContent=a.projeto?"📁 "+a.projeto:"";$("t-"+n).textContent=a.estado==="ativo"?tempo(a.segundos):""});
+  const rs=d.rotinas||[],emCurso=rs.filter(r=>r.ok===null||r.ok===undefined),ult=rs.find(r=>r.ok!==null&&r.ok!==undefined);
+  $("s-n8n").classList.toggle("ativa",d.n8n&&emCurso.length>0);
+  $("i-n8n").innerHTML=!d.n8n?"desligado · <code>./automacoes-configurar.sh</code>":
+    emCurso.length?`<b>rodando:</b> ${esc(emCurso.map(r=>r.rotina).join(", "))}`:
+    ult?`<b>última:</b> ${esc(ult.rotina)} ${ult.ok?"✅":"❌"} · ${esc((ult.fim||ult.quando||"").slice(5,16))}`:"ligado · nenhuma rotina rodou ainda";
+  $("rotinas").innerHTML=rs.length?rs.map(r=>{const st=r.ok===true?"✅":r.ok===false?"❌":"⏳";
+    return `<div class="rot"><div class="lin"><span class="st">${st}</span><span class="nm">${esc(r.rotina)}</span><span class="q">${esc((r.fim||r.quando||"").slice(5,16))}</span></div>
+      <div class="ac">${esc(r.acao)}${r.projeto?" · "+esc(r.projeto):""}</div>
+      ${r.resultado&&r.resultado!=="iniciada"?`<details><summary>resultado</summary><pre>${esc(r.resultado)}</pre></details>`:""}</div>`}).join("")
+    :`<div class="vazio">Nenhuma rotina rodou ainda.${d.n8n?"":" Ligue com <code>./automacoes-configurar.sh</code> na VPS."}</div>`;
+}
+montar();atualizar();setInterval(atualizar,2000);
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@ Status: ✅ aprovada · ⚠️ atenção (decisão do usuário) · ❌ reprovada
 | floorplan | plugin/skill | haydenschmitty/floorplan (MIT) | Mapa interativo do sistema + check-up de segurança (PHP puro e Laravel) | 2026-11-20 · sem telemetria; script de status local na carga (revisado) | ✅ |
 | skill-scanner | skill | getsentry/skills (Apache 2.0, embutida no Jarvis) | Verificar skills antes de instalar | 2026-11-20 · revisada | ✅ |
 | Hermes Agent | serviço (contêiner) | NousResearch/hermes-agent (MIT), imagem oficial `nousresearch/hermes-agent` | Ajudante: pesquisa, análise e segunda opinião via `/hermes` e `jarvis-hermes` | 2026-11-21 · isolado: sem porta publicada, `/workspace` só leitura, sem GH_TOKEN/Telegram; respostas tratadas como dados | ✅ |
+| n8n | serviço (contêiner) | n8n-io/n8n, imagem oficial `docker.n8n.io/n8nio/n8n` (Sustainable Use License: uso interno permitido) | Rotinas e integrações que chamam o Jarvis/Hermes | 2026-11-21 · só pela VPN; fala com o Jarvis por token; rotinas sem edição/push/deploy | ✅ |
 
 ## Instalar os aprovados
 No contêiner `dev`: `jarvis-extras` (instala frontend-design e canva do marketplace oficial e aplica as proteções).

@@ -1,0 +1,93 @@
+{
+  "id": "jarvisRotina0003",
+  "name": "Jarvis · Revisão de segurança semanal (Hermes)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "id": "1ae5e54b-2444-41df-8205-fd5aab73809f",
+      "name": "Toda sexta 18h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Segurança semanal\",\n  \"acao\": \"hermes\",\n  \"projeto\": \"\",\n  \"avisar\": true,\n  \"texto\": \"Revise o projeto (somente leitura) procurando riscos de segurança: SQL injection, XSS, senhas ou chaves no código, uploads sem validação, endpoints de pagamento sem verificação de assinatura. Liste os achados por gravidade com arquivo e linha.\"\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "a6b599d5-a10a-4526-84b4-b00dd7730513",
+      "name": "Pedir ao Hermes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Revisão de segurança semanal\nToda sexta às 18h o Hermes lê o projeto e lista riscos. Ele **não altera** nada: para corrigir, peça ao Jarvis.\n\n- Em **projeto**, coloque o nome da pasta.\n- Ative no botão **Active**.",
+        "height": 260,
+        "width": 420
+      },
+      "id": "e4db2d13-49ca-4d8f-ab9d-5976c79ffc16",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Toda sexta 18h": {
+      "main": [
+        [
+          {
+            "node": "Pedir ao Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
