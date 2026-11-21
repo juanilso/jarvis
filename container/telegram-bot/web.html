@@ -495,7 +495,7 @@ async function kbCarregar(){const q=$("kbBusca").value.trim();const j=q?await ap
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;
 const WA_ST={WORKING:["✅ conectado","waOk"],SCAN_QR_CODE:["📷 aguardando leitura do QR code",""],STARTING:["⏳ iniciando…",""],
-  STOPPED:["⏹ parado: clique em Conectar",""],FAILED:["⚠️ falhou: clique em Conectar","waEr"],SEM_SESSAO:["clique em Conectar",""],
+  STOPPED:["⏹ parado: clique em Conectar",""],FAILED:["⚠️ o QR code expirou ou a conexão caiu: clique em Conectar e leia em até 1 minuto","waEr"],SEM_SESSAO:["clique em Conectar",""],
   DESLIGADO:["desligado: rode ./whatsapp-configurar.sh na VPS","waEr"],ERRO:["⚠️ WhatsApp fora do ar","waEr"]};
 async function waAtualizar(){
   const j=await api("/api/whatsapp");if(!j.whatsapp)return;const w=j.whatsapp,a=j.atendimento,st=WA_ST[w.status]||[w.status,""];

@@ -199,6 +199,16 @@ def status_whatsapp():
 
 
 def iniciar_sessao():
+    """Conectar: reinicia a sessão se ela falhou/parou (QR expirado), ou cria e inicia se não existir."""
+    st = status_whatsapp().get("status")
+    if st in ("FAILED", "STOPPED", "SCAN_QR_CODE", "STARTING"):
+        for caminho in (f"/api/sessions/{SESSAO}/restart", f"/api/sessions/{SESSAO}/stop"):
+            try:
+                waha(caminho, {})
+                if caminho.endswith("/restart"):
+                    return True
+            except Exception:  # noqa: BLE001
+                continue
     for caminho, corpo in ((f"/api/sessions/{SESSAO}/start", {}), ("/api/sessions", {"name": SESSAO, "start": True}),
                            ("/api/sessions/start", {"name": SESSAO})):
         try:
