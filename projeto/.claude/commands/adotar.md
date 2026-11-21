@@ -1,6 +1,6 @@
 ---
 description: Adota um projeto que já existe (sem docs do Jarvis) mapeando o código real, sem alterar nada
-argument-hint: [observações, ex. "painel admin PHP com gateway de pagamento"]
+argument-hint: '[observações, ex. "painel admin PHP com gateway de pagamento"]'
 ---
 
 Observações do usuário: $ARGUMENTS

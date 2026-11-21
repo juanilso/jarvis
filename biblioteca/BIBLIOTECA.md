@@ -8,6 +8,7 @@ Status: ✅ aprovada · ⚠️ atenção (decisão do usuário) · ❌ reprovada
 | frontend-design | plugin/skill | anthropics/claude-plugins-official | Design de interfaces com qualidade (evita visual genérico) | 2026-11-20 · 0 achados | ✅ |
 | canva | plugin + MCP | anthropics/claude-plugins-official → canva-sdks/canva-skills | Criar, editar, redimensionar e checar marca no Canva | 2026-11-20 · 0 achados nas skills; MCP oficial https://mcp.canva.com/mcp | ✅ |
 | playwright (MCP) | MCP | microsoft/playwright-mcp (via `jarvis-playwright-mcp`) | Navegador: analisar sites, prints, testes visuais | 2026-11-20 · oficial Microsoft; `browser_run_code_unsafe` bloqueado | ✅ |
+| gstack (ideias) | adaptação | garrytan/gstack (MIT) | Checklists de revisão, design, QA e premissas, reescritos no Jarvis | 2026-11-20 · nada instalado nem executado; ver CREDITOS.md | ✅ |
 | skill-scanner | skill | getsentry/skills (Apache 2.0, embutida no Jarvis) | Verificar skills antes de instalar | 2026-11-20 · revisada | ✅ |
 
 ## Instalar os aprovados

@@ -1,6 +1,6 @@
 ---
 description: Executa o backlog de forma autônoma (explorar → executar → testar → revisar → commit) com o modelo do perfil ativo, sem pedir aceite a cada etapa
-argument-hint: [quantidade | T-ID | tudo]
+argument-hint: '[quantidade | T-ID | tudo]'
 ---
 
 Alvo: $ARGUMENTS (se vazio, até 5 tarefas).

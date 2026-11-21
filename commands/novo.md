@@ -1,6 +1,6 @@
 ---
 description: Inicia um projeto, discute o escopo, recomenda o perfil de modelos (ou deixa você escolher) e gera os arquivos de orquestração
-argument-hint: <descrição livre do projeto>
+argument-hint: '<descrição livre do projeto>'
 ---
 
 Ideia: $ARGUMENTS
@@ -15,6 +15,15 @@ objetivo/usuário, funcionalidades do MVP, fora de escopo, perfil de stack (PHP/
 Android ou ambos), versão do PHP e banco(s), forma de deploy e criticidade (dados sensíveis/pagamentos?).
 Inclua no fim a pergunta sobre os modelos:
 "Perfil de modelos recomendado: <perfil> porque <motivo>. Responda ok, ou escolha economico/equilibrado/maximo."
+
+Etapa 2.5 — Desafio das premissas (adaptado do /office-hours do gstack, MIT). Na MESMA mensagem das perguntas,
+antes delas, inclua:
+- O problema reescrito em 1 frase e 3 premissas para o usuário concordar ou corrigir:
+  é o problema certo? o que acontece se não fizer nada? o que já existe (no código, na base de conhecimento ou no
+  mercado) que resolve parte disso? como o usuário final vai receber e usar?
+- 2 ou 3 abordagens: MÍNIMA (o menor que resolve), IDEAL e uma ALTERNATIVA criativa, cada uma com esforço,
+  risco e o que fica de fora. Recomende uma.
+Se o usuário discordar de uma premissa, ajuste antes de seguir.
 
 Etapa 3 — Com as respostas, crie `docs/` a partir de `templates/` da skill e delegue ao `arquiteto`
 (com o modelo do perfil escolhido) a tarefa de preencher PROJETO, STACK, ORQUESTRACAO, DECISOES (ADRs iniciais),

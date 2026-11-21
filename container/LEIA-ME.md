@@ -95,3 +95,8 @@ Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.
 - `/jarvis:skill <link>`: verifica uma skill/plugin/MCP com a skill-scanner (Sentry) antes de instalar.
 - Biblioteca de itens aprovados: `biblioteca/BIBLIOTECA.md`.
 - Canva: dentro do Claude, `/mcp` → canva → Authenticate (ver instruções no final do `jarvis-extras`).
+
+## Voltar a uma versão anterior do Jarvis (se algo der errado)
+A branch `versao-1.3.0` guarda o Jarvis antes das adaptações do gstack. Para voltar, dentro do contêiner dev:
+`claude plugin marketplace remove jarvis-marketplace && claude plugin marketplace add juanilso/jarvis#versao-1.3.0 && claude plugin install jarvis@jarvis-marketplace`
+Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arquivos do Jarvis).

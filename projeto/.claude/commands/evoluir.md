@@ -1,6 +1,6 @@
 ---
 description: Discute uma evolução de escopo ou um ajuste técnico, apresenta opções e atualiza o escopo, as decisões e o backlog
-argument-hint: <mudança desejada ou problema técnico>
+argument-hint: '<mudança desejada ou problema técnico>'
 ---
 
 Proposta: $ARGUMENTS

@@ -1,6 +1,6 @@
 ---
 description: Mostra ou troca o perfil de modelos do projeto (economico, equilibrado, maximo) e exceções por papel
-argument-hint: [economico | equilibrado | maximo | "revisor opus" | vazio para recomendar]
+argument-hint: '[economico | equilibrado | maximo | "revisor opus" | vazio para recomendar]'
 ---
 
 Carregue a skill `orquestrador` e leia `docs/ORQUESTRACAO.md`, `docs/PROJETO.md` e `docs/BACKLOG.md`.

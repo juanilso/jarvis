@@ -1,6 +1,6 @@
 ---
 description: Jarvis - ponto de entrada único. Entende o pedido em linguagem natural e aciona o fluxo certo (novo projeto, executar, evoluir, decidir, status, modelos).
-argument-hint: <qualquer pedido, ex. "toca o projeto", "quero adicionar login", "como estamos?">
+argument-hint: '<qualquer pedido, ex. "toca o projeto", "quero adicionar login", "como estamos?">'
 ---
 
 Pedido: $ARGUMENTS
@@ -17,6 +17,7 @@ Carregue a skill `orquestrador`. Depois, identifique a intenção e siga o fluxo
 - respostas a decisões ("D-001 A", "ok pode seguir") → fluxo **decidir**
 - "como estamos", "status", "o que falta" → fluxo **status**
 - URL de site + "parecido", "moderno", "redesenhar", "melhorar o visual" → fluxo **redesenhar**
+- "testar", "achar bugs", "QA", "está quebrado no site" + URL ou projeto → fluxo **qa**
 - instalar/avaliar skill, plugin ou MCP → fluxo **skill** (portão de segurança)
 - trocar modelo, custo, "mais barato", "mais qualidade" → fluxo **modelos**
 - pergunta técnica pontual → responda direto, curto, sem subagentes

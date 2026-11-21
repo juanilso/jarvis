@@ -1,6 +1,6 @@
 ---
 description: Analisa um site pela URL e cria 3 variações modernas na mesma linha, com prévia, para você escolher e refinar
-argument-hint: <url> [o que você quer diferente: cores, estilo, seções, público...]
+argument-hint: '<url> [o que você quer diferente: cores, estilo, seções, público...]'
 ---
 
 Pedido: $ARGUMENTS

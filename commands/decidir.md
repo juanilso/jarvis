@@ -1,6 +1,6 @@
 ---
 description: Mostra as decisões pendentes em lote para você escolher e destrava as tarefas
-argument-hint: [ex. "D-001 A, D-002 B" | ok]
+argument-hint: '[ex. "D-001 A, D-002 B" | ok]'
 ---
 
 Leia `docs/DECISOES-PENDENTES.md`.

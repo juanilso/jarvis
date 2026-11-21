@@ -1,6 +1,6 @@
 ---
 description: Instala uma skill, plugin ou MCP com segurança - verifica antes, registra na biblioteca e só instala se aprovado
-argument-hint: <link do GitHub, nome do marketplace ou caminho local> [motivo]
+argument-hint: '<link do GitHub, nome do marketplace ou caminho local> [motivo]'
 ---
 
 Pedido: $ARGUMENTS
