@@ -18,11 +18,12 @@ outras conversas. Para desligar: Telegram → Configurações → Dispositivos �
 2. Clique em "API development tools", crie um app (nome: Jarvis leitor; plataforma: Other).
 3. Copie o "App api_id" e o "App api_hash".
 TXT
-ID_ATUAL="$(ler TG_API_ID .env.pagamentos)"; BOT_ATUAL="$(ler PAGAMENTOS_BOT .env.pagamentos)"; BOT_ATUAL="${BOT_ATUAL:-DastDePixPartnerBot}"
+ID_ATUAL="$(ler TG_API_ID .env.pagamentos)"; BOT_ATUAL="$(ler PAGAMENTOS_BOT .env.pagamentos)"
 read -r -p "api_id [$ID_ATUAL]: " API_ID; API_ID="${API_ID:-$ID_ATUAL}"
 read -r -s -p "api_hash (não aparece; Enter = manter): " API_HASH; echo
 [ -n "$API_HASH" ] || API_HASH="$(ler TG_API_HASH .env.pagamentos)"
-read -r -p "Bot de pagamentos [@$BOT_ATUAL]: " BOT; BOT="${BOT:-$BOT_ATUAL}"; BOT="${BOT#@}"
+read -r -p "@usuário do bot de pagamentos (Enter = achar sozinho pela conversa com os pagamentos) [${BOT_ATUAL:-automático}]: " BOT
+BOT="${BOT:-$BOT_ATUAL}"; BOT="${BOT#@}"
 [ -n "$API_ID" ] && [ -n "$API_HASH" ] || { echo "Faltou api_id ou api_hash."; exit 1; }
 
 umask 077

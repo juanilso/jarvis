@@ -25,7 +25,7 @@ from telethon import TelegramClient, events
 
 API_ID = int(os.environ.get("TG_API_ID") or 0)
 API_HASH = os.environ.get("TG_API_HASH", "")
-BOT = os.environ.get("PAGAMENTOS_BOT", "DastDePixPartnerBot").lstrip("@")
+BOT = os.environ.get("PAGAMENTOS_BOT", "").strip().lstrip("@")  # vazio = acha sozinho pela conversa com os pagamentos
 SESSAO = os.environ.get("TG_SESSAO", "/sessao/leitor")
 GATILHO = os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho")
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "")
@@ -60,6 +60,32 @@ async def repassar(texto, origem):
     print(f"[{origem}] pagamento #{r.get('id', '?')}: {estado}", flush=True)
 
 
+async def achar_bot(cli):
+    """Acha o bot de pagamentos: pelo @usuário configurado ou, se não existir, pela conversa que tem as
+    mensagens "PAGAMENTO FASTFLOW RECEBIDO" (procura só entre conversas com bots)."""
+    if BOT:
+        try:
+            return await cli.get_entity(BOT)
+        except (ValueError, TypeError) as e:
+            print(f"⚠️ @{BOT} não encontrado ({e}); procurando a conversa com os pagamentos…", flush=True)
+    candidatos = []
+    async for d in cli.iter_dialogs(limit=300):
+        ent = d.entity
+        if not getattr(ent, "bot", False):
+            continue
+        async for m in cli.iter_messages(ent, limit=30):
+            if eh_pagamento(m.raw_text):
+                candidatos.append(ent)
+                break
+    if not candidatos:
+        sys.exit("Não achei nenhuma conversa com bot que tenha 'PAGAMENTO FASTFLOW RECEBIDO'. "
+                 "Confira o @usuário do bot no Telegram (abra a conversa → toque no nome) e rode o script de novo.")
+    if len(candidatos) > 1:
+        nomes = ", ".join("@" + (c.username or str(c.id)) for c in candidatos)
+        print(f"⚠️ Mais de um bot com pagamentos ({nomes}); usando o primeiro. Defina PAGAMENTOS_BOT para escolher.")
+    return candidatos[0]
+
+
 async def principal(login):
     if not API_ID or not API_HASH:
         sys.exit("Falta TG_API_ID e TG_API_HASH (veja ./pagamentos-configurar.sh)")
@@ -70,14 +96,15 @@ async def principal(login):
     if login:
         await cli.start()  # pede telefone, código e senha de 2 etapas (se tiver)
         eu = await cli.get_me()
-        bot = await cli.get_entity(BOT)
+        bot = await achar_bot(cli)
         print(f"✅ Conectado como {eu.first_name} · vou ler só a conversa com @{getattr(bot, 'username', BOT)}")
+        print(f"   (se quiser fixar: PAGAMENTOS_BOT={getattr(bot, 'username', '')} no .env.pagamentos)")
         await cli.disconnect()
         return
     await cli.connect()
     if not await cli.is_user_authorized():
         sys.exit("Sessão não autorizada. Rode: ./pagamentos-configurar.sh")
-    bot = await cli.get_entity(BOT)
+    bot = await achar_bot(cli)
 
     @cli.on(events.NewMessage(chats=bot))
     async def nova(ev):
