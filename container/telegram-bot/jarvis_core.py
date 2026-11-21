@@ -357,7 +357,87 @@ TABELA_MODELOS = """🧠 Modelos disponíveis (preço por milhão de tokens: ent
 • opus → Claude Opus 5.5 · US$ 4 / 20 · raciocínio profundo: arquitetura, pagamentos, bugs difíceis
 • fable → Claude Fable 5.2 · US$ 8 / 40 · o mais forte (classe Mythos); use só em casos realmente difíceis
 Todos têm contexto de 1 milhão de tokens. No gateway, a disponibilidade e os nomes podem variar.
-Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)"""
+Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)
+Seu gateway tem outros? /modelos lista o que ele oferece."""
+_cache_gateway = {"quando": 0, "dados": None}
+
+
+def modelos_gateway(forcar=False):
+    """Pergunta ao gateway (ANTHROPIC_BASE_URL) quais modelos ele oferece.
+    Retorna {"ok": bool, "base": str, "modelos": [{"id","nome"}], "erro": str}. Guarda o resultado por 10 min."""
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    if not forcar and _cache_gateway["dados"] and time.time() - _cache_gateway["quando"] < 600:
+        return _cache_gateway["dados"]
+    base = (os.environ.get("ANTHROPIC_BASE_URL") or "https://api.anthropic.com").rstrip("/")
+    chave = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN") or ""
+    res = {"ok": False, "base": base, "modelos": [], "erro": ""}
+    if not chave:
+        res["erro"] = "sem ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN neste serviço (confira o .env.claude)"
+        return res
+    cab = {"x-api-key": chave, "Authorization": f"Bearer {chave}", "anthropic-version": "2023-06-01",
+           "Accept": "application/json", "User-Agent": "jarvis"}
+    caminhos = ["/models"] if base.endswith("/v1") else ["/v1/models", "/models"]
+    vistos = set()
+    for caminho in caminhos:
+        depois, paginas = "", 0
+        try:
+            while paginas < 10:
+                url = f"{base}{caminho}?limit=1000" + (f"&after_id={urllib.parse.quote(depois)}" if depois else "")
+                with urllib.request.urlopen(urllib.request.Request(url, headers=cab), timeout=20) as r:
+                    j = json.loads(r.read().decode("utf-8", "replace"))
+                lista = j.get("data") if isinstance(j, dict) else j
+                if not isinstance(lista, list):
+                    lista = j.get("models", []) if isinstance(j, dict) else []
+                for m in lista:
+                    mid = (m.get("id") or m.get("name") or "") if isinstance(m, dict) else str(m)
+                    if mid and mid not in vistos:
+                        vistos.add(mid)
+                        res["modelos"].append({"id": mid, "nome": (m.get("display_name") or m.get("owned_by") or "")
+                                               if isinstance(m, dict) else ""})
+                paginas += 1
+                if isinstance(j, dict) and j.get("has_more") and j.get("last_id"):
+                    depois = j["last_id"]
+                else:
+                    break
+            if res["modelos"]:
+                break
+        except urllib.error.HTTPError as e:
+            res["erro"] = res["erro"] or f"HTTP {e.code} em {caminho}" + (" (chave recusada)" if e.code in (401, 403) else "")
+        except Exception as e:  # rede, JSON inválido etc.
+            res["erro"] = res["erro"] or f"{type(e).__name__}: {e}"[:200]
+    if res["modelos"]:
+        res["ok"], res["erro"] = True, ""
+        res["modelos"].sort(key=lambda m: m["id"])
+        _cache_gateway.update(quando=time.time(), dados=res)
+    return res
+
+
+def texto_modelos_gateway(forcar=False):
+    r = modelos_gateway(forcar)
+    mapa = {k: os.environ.get(f"ANTHROPIC_DEFAULT_{k.upper()}_MODEL") for k in ("opus", "sonnet", "haiku")}
+    mapa_txt = " · ".join(f"{k} → {v}" for k, v in mapa.items() if v) or "nenhum (usa os nomes oficiais)"
+    if not r["ok"]:
+        return (f"⚠️ Não consegui listar os modelos do gateway ({r['base']}): {r['erro'] or 'resposta vazia'}.\n"
+                "Alguns provedores não oferecem essa lista; nesse caso veja no site do provedor e use /modelo <ID>.\n"
+                f"Apelidos mapeados no .env.claude: {mapa_txt}")
+    claude = [m for m in r["modelos"] if "claude" in m["id"].lower()]
+    outros = [m for m in r["modelos"] if m not in claude]
+
+    def fmt(ms):
+        return "\n".join(f"• {m['id']}" + (f" ({m['nome']})" if m["nome"] and m["nome"] != m["id"] else "") for m in ms)
+    partes = [f"🛰️ O gateway oferece {len(r['modelos'])} modelo(s) ({r['base']})"]
+    if claude:
+        partes.append(f"\nClaude ({len(claude)}):\n{fmt(claude)}")
+    if outros:
+        partes.append(f"\nOutros ({len(outros)}) — podem não funcionar com as ferramentas do Claude Code:\n{fmt(outros[:60])}"
+                      + (f"\n… e mais {len(outros) - 60}" if len(outros) > 60 else ""))
+    partes.append(f"\nApelidos mapeados no .env.claude: {mapa_txt}")
+    partes.append("Para usar: /modelo <ID exatamente como aparece acima>. Preços: veja no painel do seu provedor.")
+    return "\n".join(partes)
+
+
 COMANDOS = [
     ("/ajuda", "Lista os comandos"),
     ("/guia", "Como usar o Jarvis, com exemplos"),
@@ -371,7 +451,8 @@ COMANDOS = [
     ("/compactar", "Resume a conversa e libera contexto (economiza tokens)"),
     ("/novo", "Começa uma conversa nova, sem resumo"),
     ("/parar", "Interrompe o trabalho em andamento"),
-    ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable ou padrao (sem nome: lista e preços)"),
+    ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable, padrao ou um ID do gateway"),
+    ("/modelos", "Pergunta ao seu gateway quais modelos ele oferece"),
     ("/custo", "Gasto estimado do projeto atual"),
     ("/audio", "Resposta em áudio: auto, sempre ou nunca"),
     ("/agentes", "Avisos dos agentes: on ou off"),
@@ -411,7 +492,7 @@ Vários projetos
 • Mande no projeto A, troque (/projeto B) e mande outra: os dois trabalham juntos. As mensagens vêm marcadas [projeto].
 • /status mostra todos · /parar para só o projeto atual · limite padrão: 2 ao mesmo tempo
 
-Modelos (/modelo sem nome mostra a lista e os preços)
+Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao gateway o que ele tem)
 • haiku: barato e rápido · sonnet: o padrão · opus: casos difíceis · fable: o mais forte e o mais caro
 • Os agentes do Jarvis seguem o perfil do projeto (/jarvis:modelos): econômico, equilibrado ou máximo
 
@@ -512,11 +593,24 @@ def comando(estado, pool, texto):
         a = arg.lower()
         if not a:
             return f"Modelo atual: {est.get('modelo') or 'padrão'}\n\n{TABELA_MODELOS}", None
-        if a not in MODELOS and not re.match(r"^claude-[a-z0-9.-]+$", a):
+        aviso = ""
+        if a in MODELOS:
+            escolhido = None if a == "padrao" else APELIDOS_MODELO.get(a, a)
+        elif re.match(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{1,100}$", arg):
+            escolhido = arg  # IDs de gateway podem ter maiúsculas e barras (ex.: anthropic/claude-opus-5-5)
+            g = modelos_gateway()
+            if g["ok"] and arg not in {m["id"] for m in g["modelos"]}:
+                parecidos = [m["id"] for m in g["modelos"] if a.split("/")[-1][:6] in m["id"].lower()][:5]
+                aviso = ("\n⚠️ Esse ID não está na lista do gateway; se der erro, volte com /modelo padrao."
+                         + (f" Parecidos: {', '.join(parecidos)}" if parecidos else ""))
+        else:
             return f"Não conheço “{arg}”.\n\n{TABELA_MODELOS}", None
-        est["modelo"] = None if a == "padrao" else APELIDOS_MODELO.get(a, a)
+        est["modelo"] = escolhido
         estado.salvar(est)
-        return f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)", None
+        return (f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)"
+                + aviso), None
+    if cmd == "/modelos":
+        return texto_modelos_gateway(forcar=arg.lower() in ("atualizar", "-f", "novo")), None
     if cmd == "/custo":
         c = est["custos"].get(proj, 0)
         tot = sum(est["custos"].values())

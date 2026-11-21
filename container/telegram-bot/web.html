@@ -181,6 +181,8 @@ footer{position:relative}
    <tr><td><code>sonnet</code></td><td>Claude Sonnet 5.5</td><td>US$ 2 / 10</td><td>O padrão: programar, orquestrar, revisar</td></tr>
    <tr><td><code>opus</code></td><td>Claude Opus 5.5</td><td>US$ 4 / 20</td><td>Arquitetura, pagamentos, bugs difíceis, decisões</td></tr>
    <tr><td><code>fable</code></td><td>Claude Fable 5.2</td><td>US$ 8 / 40</td><td>O mais forte (classe Mythos). Só quando os outros não resolvem</td></tr></table>
+  <p><button onclick="verGateway()">🛰️ Ver modelos do meu gateway</button> <span style="font-size:13px;color:var(--m)">(o mesmo que <code>/modelos</code>)</span></p>
+  <pre id="gwLista" style="display:none;white-space:pre-wrap;max-height:260px;overflow:auto;font-size:13px"></pre>
   <p style="font-size:13px;color:var(--m)">Todos têm contexto de 1 milhão de tokens. Preços de referência da API da Anthropic (nov/2026); no seu gateway podem ser diferentes. Use <code>/custo</code> para ver o gasto real.</p>
   <h3>PERGUNTAS FREQUENTES</h3>
   <details><summary>Qual a diferença entre <code>/modelo</code> e <code>/jarvis:modelos</code>?</summary>
@@ -195,6 +197,11 @@ footer{position:relative}
    Depende do provedor. Se <code>/modelo fable</code> der erro, o gateway não oferece esse modelo ou usa outro nome. Nesse caso use o ID
    completo que o provedor informar (ex.: <code>/modelo claude-fable-5-2</code>) ou mapeie os apelidos no <code>.env.claude</code> com
    <code>ANTHROPIC_DEFAULT_OPUS_MODEL</code>, <code>ANTHROPIC_DEFAULT_SONNET_MODEL</code> e <code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code>.</details>
+  <details><summary>Meu gateway tem mais modelos. Como uso?</summary>
+   Clique em <b>🛰️ Ver modelos do meu gateway</b> acima (ou mande <code>/modelos</code>): o Jarvis pergunta ao gateway a lista atual.
+   Depois use <code>/modelo &lt;ID&gt;</code> com o nome exatamente como aparece. Para os agentes usarem outro modelo, mapeie os apelidos
+   no <code>.env.claude</code> (<code>ANTHROPIC_DEFAULT_OPUS_MODEL=&lt;ID&gt;</code>, idem SONNET e HAIKU) e recrie os serviços.
+   Modelos que não são Claude podem falhar com as ferramentas (editar arquivos, rodar comandos); teste antes num projeto simples.</details>
   <details><summary>Como gastar menos?</summary>
    Conversa em <code>sonnet</code>, perfil equilibrado, <code>/compactar</code> quando a conversa ficar longa, <code>/novo</code> ao mudar de
    assunto, demandas pequenas e claras, e <code>/custo</code> para acompanhar. Rodar 2 projetos ao mesmo tempo soma o gasto dos dois.</details>
@@ -247,6 +254,7 @@ const agEstado={};
 
 function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function fmt(t){return esc(t).replace(/```(\w*)\n?([\s\S]*?)```/g,(m,l,c)=>`<pre><code>${c}</code></pre>`).replace(/`([^`\n]+)`/g,"<code>$1</code>")}
+async function verGateway(){const p=$("gwLista");p.style.display="block";p.textContent="⏳ perguntando ao gateway…";const j=await api("/api/modelos?atualizar=1");p.textContent=j.texto||j.erro||"sem resposta"}
 async function api(c,b){const r=await fetch(c,b===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(r.status===401){location.reload();return{}}return r.json()}
 function add(cls,html){const d=document.createElement("div");d.className=cls;d.innerHTML=html;const box=$("logbox");const perto=box.scrollHeight-box.scrollTop-box.clientHeight<140;$("log").appendChild(d);if(perto)box.scrollTop=box.scrollHeight;return d}
 

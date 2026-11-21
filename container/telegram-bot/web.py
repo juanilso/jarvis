@@ -227,6 +227,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"texto": kb.ler(q.get("c", [""])[0])})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/modelos":
+            forcar = urllib.parse.parse_qs(url.query).get("atualizar", [""])[0] == "1"
+            return self._json({"texto": core.texto_modelos_gateway(forcar)})
         if url.path == "/api/comandos":
             return self._json([{"cmd": c, "desc": d} for c, d in core.COMANDOS])
         if url.path == "/api/painel":

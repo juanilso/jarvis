@@ -111,6 +111,13 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.6.2: modelos do seu gateway
+
+- `/modelos` (ou 🛰️ no guia ❔ do painel) pergunta ao gateway (`ANTHROPIC_BASE_URL`) quais modelos ele oferece, agora.
+- `/modelo <ID>` aceita qualquer ID do gateway (ex.: `anthropic/claude-opus-5-5`) e avisa se o ID não está na lista.
+- Para os agentes usarem outros modelos: `ANTHROPIC_DEFAULT_OPUS_MODEL`, `..._SONNET_MODEL` e `..._HAIKU_MODEL` no `.env.claude`, depois `docker compose --profile web --profile telegram up -d`.
+- Se o gateway não tiver a lista, a mensagem diz o motivo (ex.: chave recusada) e o resto continua igual.
+
 ## Jarvis 1.6: vários projetos ao mesmo tempo
 - Cada projeto tem a sua própria execução: dá para mandar uma demanda no A, trocar para o B e mandar outra.
 - Limite padrão de 2 projetos simultâneos (`JARVIS_MAX_PARALELO` no `.env.claude`). Cada um consome memória e tokens.
