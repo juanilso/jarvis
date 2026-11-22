@@ -665,6 +665,11 @@ def atender(dados):
             e0["diag"] = time.time()
         else:
             e0["ultimo_recebido"] = {"t": time.time(), "de_mim": de_mim, "evento": str(dados.get("evento") or "")}
+            n = chat.split("@")[0]
+            e0["recebidos"] = (e0.get("recebidos", []) + [{
+                "h": time.strftime("%H:%M:%S"), "n": (n[:4] + "…" + n[-4:]) if len(n) > 8 else n,
+                "tipo": chat.split("@")[-1] if "@" in chat else "?", "de_mim": de_mim,
+                "atraso": int(time.time() - ts), "x": texto[:30]}])[-20:]
         _salvar_estado(e0)
     if texto == DIAG:
         return {"responder": False, "motivo": "diagnóstico: o caminho WhatsApp → n8n → Jarvis está funcionando"}
@@ -679,6 +684,8 @@ def atender(dados):
             _salvar_estado(e1)
     if not chat or chat.endswith("@g.us") or chat.startswith("status@") or "@newsletter" in chat or "@broadcast" in chat:
         return {"responder": False, "motivo": "ignorado (grupo, status ou canal)"}
+    if time.time() - ts > 300:  # histórico reenviado na reconexão: não é conversa de agora (vale para você também)
+        return {"responder": False, "motivo": "mensagem antiga (reconexão)"}
     with _lock:
         e = _ler_estado()
         if de_mim:
@@ -893,6 +900,12 @@ def comando(cmd, arg, local=False):
     f = r.get("fila") or {}
     if f.get("na_fila"):
         linhas.append(f"📤 Fila: {f['na_fila']} mensagens do robô aguardando" + (" (🌙 horário de silêncio)" if f.get("silencio") else ""))
+    rec = _ler_estado().get("recebidos", [])
+    if rec:
+        linhas.append("\n📥 Últimas mensagens que chegaram do WhatsApp:")
+        linhas += [f"{x['h']} {x['n']} ({x['tipo']}) {'🙋 sua' if x['de_mim'] else '👤 cliente'}"
+                   + (f" · {x['atraso']}s atrasada" if x.get("atraso", 0) > 60 else "") + f" — “{x['x']}”"
+                   for x in list(reversed(rec))[:8]]
     if r.get("eventos"):
         linhas.append("\n🕑 Últimos eventos:")
         linhas += [f"{x['h']} {x.get('nome') or x['n']}: {x['m']}" + (f" — “{x['x'][:40]}”" if x.get("x") else "")
