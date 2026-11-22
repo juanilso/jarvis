@@ -12,7 +12,7 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries
 # Outras versões (7.4, 8.1, 8.2, 8.4) usam o PPA ondrej/php automaticamente.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl gnupg git unzip zip nano less sudo tzdata software-properties-common \
-      sqlite3 mariadb-client jq ripgrep python3 python3-pip ffmpeg fonts-dejavu-core \
+      sqlite3 mariadb-client jq ripgrep python3 python3-pip ffmpeg fonts-dejavu-core fonts-dejavu-extra \
  && if [ "$PHP_VERSION" != "8.3" ]; then add-apt-repository -y ppa:ondrej/php && apt-get update; fi \
  && apt-get install -y --no-install-recommends \
       php${PHP_VERSION}-cli php${PHP_VERSION}-mysql php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-mbstring \

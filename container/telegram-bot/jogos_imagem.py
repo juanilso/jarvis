@@ -10,13 +10,24 @@ DIAS = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO", "DOMINGO"]
 CIANO, VERDE, BRANCO, CINZA, OURO = (56, 214, 255), (74, 222, 128), (236, 246, 255), (140, 168, 190), (255, 196, 90)
 
 
+RESERVA = {  # se a fonte pedida não existir, tenta estas (na ordem) antes da fonte mínima do Pillow
+    "DejaVuSansCondensed-Bold.ttf": ["DejaVuSans-Bold.ttf", "LiberationSansNarrow-Bold.ttf", "LiberationSans-Bold.ttf"],
+    "DejaVuSans-Bold.ttf": ["LiberationSans-Bold.ttf", "FreeSansBold.ttf"],
+    "DejaVuSans.ttf": ["LiberationSans-Regular.ttf", "FreeSans.ttf"],
+}
+
+
 def _fonte(nome, tam):
-    for d in FONTES:
-        try:
-            return ImageFont.truetype(os.path.join(d, nome), tam)
-        except OSError:
-            continue
-    return ImageFont.load_default()
+    for n in [nome] + RESERVA.get(nome, []):
+        for d in FONTES + ["/usr/share/fonts/truetype/liberation/", "/usr/share/fonts/truetype/freefont/"]:
+            try:
+                return ImageFont.truetype(os.path.join(d, n), tam)
+            except OSError:
+                continue
+    try:
+        return ImageFont.load_default(size=tam)  # Pillow 10.1+: fonte padrão em qualquer tamanho
+    except TypeError:
+        return ImageFont.load_default()
 
 
 def _sem_emoji(t):
@@ -78,7 +89,11 @@ def _pagina(jogos, dia, cfg, pag, total):
         d.rounded_rectangle([70, y, 82, y + 150], 6, fill=VERDE if j.get("estado") == "pre" else OURO)
         d.text((108, y + 26), j["hora"], font=f_hora, fill=BRANCO)
         jogo = f"{j['casa']}  x  {j['fora']}"
-        d.text((300, y + 24), _caber(d, jogo, f_time, L - 70 - 300 - 30), font=f_time, fill=BRANCO)
+        tam = 46
+        while tam > 32 and d.textlength(jogo, font=_fonte("DejaVuSansCondensed-Bold.ttf", tam)) > L - 70 - 300 - 30:
+            tam -= 2  # nome comprido: diminui um pouco antes de cortar
+        d.text((300, y + 24 + (46 - tam) // 2), _caber(d, jogo, _fonte("DejaVuSansCondensed-Bold.ttf", tam), L - 70 - 300 - 30),
+               font=_fonte("DejaVuSansCondensed-Bold.ttf", tam), fill=BRANCO)
         x = 302
         if j.get("placar"):
             selo = ("AO VIVO " if j.get("estado") == "in" else "ENCERRADO ") + j["placar"]
