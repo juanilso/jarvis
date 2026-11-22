@@ -184,7 +184,10 @@ footer{position:relative}
     <label><input type="checkbox" id="recPag"> 💰 Pagamentos automáticos (confirmar / pedir login)</label>
     <label><input type="checkbox" id="recTeste"> 🎁 Teste grátis</label>
     <label><input type="checkbox" id="recCons"> 📅 Consulta de vencimento</label>
+    <label><input type="checkbox" id="recCalar"> 🙋 Quando eu respondo (celular ou WhatsApp Web), o robô se cala naquela conversa</label>
   </div>
+  <div class="waDica">Com essa opção <b>desligada</b>, o robô continua respondendo mesmo depois de você; para calar uma conversa, escreva
+    <code>#eu</code> nela (o cliente vê). Ligada: ele se cala sozinho e volta depois dos minutos sem resposta sua. <code>#bot</code> devolve na hora.</div>
   <div class="waDica">O robô inteiro liga e desliga no botão <b>⏸ Pausar robô</b> lá em cima.</div>
   <h3>PROTEÇÃO DO NÚMERO</h3>
   <div class="waCfg">
@@ -340,6 +343,11 @@ footer{position:relative}
    se não veio o login, pergunta ao cliente e conclui quando ele responder. No WhatsApp, o cliente também pode perguntar
    "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure em 📱 → <b>Painel (API) e regras</b>; o leitor de pagamentos liga com <code>./pagamentos-configurar.sh</code>.
    Quem chama a API é código com regras fixas: a IA só entende o pedido.</details>
+  <details><summary>Posso responder os clientes pelo WhatsApp Web junto com o robô?</summary>
+   Pode. O robô conecta como mais um "dispositivo" e o seu WhatsApp Web/celular continuam funcionando. Em 📱 → <b>Recursos</b> você escolhe:
+   <b>ligado</b> (padrão) = quando você responde, o robô se cala naquela conversa e volta depois dos minutos sem resposta sua;
+   <b>desligado</b> = o robô continua respondendo mesmo depois de você (escreva <code>#eu</code> na conversa para calá-lo).
+   <code>#bot</code> devolve a conversa ao robô na hora. As outras conversas seguem com o robô normalmente.</details>
   <details><summary>Como evitar que o WhatsApp bloqueie o número?</summary>
    No 📱 → <b>Proteção do número</b>: "digitando…", pausas como de uma pessoa, limite de respostas por minuto e uma fila para as
    mensagens que o robô inicia (intervalo, máximo por hora e horário de silêncio). Escreva várias versões de cada mensagem com
@@ -585,7 +593,7 @@ $("cfgSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"p
 $("cfgTestar").onclick=async()=>{$("cfgMsg").textContent="⏳ testando…";const r=await api("/api/whatsapp/acao",{acao:"painel_testar"});$("cfgMsg").textContent=r.msg||r.erro||"?"};
 let atPadrao={};
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
-  $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;
+  $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;
   const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prMinuto").value=p.max_por_minuto;
   $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
   $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
@@ -595,7 +603,7 @@ $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa 
   $("waDiagRes").innerHTML=(r.passos||[]).map(p=>`<div>${p.ok?"✅":"❌"} <b>${esc(p.titulo)}</b>${p.detalhe?" — "+esc(p.detalhe):""}</div>`).join("")+
     (r.ok?"<div style='margin-top:4px'>Tudo certo nesse caminho. Se um cliente não recebeu resposta, veja ÚLTIMOS EVENTOS.</div>":"")};
 $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("textarea").forEach(t=>m[t.dataset.k]=t.value);
-  const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked},
+  const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked,calar_quando_respondo:$("recCalar").checked},
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},mensagens:m}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};

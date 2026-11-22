@@ -690,6 +690,18 @@ def atender(dados):
             if (origem == "api" or (mid and (mid in ids or any(mid.endswith(i) or i.endswith(mid) for i in ids if i)))
                     or _hash(texto) in {x[0] for x in enviadas} or time.time() - ultimo_envio < 20):
                 return {"responder": False, "motivo": "eco da resposta do robô"}
+            if texto.lower().startswith(("#eu", "#humano", "#pausa")):  # você assume essa conversa na hora
+                e.setdefault("humano", {})[chat] = time.time() + _seg_humano()
+                e.get("esperando", {}).pop(chat, None)
+                _evento(e, chat, f"🙋 você assumiu com #eu: robô calado por {int(_seg_humano() // 60)} min")
+                _salvar_estado(e)
+                return {"responder": False, "motivo": "você assumiu com #eu"}
+            if not C.recurso("calar_quando_respondo") and not texto.lower().startswith("#bot"):
+                _guardar(chat, "dono", texto)  # o robô segue atendendo e sabe o que você disse
+                e.get("esperando", {}).pop(chat, None)
+                _evento(e, chat, "💬 você respondeu (robô continua atendendo: modo sem pausa)", texto)
+                _salvar_estado(e)
+                return {"responder": False, "motivo": "você respondeu; robô continua (modo sem pausa)"}
             if texto.lower().startswith("#bot"):
                 e.get("humano", {}).pop(chat, None)
                 _evento(e, chat, "🤖 você devolveu ao robô (#bot)")

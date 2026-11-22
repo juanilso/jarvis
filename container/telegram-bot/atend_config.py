@@ -36,7 +36,8 @@ NOMES_MENSAGENS = {
     "consulta_vencido": "Consulta: acesso vencido",
     "teste_ja_fez": "Teste: cliente já fez um",
 }
-RECURSOS = {"pagamentos": True, "teste": True, "consulta": True}
+RECURSOS = {"pagamentos": True, "teste": True, "consulta": True,
+            "calar_quando_respondo": True}  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
     "atraso_min": 2, "atraso_max": 6,   # segundos de pausa antes de responder (+ tempo de "digitar")
