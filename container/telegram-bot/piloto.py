@@ -255,6 +255,9 @@ def mensagem_final(projeto, situacao, texto, d):
         cab += (f"\n🧪 teste: nota {teste.get('nota')}/100 · críticos {c.get('CRÍTICO', 0)} · altos {c.get('ALTO', 0)}"
                 f" · jornadas {(teste.get('jornadas') or {}).get('total', 0) - (teste.get('jornadas') or {}).get('falhas', 0)}"
                 f"/{(teste.get('jornadas') or {}).get('total', 0)} ok")
+    marca, motivo = ler_marca(texto) if texto else ("", "")
+    if situacao == "bloqueado" and motivo:
+        cab += f"\n\n👉 {motivo}"
     corpo = re.sub(r"\n?PILOTO:\s*(PRONTO|CONTINUAR|BLOQUEADO).*$", "", (texto or "").strip(), flags=re.I | re.S).strip()
     if situacao == "pronto":
         cab += "\n\nRoteiro de validação completo em docs/HOMOLOGACAO.md. Me diga o que ajustar; para outra volta: /piloto <ajustes>."

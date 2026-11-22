@@ -237,7 +237,13 @@ class Execucao:
                     ev = json.loads(linha)
                 except json.JSONDecodeError:
                     continue
-                conteudo = (ev.get("message") or {}).get("content") or []
+                if not isinstance(ev, dict):
+                    continue
+                msg = ev.get("message") if isinstance(ev.get("message"), dict) else {}
+                conteudo = msg.get("content") or []
+                if not isinstance(conteudo, list):  # comando "/" expandido chega como texto puro
+                    conteudo = []
+                conteudo = [c for c in conteudo if isinstance(c, dict)]
                 pai = ev.get("parent_tool_use_id")
                 quem = agentes.get(pai, ("jarvis", 0))[0] if pai else "jarvis"
                 if ev.get("type") == "assistant":
