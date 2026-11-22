@@ -18,4 +18,5 @@ Status: ✅ aprovada · ⚠️ atenção (decisão do usuário) · ❌ reprovada
 | WAHA Core | serviço (contêiner) | devlikeapro/waha (Apache 2.0), imagem oficial `devlikeapro/waha` | WhatsApp Web para o atendimento automático | 2026-11-21 · sem porta aberta; chave só no painel; o modelo do atendimento não tem ferramentas; não oficial (risco de bloqueio do número) | ✅ |
 
 ## Instalar os aprovados
-No contêiner `dev`: `jarvis-extras` (instala frontend-design e canva do marketplace oficial e aplica as proteções).
+No contêiner `dev`: `jarvis-extras` (instala canva do marketplace oficial e aplica as proteções). A `frontend-design`
+já vem no plugin (skills/frontend-design, Apache 2.0), junto com a skill própria `refatorar-site`.

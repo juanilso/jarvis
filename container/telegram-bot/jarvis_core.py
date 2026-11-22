@@ -61,7 +61,8 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
 - Qualquer alteração de código: explorador → executor da área (desenvolvedor, dba, android ou designer) → testador →
   revisor → commit local. Sem pular o testador e o revisor.
 - Evolução, escopo, arquitetura ou decisão técnica: arquiteto primeiro.
-- Tela, site, layout ou visual: designer.
+- Tela, site, layout ou visual: designer, com as skills `refatorar-site` e `frontend-design`. Refatorar site = mostrar a
+  home pronta e bonita (prints) logo na primeira entrega; nada de horas de documentação antes da primeira tela.
 - Sempre que criar ou alterar um site/tela, ANTES de responder: rode `jarvis-site testar` na pasta do projeto, corrija
   os problemas críticos/altos do próprio site, rode `jarvis-site print` (use `--paginas /,/outra.html` para as páginas
   que mudaram) e OLHE os PNGs com a ferramenta Read (desktop e celular). Se algo estiver feio ou quebrado, corrija e

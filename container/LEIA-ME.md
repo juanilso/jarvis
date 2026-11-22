@@ -111,6 +111,20 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.20: refatorar sites com qualidade de agência
+
+- **Skill `frontend-design` (oficial da Anthropic) agora vem junto:** o designer pedia essa skill "se disponível", mas
+  ela só existia se você tivesse rodado `jarvis-extras`. Sem ela, ele desenhava sem direção visual.
+- **Skill nova `refatorar-site`:** inventário rápido (nunca perder conteúdo) → direção visual e sistema de design
+  (`docs/site/DESIGN.md`, `css/tokens.css`, componentes) → **home completa e bonita primeiro, com prints** → página
+  por página → acabamento. Cada tela recebe nota visual (hierarquia, espaçamento, tipografia, cor, acabamento,
+  conteúdo, celular, identidade) e só passa com 8 ou mais em cada item.
+- **O teste agora pega os defeitos de "site sem vida":** HTML aparecendo como texto (`<p>`, `&copy;`), link com a cor
+  padrão do navegador, fonte padrão (Times), seção com título e sem conteúdo, elemento colado na borda. Todos
+  contam como ALTO, então o `/piloto` não aceita "pronto" com eles.
+- Corrigido: `jarvis-site` com caminho relativo (`redesign/variante-a`) não subia o servidor.
+- Pedido ideal: `/piloto refatorar o site <assunto e público>, manter <logo/cores>, páginas <lista>, referências <sites>`.
+
 ## Jarvis 1.19: piloto automático até a homologação
 
 - **`/piloto <objetivo>`** (Telegram ou chat do painel): o Jarvis segue sozinho, em rodadas, construindo, testando,

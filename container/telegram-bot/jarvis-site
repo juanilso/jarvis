@@ -188,6 +188,35 @@ async function checarPagina(navegador, url, base) {
         erro_php: ((document.body ? document.body.innerText : "").match(/(Fatal error|Parse error|Uncaught [A-Za-z]+(Exception|Error)|Warning|Notice|Deprecated):[^\n]{0,200}/) || [""])[0].split(/ Stack trace:|#0 /)[0].trim(),
         php_cru: /<\?php/.test(document.body ? document.body.innerText : ""),
         template_cru: /\{\{\s*[\w$.]+\s*\}\}/.test(document.body ? document.body.innerText : ""),
+        html_cru: ((document.body ? document.body.innerText : "").match(/<\/?(p|div|span|strong|em|b|i|a|br|h[1-6]|ul|ol|li|img|section|article)\b[^>\n]{0,40}>|&(copy|nbsp|amp|quot|lt|gt|#\d{2,5});/i) || [""])[0],
+        links_padrao: q("a[href]").filter(visivel).filter(a => (a.innerText || "").trim() &&
+          ["rgb(0, 0, 238)", "rgb(85, 26, 139)", "rgb(0, 0, 255)"].includes(getComputedStyle(a).color)).length,
+        fonte_padrao: /^("?times|serif$)/i.test(getComputedStyle(document.body || document.documentElement).fontFamily.trim()),
+        secoes_vazias: q("h2, h3").filter(visivel).filter(h => {
+          // conteúdo que vem DEPOIS do título, até o próximo título; se o título está sozinho num bloco
+          // (ex.: <div class="cabecalho"><h2>…</h2></div>), continua a partir do bloco
+          const conta = (n) => { let texto = 0, midia = 0;
+            for (; n && !/^H[1-3]$/.test(n.tagName); n = n.nextElementSibling) {
+              if (!visivel(n)) continue;
+              if (n.querySelector("h1,h2,h3") && (texto || midia)) break;
+              texto += (n.innerText || "").trim().length;
+              midia += n.matches("img,svg,video,iframe,canvas,form,input,table") ? 1 : n.querySelectorAll("img,svg,video,iframe,canvas,form,input,table").length;
+            }
+            return texto >= 3 || midia > 0; };
+          let el = h;
+          for (let nivel = 0; nivel < 3; nivel++) {
+            if (conta(el.nextElementSibling)) return false;
+            const pai = el.parentElement;
+            if (!pai || pai === document.body || (pai.innerText || "").trim() !== (h.innerText || "").trim()) break;
+            el = pai;  // o bloco só tem o título: olha depois do bloco
+          }
+          return true;
+        }).map(h => (h.innerText || "").trim().slice(0, 40)).slice(0, 5),
+        na_borda: (() => {
+          const textos = q("h1,h2,h3,p,a,li,nav,span").filter(visivel).filter(e => (e.innerText || "").trim().length > 1 && e.children.length === 0);
+          const centrado = textos.filter(e => e.getBoundingClientRect().left > 60).length > textos.length * 0.7;
+          return centrado ? textos.filter(e => e.getBoundingClientRect().left < 6).map(e => (e.innerText || "").trim().slice(0, 30)).slice(0, 3) : [];
+        })(),
         peso_kb: Math.round(performance.getEntriesByType("resource").reduce((s, e) => s + (e.transferSize || 0), 0) / 1024),
       };
     });
@@ -197,6 +226,7 @@ async function checarPagina(navegador, url, base) {
     if (info.erro_php) P.push([/Fatal|Parse|Uncaught/.test(info.erro_php) ? "CRÍTICO" : "ALTO", `erro do PHP aparecendo na página: ${info.erro_php}`]);
     if (info.php_cru) P.push(["CRÍTICO", "código PHP aparecendo como texto (o PHP não foi executado)"]);
     if (info.template_cru) P.push(["MÉDIO", "marcação de template aparecendo como texto ({{ ... }})"]);
+    if (info.html_cru) P.push(["ALTO", `HTML aparecendo como texto na página ("${info.html_cru}"): o conteúdo está sendo escapado duas vezes`]);
     if (res.erros_js.length) P.push(["ALTO", `${res.erros_js.length} erro(s) de JavaScript: ${res.erros_js[0]}`]);
     if (res.console.length) P.push(["MÉDIO", `${res.console.length} erro(s) no console: ${res.console[0]}`]);
     if (info.img_quebrada.length) P.push(["ALTO", `${info.img_quebrada.length} imagem(ns) quebrada(s): ${info.img_quebrada[0]}`]);
@@ -206,6 +236,10 @@ async function checarPagina(navegador, url, base) {
     const quebrada = P.some(x => x[0] === "CRÍTICO");  // página quebrada: avisos de SEO/acessibilidade só atrapalham
     if (quebrada) { res.info = { titulo: info.titulo }; res.links = [...new Set(info.links)]; return res; }
     if (!info.titulo) P.push(["MÉDIO", "sem <title> (aparece na aba e no Google)"]);
+    if (info.fonte_padrao) P.push(["ALTO", "fonte padrão do navegador (Times/serif): o CSS do site não está aplicado ou não define fonte"]);
+    if (info.links_padrao) P.push(["ALTO", `${info.links_padrao} link(s) com a cor padrão do navegador (azul/roxo): elemento sem estilo do site`]);
+    if (info.secoes_vazias.length) P.push(["ALTO", `seção vazia (título sem conteúdo): ${info.secoes_vazias.map(t => `"${t}"`).join(", ")}`]);
+    if (info.na_borda.length) P.push(["MÉDIO", `elemento colado na borda da tela, fora do alinhamento do resto: ${info.na_borda.map(t => `"${t}"`).join(", ")}`]);
     if (!info.descricao) P.push(["BAIXO", "sem meta description (texto do Google)"]);
     if (!info.viewport) P.push(["ALTO", "sem meta viewport: no celular o site aparece minúsculo"]);
     if (!info.lang) P.push(["BAIXO", "sem lang no <html> (use lang=\"pt-BR\")"]);
@@ -411,7 +445,8 @@ async function main() {
     console.log("Uso:\n  jarvis-site print    [pasta|url] [--paginas /,/contato.html] [--saida DIR]\n  jarvis-site testar   [pasta|url] [--max 15] [--saida DIR]\n  jarvis-site jornadas [pasta|url]   (roda .jarvis/jornadas.json)");
     process.exit(o.modo ? 1 : 0);
   }
-  const alvo = o.alvo || process.cwd();
+  let alvo = o.alvo || process.cwd();
+  if (!/^https?:\/\//i.test(alvo)) alvo = path.resolve(alvo);  // caminho relativo: o servidor roda em outra pasta
   const ehUrl = /^https?:\/\//i.test(alvo);
   if (!ehUrl && !fs.existsSync(alvo)) { console.error(`Não achei a pasta ${alvo}`); process.exit(1); }
   const projeto = ehUrl ? process.cwd() : raizDoProjeto(fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo));

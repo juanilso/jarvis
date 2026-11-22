@@ -12,6 +12,8 @@ Carregue a skill `orquestrador`. Depois, identifique a intenção e siga o fluxo
 - Pasta vazia OU pedido de criar algo novo → fluxo **novo**
 - "corrigir", "erro", "bug", "não está funcionando" → crie UMA tarefa no backlog com o erro como critério
   (primeiro um teste que reproduz o erro, depois a correção) e rode o fluxo **executar** só nela
+- "refatorar/modernizar/redesenhar/deixar bonito o site", "construir site/landing page" → skill **refatorar-site**
+  (com o designer); para fazer tudo sozinho até a validação, use o fluxo **entregar**
 - "toca até ficar pronto", "só me chama na validação", "piloto", "entrega", "homologa" → fluxo **entregar**
   (no Telegram/painel, `/piloto <objetivo>` repete as rodadas sozinho até ficar pronto)
 - "toca", "continua", "executa", "faz as próximas" → fluxo **executar**

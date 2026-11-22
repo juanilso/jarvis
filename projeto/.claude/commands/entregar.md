@@ -27,6 +27,8 @@ Trabalhe o máximo possível nesta rodada.
   antes tudo o que for possível.
 
 ## 3. Construir
+- Objetivo envolve site, landing page, tela ou "refatorar/modernizar/deixar bonito": carregue a skill `refatorar-site`
+  e siga as etapas dela (home completa e bonita já na primeira rodada; nota visual ≥ 8 em cada item).
 - Rode o fluxo **executar** com `tudo` (todas as tarefas prontas), sem limite de 5, nesta mesma rodada.
 - Site/tela: o `designer` faz o layout completo (não esqueleto); o site roda na prévia ao vivo (porta 8081).
 - Mantenha `.jarvis/jornadas.json` com os caminhos críticos: cada página do menu abre sem estar em branco, links
@@ -35,11 +37,12 @@ Trabalhe o máximo possível nesta rodada.
 ## 4. Homologação interna (o seu teste, antes do usuário)
 Rode e corrija em ciclo até passar (ou até esgotar o que dá para fazer nesta rodada):
 1. Testes do projeto (`testador`) passando.
-2. `jarvis-site testar` na pasta do projeto: **0 CRÍTICO, 0 ALTO, nota ≥ 85, todas as jornadas ✅**, sem erros novos em
+2. Site: nota visual ≥ 8 em todos os itens da skill `refatorar-site`, em desktop e celular.
+3. `jarvis-site testar` na pasta do projeto: **0 CRÍTICO, 0 ALTO, nota ≥ 85, todas as jornadas ✅**, sem erros novos em
    `.jarvis/php-erros.log`.
-3. `jarvis-site print --paginas <todas as páginas principais>` e OLHE cada PNG com Read (computador e celular):
+4. `jarvis-site print --paginas <todas as páginas principais>` e OLHE cada PNG com Read (computador e celular):
    nada em branco, nada sobreposto, nada cortado, textos legíveis, menu funcionando no celular. Achou algo feio? Corrija.
-4. `revisor` sem CORRIGIR pendente.
+5. `revisor` sem CORRIGIR pendente.
 Commit local a cada tarefa (nunca push).
 
 ## 5. Pronto para validação = TODOS verdadeiros

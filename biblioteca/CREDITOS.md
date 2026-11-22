@@ -44,5 +44,9 @@ copiado; o Jarvis traz só fluxos de exemplo (JSON) que chamam o gatilho do Jarv
 O motor (pasta `skills/last30days/scripts`, commit bb2f1ed) é baixado na construção da imagem para `/opt/last30days`, junto com o
 arquivo LICENSE original. O Jarvis só o executa pelo `jarvis-tendencias`, num ambiente isolado; nenhum arquivo foi modificado.
 
+## frontend-design (https://github.com/anthropics/skills), por Anthropic, licença Apache 2.0
+Copiada sem alterações em `skills/frontend-design` (commit e4bb5d9), com o texto da licença em `LICENSE.txt` e a origem em
+`ORIGEM.md`. Revisada: só instruções, sem scripts nem downloads.
+
 ## WAHA Core (https://github.com/devlikeapro/waha), por devlikeapro, licença Apache 2.0
 Usado como serviço separado a partir da imagem oficial `devlikeapro/waha`; nenhum código copiado. O Jarvis só chama a API REST.

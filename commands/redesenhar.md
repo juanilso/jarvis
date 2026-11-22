@@ -5,8 +5,7 @@ argument-hint: '<url> [o que você quer diferente: cores, estilo, seções, púb
 
 Pedido: $ARGUMENTS
 
-Carregue a skill `orquestrador` e a skill `frontend-design` (se não estiver instalada, avise o usuário que rode
-`jarvis-extras` no contêiner e continue com boas práticas de design).
+Carregue a skill `orquestrador`, a skill `refatorar-site` e a skill `frontend-design` (as duas vêm com o Jarvis).
 
 Regras:
 - Use o navegador (ferramentas `mcp__…playwright…`). NUNCA use `browser_run_code_unsafe`.
