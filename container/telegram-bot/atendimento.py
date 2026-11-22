@@ -491,8 +491,9 @@ def iniciar_sessao():
                     return True
             except Exception:  # noqa: BLE001
                 continue
-    for caminho, corpo in ((f"/api/sessions/{SESSAO}/start", {}), ("/api/sessions", {"name": SESSAO, "start": True}),
-                           ("/api/sessions/start", {"name": SESSAO})):
+    hook = {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}]}
+    for caminho, corpo in ((f"/api/sessions/{SESSAO}/start", {}), ("/api/sessions", {"name": SESSAO, "start": True, "config": hook}),
+                           ("/api/sessions/start", {"name": SESSAO, "config": hook})):
         try:
             waha(caminho, corpo)
             return True
@@ -554,6 +555,41 @@ DIAG = "__jarvis_diagnostico__"
 N8N_WEBHOOK = os.environ.get("ATENDIMENTO_N8N_WEBHOOK", "http://n8n:5678/webhook/whatsapp-waha")
 
 
+def _hooks_sessao():
+    s = waha(f"/api/sessions/{SESSAO}")
+    return [h.get("url") for h in ((s.get("config") or {}).get("webhooks") or []) if isinstance(h, dict)]
+
+
+def garantir_webhook():
+    """Grava o webhook do n8n NA SESSÃO do WhatsApp (não depende do webhook global do WAHA).
+    Devolve (ok, texto). A sessão reconecta sozinha, sem novo QR code."""
+    try:
+        if N8N_WEBHOOK in _hooks_sessao():
+            return True, "já configurado na sessão"
+    except Exception:  # noqa: BLE001
+        pass
+    config = {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}]}
+    ultimo = "?"
+    for metodo, caminho, corpo in (("PUT", f"/api/sessions/{SESSAO}", {"name": SESSAO, "config": config}),
+                                   ("PUT", f"/api/sessions/{SESSAO}", {"config": config}),
+                                   ("POST", f"/api/sessions/{SESSAO}", {"name": SESSAO, "config": config})):
+        try:
+            waha(caminho, corpo, metodo=metodo, tempo=30)
+            time.sleep(3)
+            try:
+                if N8N_WEBHOOK in _hooks_sessao():
+                    return True, "configurado agora na sessão (o WhatsApp reconectou sozinho)"
+            except Exception:  # noqa: BLE001
+                return True, "configuração enviada"
+        except urllib.error.HTTPError as e:
+            ultimo = f"HTTP {e.code}: {e.read().decode('utf-8', 'replace')[:200]}"
+            continue
+        except Exception as e:  # noqa: BLE001
+            ultimo = f"{type(e).__name__}: {e}"
+            continue
+    return False, f"não consegui gravar o webhook na sessão ({ultimo})"
+
+
 def diagnostico():
     """Testa cada etapa do atendimento e diz onde está parando."""
     passos = []
@@ -568,12 +604,11 @@ def diagnostico():
          w.get("status", "?") + (f" · {w.get('numero')}" if w.get("numero") else "") + (f" · {w.get('erro')}" if w.get("erro") else ""))
     item(e.get("ligado", True), "Robô ligado", "" if e.get("ligado", True) else "está pausado: clique em ▶️ Ligar robô")
     # o WAHA está configurado para avisar o n8n?
-    try:
-        s = waha(f"/api/sessions/{SESSAO}")
-        hooks = [h.get("url") for h in ((s.get("config") or {}).get("webhooks") or []) if isinstance(h, dict)]
-        item(True, "Webhook da sessão", ", ".join(hooks) if hooks else "usa o webhook global do WAHA (WHATSAPP_HOOK_URL)")
-    except Exception as erro:  # noqa: BLE001
-        item(False, "Webhook da sessão", f"não consegui ler ({type(erro).__name__})")
+    if w.get("status") == "WORKING":
+        ok, texto = garantir_webhook()
+        item(ok, "Webhook do n8n gravado na sessão", texto)
+    else:
+        item(False, "Webhook do n8n gravado na sessão", "conecte o WhatsApp primeiro")
     # n8n recebe e repassa ao Jarvis? (manda um evento de teste pelo mesmo caminho do WhatsApp)
     antes = e.get("diag", 0)
     corpo = {"event": "message.any", "session": SESSAO, "payload": {"id": "diag", "from": "diagnostico@c.us", "fromMe": False,
@@ -603,7 +638,8 @@ def diagnostico():
         mins = int((time.time() - u["t"]) // 60)
         item(True, "Última mensagem real recebida", f"há {mins} min" + (" (enviada por você/robô)" if u.get("de_mim") else ""))
     else:
-        item(False, "Última mensagem real recebida", "nenhuma desde a atualização: o WhatsApp não está entregando ao n8n")
+        item(False, "Última mensagem real recebida",
+             "nenhuma ainda: mande uma mensagem de OUTRO número para o WhatsApp da empresa e rode o diagnóstico de novo")
     # modelo responde?
     try:
         _perguntar_modelo([{"p": "cliente", "x": "Responda só: ok", "t": time.time()}], "Teste.")
@@ -632,6 +668,15 @@ def atender(dados):
         _salvar_estado(e0)
     if texto == DIAG:
         return {"responder": False, "motivo": "diagnóstico: o caminho WhatsApp → n8n → Jarvis está funcionando"}
+    mid = str(dados.get("id") or "")
+    if mid:
+        with _lock:
+            e1 = _ler_estado()
+            vistos = [x for x in e1.get("ids_vistos", []) if x[1] > time.time() - 3600]
+            if mid in {x[0] for x in vistos}:
+                return {"responder": False, "motivo": "evento repetido"}
+            e1["ids_vistos"] = (vistos + [[mid, time.time()]])[-300:]
+            _salvar_estado(e1)
     if not chat or chat.endswith("@g.us") or chat.startswith("status@") or "@newsletter" in chat or "@broadcast" in chat:
         return {"responder": False, "motivo": "ignorado (grupo, status ou canal)"}
     with _lock:
