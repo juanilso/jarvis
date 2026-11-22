@@ -190,7 +190,7 @@ class Execucao:
         return False
 
     def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False, cwd=None, usar_sessao=True, projeto=None,
-              sistema=None, extra=None):
+              sistema=None, extra=None, custo_no_projeto=False):
         """Executa (bloqueante). ao_evento(dict) recebe:
         {"tipo": "agente_inicio"|"agente_fim"|"resposta"|"erro"|"info", ...}
         compactar=True: resume a conversa, encerra a sessão e guarda o resumo como contexto."""
@@ -279,7 +279,7 @@ class Execucao:
             return
         est = estado.ler()
         if resultado.get("total_cost_usd"):
-            chave = projeto if usar_sessao else "conhecimento"
+            chave = projeto if (usar_sessao or custo_no_projeto) else "conhecimento"
             est["custos"][chave] = round(est["custos"].get(chave, 0) + resultado["total_cost_usd"], 6)
         if not usar_sessao:
             estado.salvar(est)
@@ -515,6 +515,7 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/piloto", "Piloto automático: /piloto <objetivo> constrói, testa e corrige sozinho até a sua validação · /piloto parar"),
     ("/previa", "Link para navegar no site do projeto rodando no servidor (sem upload)"),
     ("/print", "Prints do site do projeto (computador e celular): /print ou /print /contato.html"),
     ("/testar", "Testa o site do projeto (erros, links, celular, SEO): /testar, /testar <url> ou /testar corrigir"),
@@ -579,6 +580,12 @@ Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
+Piloto automático (só te chama na validação)
+• /piloto refatorar o site da loja com layout moderno: o Jarvis decide o que é reversível, constrói, testa, corrige e
+  homologa sozinho, em rodadas. Você recebe 1 linha por rodada e só é chamado quando estiver pronto para validar
+  (com prints, link da prévia e roteiro de validação) ou se faltar algo que só você tem (senha, publicar, pagamento)
+• /piloto: andamento · /piloto parar · /piloto continuar · depois da validação: /piloto <ajustes que você quer>
+
 Prévia e teste de sites
 • /previa: link para navegar no site do projeto rodando no servidor (cada mudança aparece ao recarregar, sem upload)
 • /print: prints do site do projeto (computador e celular) · /print /contato.html /sobre.html
@@ -630,6 +637,23 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd == "/piloto":
+        import piloto
+        if not proj:
+            return "Escolha um projeto primeiro: /projetos e depois /projeto <nome>", None
+        a = arg.strip()
+        if not a or a.lower() in ("status", "?"):
+            return piloto.status_texto(proj), None
+        if a.lower() in ("parar", "stop", "cancelar"):
+            return ("⏹ Parando o piloto de " + proj + "…" if piloto.ativo(proj) else "Nenhum piloto rodando em " + proj), \
+                ("piloto_parar" if piloto.ativo(proj) else None)
+        if piloto.ativo(proj):
+            return f"O piloto já está rodando em {proj}. /piloto para ver o andamento.", None
+        if a.lower() == "continuar":
+            antigo = piloto.ler(proj)
+            if not antigo:
+                return "Não há piloto anterior. Use /piloto <objetivo>.", None
+        return "🚀 Ligando o piloto…", "piloto"
     if cmd == "/previa":
         if not proj:
             return "Escolha um projeto primeiro: /projetos e depois /projeto <nome>", None

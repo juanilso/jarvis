@@ -111,6 +111,20 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.19: piloto automático até a homologação
+
+- **`/piloto <objetivo>`** (Telegram ou chat do painel): o Jarvis segue sozinho, em rodadas, construindo, testando,
+  corrigindo e homologando. Decisões reversíveis (layout, cores, páginas, bibliotecas) ele toma e anota com [piloto]
+  em `docs/DECISOES.md`; conteúdo que falta vira provisório marcado. Você recebe **1 linha por rodada** e só é chamado:
+  - ✅ **pronto para a sua validação**: com prints, link da prévia e o roteiro de validação (`docs/HOMOLOGACAO.md`);
+  - ⛔ **bloqueado**: só se precisar de algo seu (senha, publicar, pagamento, apagar dados reais);
+  - ⏸ limite de rodadas (8), de custo (US$ 15) ou sem avanço (mesmo problema 3 vezes).
+- **"Pronto" é conferido pelo Jarvis, não só pela IA:** o site precisa passar no teste (0 crítico, 0 alto, nota ≥ 85
+  e todas as jornadas ok). Se a IA disser pronto e o teste reprovar, ela recebe o relatório e corrige na rodada seguinte.
+- `/piloto` mostra o andamento · `/piloto parar` · `/piloto continuar` · depois de validar: `/piloto <ajustes>`.
+- Limites no `.env.claude`: `JARVIS_PILOTO_RODADAS=8`, `JARVIS_PILOTO_CUSTO=15`, `JARVIS_PILOTO_NOTA=85`.
+- No Claude Code direto: `/jarvis:entregar <objetivo>` faz uma rodada longa com as mesmas regras.
+
 ## Jarvis 1.18: site rodando no servidor (sem upload), jornadas de teste e teste diário no n8n
 
 - **Prévia ao vivo, sempre ligada:** o site do projeto atual roda no servidor (PHP + banco de desenvolvimento) na porta 8081.

@@ -183,6 +183,29 @@ def rodar(chat_id, texto, responder_audio, compactar=False, proj=None):
     pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
 
 
+def iniciar_piloto(chat_id, objetivo):
+    """/piloto <objetivo>: rodadas sozinho até a homologação; só te chama no fim."""
+    import piloto
+    proj = estado.ler()["projeto"]
+    if objetivo.lower() == "continuar":
+        objetivo = (piloto.ler(proj) or {}).get("objetivo", "")
+
+    def ao_fim(situacao, texto, d):
+        enviar(chat_id, piloto.mensagem_final(proj, situacao, texto, d))
+        teste = d.get("teste") or {}
+        if teste.get("prints_abs"):
+            enviar_prints(chat_id, teste["prints_abs"], f"📸 {proj}")
+        url, _ = link_previa(proj)
+        if url:
+            enviar(chat_id, f"🌐 Navegue e valide: {url}")
+        if situacao in ("pronto", "bloqueado"):
+            falar(chat_id, ("O projeto " + proj + " está pronto para a sua validação.") if situacao == "pronto"
+                  else ("O piloto de " + proj + " precisa de você para continuar."))
+
+    ok, msg = piloto.iniciar(estado, pool, proj, objetivo, lambda t: enviar(chat_id, t), ao_fim)
+    enviar(chat_id, msg)
+
+
 def link_previa(proj):
     """Pede ao painel (onde a prévia roda) para ligar a prévia do projeto e devolve o link."""
     token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
@@ -419,7 +442,7 @@ def tratar(msg):
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos",
-                                                  "/print", "/testar", "/previa") \
+                                                  "/print", "/testar", "/previa", "/piloto") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
@@ -430,6 +453,11 @@ def tratar(msg):
         elif acao == "tendencias":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip(), "tendencias"),
                              daemon=True).start()
+        elif acao == "piloto":
+            iniciar_piloto(chat_id, texto.partition(" ")[2].strip())
+        elif acao == "piloto_parar":
+            import piloto
+            piloto.parar(estado.ler()["projeto"], pool)
         elif acao == "site_previa":
             threading.Thread(target=lambda: enviar(chat_id, texto_previa(estado.ler()["projeto"])), daemon=True).start()
         elif acao in ("site_print", "site_testar"):

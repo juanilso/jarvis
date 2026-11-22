@@ -12,6 +12,8 @@ Carregue a skill `orquestrador`. Depois, identifique a intenção e siga o fluxo
 - Pasta vazia OU pedido de criar algo novo → fluxo **novo**
 - "corrigir", "erro", "bug", "não está funcionando" → crie UMA tarefa no backlog com o erro como critério
   (primeiro um teste que reproduz o erro, depois a correção) e rode o fluxo **executar** só nela
+- "toca até ficar pronto", "só me chama na validação", "piloto", "entrega", "homologa" → fluxo **entregar**
+  (no Telegram/painel, `/piloto <objetivo>` repete as rodadas sozinho até ficar pronto)
 - "toca", "continua", "executa", "faz as próximas" → fluxo **executar**
 - mudança de escopo, nova funcionalidade, ajuste técnico, problema → fluxo **evoluir**
 - respostas a decisões ("D-001 A", "ok pode seguir") → fluxo **decidir**

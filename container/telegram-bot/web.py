@@ -205,6 +205,23 @@ def iniciar(texto, veio_de_audio):
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
             elif acao == "tendencias":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(), "tendencias"), daemon=True).start()
+            elif acao == "piloto":
+                import piloto
+                proj = estado.ler()["projeto"]
+                objetivo = texto.partition(" ")[2].strip()
+                if objetivo.lower() == "continuar":
+                    objetivo = (piloto.ler(proj) or {}).get("objetivo", "")
+
+                def ao_fim(situacao, txt, d, proj=proj):
+                    teste = d.get("teste") or {}
+                    publicar({"tipo": "info", "texto": piloto.mensagem_final(proj, situacao, txt, d),
+                              "prints": [x["arquivo"] for x in teste.get("prints") or []], "previa": True}, proj)
+                ok, msg = piloto.iniciar(estado, pool, proj, objetivo,
+                                         lambda t, proj=proj: publicar({"tipo": "info", "texto": t}, proj), ao_fim)
+                publicar({"tipo": "info" if ok else "erro", "texto": msg}, proj)
+            elif acao == "piloto_parar":
+                import piloto
+                piloto.parar(estado.ler()["projeto"], pool)
             elif acao == "site_previa":
                 try:
                     msg = previa("iniciar")

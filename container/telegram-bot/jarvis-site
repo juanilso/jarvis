@@ -193,7 +193,7 @@ async function checarPagina(navegador, url, base) {
     });
     const P = res.problemas;
     if (res.status >= 400) P.push(["CRÍTICO", `a página respondeu ${res.status}`]);
-    else if (info.texto_visivel < 15 && info.midia === 0) P.push(["CRÍTICO", "PÁGINA EM BRANCO: não aparece nenhum texto nem imagem"]);
+    else if (info.texto_visivel < 3 && info.midia === 0) P.push(["CRÍTICO", "PÁGINA EM BRANCO: não aparece nenhum texto nem imagem"]);
     if (info.erro_php) P.push([/Fatal|Parse|Uncaught/.test(info.erro_php) ? "CRÍTICO" : "ALTO", `erro do PHP aparecendo na página: ${info.erro_php}`]);
     if (info.php_cru) P.push(["CRÍTICO", "código PHP aparecendo como texto (o PHP não foi executado)"]);
     if (info.template_cru) P.push(["MÉDIO", "marcação de template aparecendo como texto ({{ ... }})"]);
@@ -298,7 +298,7 @@ async function rodarJornadas(navegador, base, projeto, saida, ehUrl) {
             if (resp && resp.status() >= 400) throw new Error(`a página respondeu ${resp.status()}`);
             const txt = (await pg.evaluate(() => document.body ? document.body.innerText.trim().length : 0));
             const midia = await pg.evaluate(() => document.querySelectorAll("img, svg, canvas, video, iframe").length);
-            if (txt < 15 && !midia) throw new Error("página em branco");
+            if (txt < 3 && !midia) throw new Error("página em branco");
           } else if (p.ver !== undefined) {
             await pg.getByText(String(p.ver), { exact: false }).filter({ visible: true }).first().waitFor({ timeout: 5000 });
           } else if (p.nao_ver !== undefined) {

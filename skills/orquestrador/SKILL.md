@@ -86,6 +86,9 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
   `.jarvis/previas/<data-hora>/`. OLHE os PNGs com a ferramenta Read: você enxerga imagens. Sempre que criar ou alterar
   site/tela, faça testar → corrigir → print → olhar antes de responder; os prints da execução vão sozinhos para o
   usuário (painel e Telegram). Site de terceiros: só testar e relatar. Fora do contêiner (sem `jarvis-site`): MCP `playwright`.
+- Modo piloto (`/jarvis:entregar`, `/piloto` no Telegram): decida o reversível sozinho ([piloto] em DECISOES),
+  conteúdo provisório marcado, homologação interna completa e `docs/HOMOLOGACAO.md` com o roteiro de validação.
+  Termine com `PILOTO: PRONTO|CONTINUAR|BLOQUEADO`. O Jarvis só aceita PRONTO se o teste do site passar.
 - Prévia ao vivo: o site do projeto atual roda na porta 8081 (php -S com roteador estilo cPanel: /contato → contato.php,
   erros do PHP visíveis, log em `.jarvis/php-erros.log`). O usuário navega pelo link (`/previa` no Telegram) sem upload.
 - Jornadas: ao construir/refatorar site, mantenha `.jarvis/jornadas.json` (vai para o Git) com os caminhos críticos.
