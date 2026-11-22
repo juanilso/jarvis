@@ -13,6 +13,11 @@ from datetime import datetime
 import jarvis_core as core
 
 PASTA = os.path.join(".jarvis", "previas")
+PORTA_PREVIA = int(os.environ.get("JARVIS_PREVIA_PORT", "8081"))
+ROTEADOR = next((c for c in ("/opt/jarvis-bots/jarvis-roteador.php",
+                             os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis-roteador.php"))
+                 if os.path.isfile(c)), None)
+PREVIA = {"proc": None, "projeto": None, "raiz": None, "desligada": False}
 CMD = shutil.which("jarvis-site") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis-site")
 _rodando = {}
 
@@ -48,6 +53,82 @@ def seguro(projeto, relativo):
     if not cam.startswith(raiz + os.sep) or not os.path.isfile(cam):
         return None
     return cam
+
+
+# ------------------------------------------------------------ prévia navegável (php -S sempre ligado)
+def raiz_do_site(pasta):
+    return next((os.path.join(pasta, d) for d in ("public", "public_html", "www", "dist", "build")
+                 if os.path.isdir(os.path.join(pasta, d))), pasta)
+
+
+def url_previa(caminho="/", host=None):
+    """Endereço da prévia para você abrir: JARVIS_PREVIA_URL (Tailscale) ou o mesmo host do painel na porta da prévia."""
+    base = os.environ.get("JARVIS_PREVIA_URL", "").strip().rstrip("/")
+    if not base and host:
+        base = f"{host}:{PORTA_PREVIA}"
+    return (base + "/" + caminho.lstrip("/")) if base else None
+
+
+def previa_ligada():
+    return PREVIA["projeto"] if PREVIA["proc"] and PREVIA["proc"].poll() is None else None
+
+
+def parar_previa():
+    if PREVIA["proc"] and PREVIA["proc"].poll() is None:
+        PREVIA["proc"].terminate()
+        try:
+            PREVIA["proc"].wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            PREVIA["proc"].kill()
+    PREVIA.update(proc=None, projeto=None, raiz=None)
+
+
+def garantir_previa(projeto):
+    """Liga (ou mantém) a prévia do projeto na porta fixa. Rotas como no cPanel e erros do PHP visíveis."""
+    if not projeto or projeto not in core.listar_projetos():
+        raise ValueError("Escolha um projeto primeiro.")
+    pasta = pasta_projeto(projeto)
+    raiz = raiz_do_site(pasta)
+    PREVIA["desligada"] = False
+    if previa_ligada() == projeto and PREVIA["raiz"] == raiz:
+        return raiz
+    parar_previa()
+    os.makedirs(os.path.join(pasta, ".jarvis"), exist_ok=True)
+    _gitignore(pasta)
+    cmd = ["php", "-d", "display_errors=1", "-d", "error_reporting=E_ALL", "-d", "log_errors=1",
+           "-d", "error_log=" + os.path.join(pasta, ".jarvis", "php-erros.log"),
+           "-S", f"0.0.0.0:{PORTA_PREVIA}", "-t", raiz] + ([ROTEADOR] if ROTEADOR else [])
+    PREVIA.update(proc=subprocess.Popen(cmd, cwd=pasta, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
+                  projeto=projeto, raiz=raiz)
+    time.sleep(0.4)
+    if PREVIA["proc"].poll() is not None:
+        PREVIA.update(proc=None, projeto=None, raiz=None)
+        raise ValueError(f"A porta {PORTA_PREVIA} está ocupada ou o PHP não abriu.")
+    return raiz
+
+
+def _gitignore(pasta):
+    gi = os.path.join(pasta, ".jarvis", ".gitignore")
+    atual = open(gi, encoding="utf-8").read() if os.path.exists(gi) else ""
+    faltam = [l for l in ("previas/", "*.log") if l not in atual.splitlines()]
+    if faltam:
+        with open(gi, "a", encoding="utf-8") as f:
+            f.write(("\n" if atual and not atual.endswith("\n") else "") + "\n".join(faltam) + "\n")
+
+
+def vigiar_previa(projeto_atual, intervalo=30):
+    """Mantém a prévia de pé (se o PHP cair, volta sozinho). projeto_atual(): função que diz o projeto do painel."""
+    def laco():
+        while True:
+            try:
+                p = projeto_atual()
+                if p and not PREVIA["desligada"] and p in core.listar_projetos() and previa_ligada() != p:
+                    garantir_previa(p)
+            except Exception as e:  # noqa: BLE001
+                print("prévia:", e, flush=True)
+            time.sleep(intervalo)
+    import threading
+    threading.Thread(target=laco, daemon=True).start()
 
 
 def ocupado(projeto):
@@ -113,9 +194,14 @@ def quando(d):
         return ""
 
 
+def jornadas_existem(projeto):
+    return os.path.isfile(os.path.join(pasta_projeto(projeto), ".jarvis", "jornadas.json"))
+
+
 PROMPT_CORRIGIR = (
     "Rode `jarvis-site testar` na pasta do projeto (ou use o relatório mais recente em .jarvis/previas/ultima.json). "
     "Corrija os problemas CRÍTICOS, ALTOS e MÉDIOS que forem do próprio site (não mexa em links externos de terceiros). "
+    "Se o projeto ainda não tem .jarvis/jornadas.json, crie as jornadas principais do site (menu, páginas, formulários). "
     "Depois rode `jarvis-site testar` de novo, rode `jarvis-site print` e OLHE os prints com a ferramenta Read "
     "(desktop e celular) para confirmar que nada ficou quebrado visualmente. "
     "Responda com a nota antes e depois e o que foi corrigido.")

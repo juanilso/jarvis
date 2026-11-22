@@ -85,7 +85,7 @@ Sem Tailscale: `ssh -L 8090:localhost:8090 root@IP` → http://localhost:8090.
 - As notas ficam em /workspace/.jarvis-conhecimento e no repositório privado `jarvis-conhecimento` do seu GitHub
   (criado automaticamente com o GH_TOKEN). Abra a pasta como "vault" no Obsidian para navegar pelas notas.
 - Busca: o Claude usa WebSearch; sem ele, `jarvis-busca` (Brave com BRAVE_API_KEY, ou DuckDuckGo sem chave).
-- 👁 Prévia: liga `php -S` do projeto na porta 8081. Publique no Tailscale: `tailscale serve --bg --https=8081 http://localhost:8081`.
+- 👁 Prévia: o site do projeto atual na porta 8081 (sempre ligada desde a 1.18). Publique uma vez: `sudo ./previa-configurar.sh`.
 - Depois de atualizar, renove o plugin no contêiner dev:
   `claude plugin marketplace update jarvis-marketplace && claude plugin uninstall jarvis@jarvis-marketplace && claude plugin install jarvis@jarvis-marketplace`
 
@@ -110,6 +110,23 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - 🗺 Mapa do sistema (Floorplan) com /jarvis:mapa · ❔ Guia de uso no painel ou /guia.
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
+
+## Jarvis 1.18: site rodando no servidor (sem upload), jornadas de teste e teste diário no n8n
+
+- **Prévia ao vivo, sempre ligada:** o site do projeto atual roda no servidor (PHP + banco de desenvolvimento) na porta 8081.
+  Cada mudança do Jarvis aparece ao recarregar a página, sem upload. Publique a porta uma vez: `sudo ./previa-configurar.sh`
+  (Tailscale, só para os seus aparelhos). Depois: `/previa` no Telegram, 👁 ou 🖼 → 🌐 Navegar no painel.
+- **Igual ao cPanel:** `/contato` abre `contato.php`; Laravel/WordPress/CodeIgniter (tudo para `index.php`) funcionam;
+  endereço inexistente dá 404 de verdade; erros do PHP aparecem na tela e ficam em `.jarvis/php-erros.log`.
+- **Teste mais esperto:** acusa PÁGINA EM BRANCO, erro do PHP na tela ou no log, código PHP aparecendo como texto e `{{ }}` cru.
+- **Jornadas** (`.jarvis/jornadas.json`, vai para o Git): o Jarvis grava os caminhos que não podem quebrar (menu → contato →
+  enviar → "Obrigado") e o `/testar` repete todos, com print de onde falhou. Passos: abrir, ver, nao_ver, ver_link,
+  ver_elemento, clicar, preencher, url_contem, esperar, print.
+- **n8n:** fluxo "Jarvis · Teste dos sites" (7h, e um webhook `jarvis-testar-site` para chamar depois de publicar).
+  Só avisa no Telegram se algo quebrar. Gatilho novo: `{"acao":"site_testar","projeto":"loja","url":"…"}` e `{"acao":"previa"}`.
+  Importe SÓ o fluxo novo (reimportar todos desligaria os que você já ativou, como o do WhatsApp):
+  `docker compose --profile automacoes exec -T -u node n8n n8n import:workflow --input=/opt/jarvis-n8n/fluxos/jarvisRotina0009.json`
+- No site publicado, as jornadas que clicam ou preenchem só rodam se tiverem `"producao": true` (para não enviar formulário real).
 
 ## Jarvis 1.17: prévia (prints) e teste automático dos sites
 

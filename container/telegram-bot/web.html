@@ -196,6 +196,7 @@ footer{position:relative}
   <button class="fechar" id="stFechar">✕</button>
   <h2>🖼 PRÉVIA E TESTE DO SITE · <span id="stProj"></span></h2>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button id="stNavegar" class="prim" title="Abre o site do projeto rodando aqui no servidor">🌐 Navegar no site</button>
     <button id="stPrint" class="prim">📸 Tirar prints</button>
     <input type="text" id="stPaginas" placeholder="páginas (opcional): /  /contato.html  /sobre.php">
   </div>
@@ -210,7 +211,11 @@ footer{position:relative}
   <div class="waDica">Clique no print para abrir em tamanho real. No celular, toque e segure para salvar.</div>
   <h3>ÚLTIMO TESTE <span class="stNota" id="stNota"></span></h3>
   <div id="stRel"><span class="waDica">nenhum teste ainda</span></div>
-  <div class="waDica" style="margin-top:10px">Sem endereço, o teste sobe o site do projeto num servidor temporário (como o 👁) e percorre até 15 páginas:
+  <div class="waDica" style="margin-top:10px"><b>🌐 Navegar</b>: o site do projeto roda aqui no servidor (PHP + banco de desenvolvimento), sempre ligado no projeto atual.
+    Cada mudança do Jarvis aparece na hora: é só recarregar a página, sem upload. URLs sem extensão (/contato) funcionam como no cPanel e erros do PHP aparecem na tela.
+    Se não abrir, rode na VPS <code>./previa-configurar.sh</code> (publica a porta 8081 no Tailscale).<br>
+    <b>Jornadas</b>: o Jarvis grava em <code>.jarvis/jornadas.json</code> os caminhos importantes (menu → contato → enviar…) e o teste repete todos.<br>
+    Sem endereço, o teste sobe o site do projeto num servidor temporário (como o 👁) e percorre até 15 páginas:
     páginas fora do ar, links quebrados, erros de JavaScript, arquivos que não carregam, celular (rolagem lateral, letra miúda), SEO e acessibilidade.
     Ele só navega: não clica em botões nem envia formulários. Quando o Jarvis mexe num site, ele roda isso sozinho, olha os prints e corrige.
     No Telegram: <code>/print</code>, <code>/testar</code>, <code>/testar corrigir</code>.</div>
@@ -638,7 +643,8 @@ async function kbCarregar(){const q=$("kbBusca").value.trim();const j=q?await ap
 /* ---------- Prévia (prints) e teste do site ---------- */
 function urlPrint(c,proj){return "/api/site/arquivo?c="+encodeURIComponent(c)+(proj?"&projeto="+encodeURIComponent(proj):"")}
 function miniPrints(ev){if(!ev.prints||!ev.prints.length)return"";
-  return '<div class="msgPrints">'+ev.prints.map(c=>`<a href="${urlPrint(c,ev.projeto)}" target="_blank"><img loading="lazy" src="${urlPrint(c,ev.projeto)}" alt="print"></a>`).join("")+"</div>"}
+  const nav=ev.previa?`<div style="margin-top:6px"><a href="${PREV_URL||urlPrevia()}" target="_blank" style="color:var(--c2)">🌐 navegar no site (prévia ao vivo)</a></div>`:"";
+  return '<div class="msgPrints">'+ev.prints.map(c=>`<a href="${urlPrint(c,ev.projeto)}" target="_blank"><img loading="lazy" src="${urlPrint(c,ev.projeto)}" alt="print"></a>`).join("")+"</div>"+nav}
 function mdSimples(t){const cor={"CRÍTICO":"#ff5c6c","ALTO":"#ffad5c","MÉDIO":"#ffe08a","BAIXO":"#9fd3ff"};
   return esc(t).replace(/^# .*\n+/m,"").replace(/\n+(?=## )/g,"\n").replace(/^## (.*)\n?/gm,'<div style="margin-top:10px;color:var(--c2)"><b>$1</b></div>')
    .replace(/\*\*(CRÍTICO|ALTO|MÉDIO|BAIXO)\*\*/g,(m,g)=>`<b style="color:${cor[g]}">${g}</b>`).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")
@@ -657,6 +663,7 @@ async function stAcao(b){const r=await api("/api/site/acao",b);$("stMsg").textCo
 $("stPrint").onclick=()=>stAcao({acao:"print",paginas:$("stPaginas").value});
 $("stTestar").onclick=()=>stAcao({acao:"testar",url:$("stUrl").value.trim()});
 $("stCorrigir").onclick=()=>stAcao({acao:"corrigir"});
+$("stNavegar").onclick=()=>$("btnPrevia").click();
 
 /* ---------- Jogos do dia ---------- */
 let jgTimer=null,jgGerado=null;
@@ -740,9 +747,10 @@ $("kbSalvar").onclick=async()=>{const t=$("kbIdeia").value.trim();if(!t)return;c
 $("kbPesquisar").onclick=async()=>{const t=$("kbTema").value.trim();if(!t)return;const r=await api("/api/mensagem",{texto:"/pesquisar "+t});
   if(r.erro)alert(r.erro);else{$("kbTema").value="";$("kb").classList.remove("aberto")}};
 /* ---------- prévia do site ---------- */
-$("btnPrevia").onclick=async()=>{const e=await api("/api/estado");const url=`${location.protocol}//${location.hostname}:${e.porta_previa||8081}/`;
-  if(e.previa&&e.previa===e.projeto){if(confirm("Prévia ligada. Abrir o site? (Cancelar desliga a prévia)"))window.open(url,"_blank");else api("/api/previa",{acao:"parar"});return}
-  const j=await api("/api/previa",{acao:"iniciar"});if(j.erro){add("ev erro",esc(j.erro));return}setTimeout(()=>window.open(url,"_blank"),600)};
+function urlPrevia(e){return (e&&e.previa_url)||`${location.protocol}//${location.hostname}:${(e&&e.porta_previa)||8081}/`}
+let PREV_URL=null;api("/api/estado").then(e=>{PREV_URL=urlPrevia(e)}).catch(()=>{});
+$("btnPrevia").onclick=async()=>{const j=await api("/api/previa",{acao:"iniciar"});if(j.erro){add("ev erro",esc(j.erro));return}
+  const e=await api("/api/estado");PREV_URL=urlPrevia(e);setTimeout(()=>window.open(PREV_URL,"_blank"),400)};
 /* ---------- projetos e GitHub ---------- */
 function gMsg(t,erro){$("gMsg").innerHTML=`<span style="color:var(--${erro?"er":"ok"})">${esc(t)}</span>`}
 async function gPost(c,b){$("gMsg").textContent="⏳ aguarde…";const r=await fetch(c,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});const j=await r.json();

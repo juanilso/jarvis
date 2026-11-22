@@ -1,0 +1,181 @@
+{
+  "id": "jarvisRotina0009",
+  "name": "Jarvis · Teste dos sites",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "186cb958-a1ca-4e2f-805f-ed36035cc3e8",
+      "name": "Todo dia 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Teste diário do site\",\n  \"acao\": \"site_testar\",\n  \"projeto\": \"NOME_DO_PROJETO\",\n  \"so_se_problema\": true,\n  \"avisar\": true\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "8319dd30-e33d-4101-a8fb-4f4d6ab858b2",
+      "name": "Testar o projeto (local)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Teste do site publicado\",\n  \"acao\": \"site_testar\",\n  \"projeto\": \"NOME_DO_PROJETO\",\n  \"url\": \"https://SEU-SITE.com.br\",\n  \"so_se_problema\": true,\n  \"avisar\": true\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "f1b3c1ff-a432-4b8b-8b9c-09c3baf568fa",
+      "name": "Testar o site publicado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-testar-site",
+        "options": {}
+      },
+      "id": "f5001672-d252-4bd9-9f4e-f0e6088e20a9",
+      "name": "Testar quando pedir (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        320
+      ],
+      "webhookId": "32f5f0b5-46c3-4c27-aeee-35ce2db8998f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ rotina: 'Teste pedido', acao: 'site_testar', projeto: $json.body.projeto, url: $json.body.url || '', so_se_problema: false, avisar: true }) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "273f57d9-173f-4799-b629-04d6ee1c50b1",
+      "name": "Testar o que veio no pedido",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Teste dos sites\nO Jarvis testa o site e **só avisa no Telegram se algo quebrar** (página em branco, erro do PHP, link quebrado, jornada que falhou), com prints.\n\n- **Todo dia 7h**: troque `NOME_DO_PROJETO` (pasta em /workspace) e, se quiser, o endereço publicado. Apague o nó que não usar.\n- **Webhook** `jarvis-testar-site`: chame depois de publicar o site, por exemplo:\n`curl -X POST http://n8n:5678/webhook/jarvis-testar-site -H 'Content-Type: application/json' -d '{\"projeto\":\"loja\",\"url\":\"https://loja.com.br\"}'`\n- As jornadas (`.jarvis/jornadas.json`) são criadas pelo Jarvis; no site publicado só rodam as que não clicam/preenchem (ou as marcadas `\"producao\": true`).\n- Ative no botão **Active**.",
+        "height": 400,
+        "width": 520
+      },
+      "id": "d077403f-6691-4215-a134-2998ad090477",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -480
+      ]
+    }
+  ],
+  "connections": {
+    "Todo dia 7h": {
+      "main": [
+        [
+          {
+            "node": "Testar o projeto (local)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Testar o site publicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Testar quando pedir (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Testar o que veio no pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

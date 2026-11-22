@@ -174,10 +174,41 @@ def rodar(chat_id, texto, responder_audio, compactar=False, proj=None):
             enviar(chat_id, f"📁 {proj}\n" + ("⚠️ " if ev["erro"] else "") + ev["texto"] + rodape)
             if ev.get("prints_abs"):
                 enviar_prints(chat_id, ev["prints_abs"], f"📸 {proj} · prévia")
+                url, _ = link_previa(proj)
+                if url:
+                    enviar(chat_id, f"🌐 Navegue no site (ao vivo, sem upload): {url}")
             if ev["audio"]:
                 falar(chat_id, ev["resumo"])
 
     pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
+
+
+def link_previa(proj):
+    """Pede ao painel (onde a prévia roda) para ligar a prévia do projeto e devolve o link."""
+    token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+    if not token or not proj:
+        return None, "sem gatilho"
+    req = urllib.request.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
+                                 data=json.dumps({"acao": "previa", "projeto": proj}).encode(),
+                                 headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            d = json.loads(r.read().decode())
+        return d.get("url"), d.get("erro")
+    except Exception as e:  # noqa: BLE001
+        return None, type(e).__name__
+
+
+def texto_previa(proj):
+    url, erro = link_previa(proj)
+    if url:
+        return (f"🌐 Prévia de {proj}: {url}\nO site roda no servidor: cada mudança do Jarvis aparece ao recarregar a página, "
+                "sem upload. Abra com o Tailscale ligado no celular/PC.")
+    if erro == "sem gatilho":
+        return "🌐 Para o link da prévia, ligue as automações (./automacoes-configurar.sh) e rode ./previa-configurar.sh na VPS."
+    if not erro:
+        return "🌐 Prévia ligada, mas falta publicar o endereço: rode ./previa-configurar.sh na VPS (uma vez)."
+    return f"⚠️ Não consegui ligar a prévia ({erro})."
 
 
 def enviar_prints(chat_id, caminhos, legenda=""):
@@ -218,6 +249,10 @@ def site_no_telegram(chat_id, acao, arg):
            ("\n\n🛠 Para o Jarvis corrigir e conferir: /testar corrigir" if not alvo and d.get("nota", 100) < 100 else ""))
     if d.get("prints_abs"):
         enviar_prints(chat_id, d["prints_abs"], "📸 página inicial")
+    if not alvo:
+        url, _ = link_previa(proj)
+        if url:
+            enviar(chat_id, f"🌐 Navegue no site: {url}")
 
 
 def pesquisar(chat_id, tema, tipo="pesquisa"):
@@ -384,7 +419,7 @@ def tratar(msg):
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos",
-                                                  "/print", "/testar") \
+                                                  "/print", "/testar", "/previa") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
@@ -395,6 +430,8 @@ def tratar(msg):
         elif acao == "tendencias":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip(), "tendencias"),
                              daemon=True).start()
+        elif acao == "site_previa":
+            threading.Thread(target=lambda: enviar(chat_id, texto_previa(estado.ler()["projeto"])), daemon=True).start()
         elif acao in ("site_print", "site_testar"):
             threading.Thread(target=site_no_telegram, args=(chat_id, acao, texto.partition(" ")[2].strip()),
                              daemon=True).start()

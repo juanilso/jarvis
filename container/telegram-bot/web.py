@@ -117,6 +117,13 @@ def publicar_hermes(tipo, texto, proj):
 def rodar(texto, responder_audio, compactar=False, proj=None):
     proj = proj or estado.ler()["projeto"]
     def ao_evento(ev):
+        if ev["tipo"] == "resposta" and ev.get("prints"):
+            try:  # o Jarvis mexeu no site: a prévia passa a mostrar este projeto
+                import site_previa
+                site_previa.garantir_previa(proj)
+                ev["previa"] = True
+            except Exception as e:  # noqa: BLE001
+                print("prévia:", e, flush=True)
         if ev["tipo"] == "resposta" and ev.get("audio"):
             nome = secrets.token_hex(8) + ".mp3"
             try:
@@ -129,28 +136,32 @@ def rodar(texto, responder_audio, compactar=False, proj=None):
     pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
 
 
-PREVIA = {"proc": None, "projeto": None}
 PORTA_PREVIA = int(os.environ.get("JARVIS_PREVIA_PORT", "8081"))
 
 
 def previa(acao):
-    """Servidor de prévia (php -S) do projeto atual, para ver o site em construção."""
-    if PREVIA["proc"] and PREVIA["proc"].poll() is None:
-        PREVIA["proc"].terminate()
-        PREVIA["proc"].wait(timeout=5)
-    PREVIA.update(proc=None, projeto=None)
+    """Prévia navegável do projeto atual (php -S fixo na porta 8081, sempre ligado; ver site_previa)."""
+    import site_previa
     if acao != "iniciar":
-        return "Prévia desligada."
+        site_previa.parar_previa()
+        site_previa.PREVIA["desligada"] = True
+        return "Prévia desligada (volta a ligar quando você clicar em 👁 ou o Jarvis mexer no site)."
     proj = estado.ler()["projeto"]
-    if not proj:
-        raise projetos.Erro("Escolha um projeto primeiro.")
-    pasta = os.path.join(core.WORKSPACE, proj)
-    raiz = next((os.path.join(pasta, d) for d in ("public", "public_html", "www", "dist", "build")
-                 if os.path.isdir(os.path.join(pasta, d))), pasta)
-    PREVIA["proc"] = subprocess.Popen(["php", "-S", f"0.0.0.0:{PORTA_PREVIA}", "-t", raiz], cwd=pasta,
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    PREVIA["projeto"] = proj
+    try:
+        raiz = site_previa.garantir_previa(proj)
+    except ValueError as e:
+        raise projetos.Erro(str(e))
     return f"👁 Prévia de {proj} ligada (pasta {os.path.relpath(raiz, core.WORKSPACE)})."
+
+
+def _previa_ligada():
+    import site_previa
+    return site_previa.previa_ligada()
+
+
+def _url_previa(caminho="/"):
+    import site_previa
+    return site_previa.url_previa(caminho)
 
 
 def pesquisar(tema, tipo="pesquisa"):
@@ -178,7 +189,8 @@ def site_no_painel(modo, arg="", paginas=None):
     texto = site_previa.resumo_teste(d) if modo == "testar" else f"📸 Prints de {proj} ({len(d.get('prints') or [])})"
     if modo == "testar" and not alvo and d.get("nota", 100) < 100:
         texto += "\n\n🛠 Para o Jarvis corrigir e conferir: /testar corrigir"
-    publicar({"tipo": "info", "texto": texto, "prints": [x["arquivo"] for x in d.get("prints") or []]}, proj)
+    publicar({"tipo": "info", "texto": texto, "prints": [x["arquivo"] for x in d.get("prints") or []],
+              "previa": not alvo}, proj)
 
 
 def iniciar(texto, veio_de_audio):
@@ -193,6 +205,13 @@ def iniciar(texto, veio_de_audio):
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
             elif acao == "tendencias":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(), "tendencias"), daemon=True).start()
+            elif acao == "site_previa":
+                try:
+                    msg = previa("iniciar")
+                    url = _url_previa()
+                    publicar({"tipo": "info", "texto": msg + (f"\n🌐 {url}" if url else "\nAbra pelo botão 👁.")})
+                except projetos.Erro as e:
+                    publicar({"tipo": "erro", "texto": str(e)})
             elif acao in ("site_print", "site_testar"):
                 threading.Thread(target=site_no_painel, args=("print" if acao == "site_print" else "testar",
                                  texto.partition(" ")[2].strip()), daemon=True).start()
@@ -271,8 +290,8 @@ class Handler(BaseHTTPRequestHandler):
                                "audio": est["audio"], "agentes": est["agentes"],
                                "ocupado": pool.de(est["projeto"]).ocupado, "pedido": pool.de(est["projeto"]).pedido,
                                "rodando": pool.resumo(), "limite": pool.limite,
-                               "previa": PREVIA["projeto"] if PREVIA["proc"] and PREVIA["proc"].poll() is None else None,
-                               "porta_previa": PORTA_PREVIA})
+                               "previa": _previa_ligada(), "porta_previa": PORTA_PREVIA,
+                               "previa_url": _url_previa()})
         if url.path in ("/api/github/repos", "/api/github/status"):
             try:
                 if url.path.endswith("repos"):
@@ -517,6 +536,9 @@ class Handler(BaseHTTPRequestHandler):
             est = estado.ler()
             if dados.get("projeto") in core.listar_projetos():
                 est["projeto"] = dados["projeto"]
+                import site_previa
+                if not site_previa.PREVIA["desligada"]:  # a prévia acompanha o projeto escolhido
+                    threading.Thread(target=site_previa.garantir_previa, args=(dados["projeto"],), daemon=True).start()
             if dados.get("audio") in ("auto", "sempre", "nunca"):
                 est["audio"] = dados["audio"]
             if isinstance(dados.get("agentes"), bool):
@@ -614,6 +636,8 @@ def main():
     carregar_historico()
     threading.Thread(target=kb.garantir, daemon=True).start()
     kb.iniciar_sincronizacao_periodica(10)
+    import site_previa
+    site_previa.vigiar_previa(lambda: estado.ler()["projeto"])  # prévia sempre ligada no projeto atual
     ThreadingHTTPServer(("0.0.0.0", PORTA), Handler).serve_forever()
 
 

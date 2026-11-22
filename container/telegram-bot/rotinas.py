@@ -4,7 +4,9 @@ POST /api/gatilho  (cabeçalho: Authorization: Bearer <JARVIS_GATILHO_TOKEN>)
 {
   "rotina":  "Pesquisa semanal",          nome que aparece no escritório e nos avisos
   "acao":    "hermes" | "jarvis" | "pesquisar" | "tendencias" | "ideia" | "avisar" | "status" | "atender"
-             | "pagamento" (texto) | "painel_consultar" (login) | "painel_teste" (telefone),
+             | "pagamento" (texto) | "painel_consultar" (login) | "painel_teste" (telefone)
+             | "previa" (liga a prévia do projeto e devolve o link)
+             | "site_testar" (testa o site do projeto ou "url"; "so_se_problema": true só avisa se houver falha),
   "texto":   "o pedido",
   "projeto": "pasta do projeto" (opcional; padrão: o projeto atual do painel),
   "avisar":  true                          manda o resultado no Telegram
@@ -28,7 +30,8 @@ import jarvis_core as core
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
-         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "jogos"}
+         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "jogos",
+         "previa", "site_testar"}
 _lock = threading.Lock()
 
 
@@ -139,6 +142,49 @@ def executar(dados, publicar, pool, estado):
                 avisar_telegram(f"⚽ Não consegui montar os jogos do dia: {type(e).__name__}: {e}"[:500])
         threading.Thread(target=_jogos, daemon=True).start()
         return 202, {"ok": True, "status": "gerando os jogos do dia (alguns minutos por causa da pesquisa de canais)"}
+    if acao in ("previa", "site_testar"):
+        import site_previa
+        projeto = str(dados.get("projeto") or estado.ler()["projeto"] or "")
+        if projeto not in core.listar_projetos():
+            return 400, {"erro": f"projeto “{projeto}” não existe"}
+        if acao == "previa":
+            try:
+                site_previa.garantir_previa(projeto)
+            except ValueError as e:
+                return 409, {"ok": False, "erro": str(e)}
+            return 200, {"ok": True, "projeto": projeto, "url": site_previa.url_previa(str(dados.get("caminho") or "/"))}
+        url = str(dados.get("url") or "").strip()
+        if url and not url.lower().startswith(("http://", "https://")):
+            return 400, {"erro": "url deve começar com http:// ou https://"}
+        rotina = _limpar_nome(dados.get("rotina") or "Teste do site")
+        so_problema, quer_aviso = bool(dados.get("so_se_problema")), bool(dados.get("avisar", True))
+
+        def _testar():
+            ok, saida, d = site_previa.rodar("testar", projeto, alvo=url or None)
+            if not d:
+                resultado = "o teste não terminou: " + saida[-400:]
+                if quer_aviso:
+                    avisar_telegram(f"🧪 {rotina} · {projeto}\n⚠️ {resultado}")
+            else:
+                c = d.get("contagem") or {}
+                problema = c.get("CRÍTICO", 0) or c.get("ALTO", 0) or (d.get("jornadas") or {}).get("falhas", 0)
+                resultado = f"nota {d.get('nota')}/100 · críticos {c.get('CRÍTICO', 0)} · altos {c.get('ALTO', 0)}"
+                if quer_aviso and (problema or not so_problema):
+                    avisar_telegram(f"🔁 {rotina} · {projeto}{' · ' + url if url else ''}\n\n" + site_previa.resumo_teste(d, 3500))
+                    for cam in (d.get("prints_abs") or [])[:4]:
+                        avisar_telegram_foto(cam, os.path.basename(cam))
+            registrar({"id": f"{time.time():.3f}", "rotina": rotina, "acao": acao, "projeto": projeto,
+                       "pedido": url or "pasta do projeto", "ok": bool(d), "resultado": resultado,
+                       "quando": time.strftime("%Y-%m-%d %H:%M:%S")})
+            publicar({"tipo": "info", "texto": f"🔁 Rotina “{rotina}”: {resultado}",
+                      "prints": [x["arquivo"] for x in (d or {}).get("prints") or []]}, projeto)
+        if dados.get("esperar"):
+            _testar()
+            d = site_previa.ultima(projeto) or {}
+            return 200, {"ok": True, "nota": d.get("nota"), "contagem": d.get("contagem"), "jornadas": d.get("jornadas"),
+                         "relatorio": d.get("relatorio_texto", "")[:8000]}
+        threading.Thread(target=_testar, daemon=True).start()
+        return 202, {"ok": True, "status": f"testando {url or projeto}; o resultado chega no Telegram"}
     if acao == "atendimento_cmd":  # /atendimento, /assumir, /devolver vindos do Telegram
         import atendimento
         cmd = str(dados.get("cmd") or "/atendimento")

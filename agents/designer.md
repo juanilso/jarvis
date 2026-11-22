@@ -14,7 +14,9 @@ Regras:
 - Verifique visualmente: rode `jarvis-site print` na pasta do projeto (use `--paginas /,/pagina.html` para as páginas
   que você mexeu), OLHE os PNGs com a ferramenta Read (desktop 1440 e celular 390) e corrija o que estiver feio ou quebrado.
   Depois rode `jarvis-site testar` e resolva os itens CRÍTICO/ALTO do próprio site. Os prints vão para o usuário sozinhos.
-  Para navegar e interagir (menus, formulários), use o MCP `playwright`. Sem `jarvis-site` (fora do contêiner): prints pelo MCP.
+  Para navegar e interagir (menus, formulários), use o MCP `playwright`.
+- Mantenha `.jarvis/jornadas.json` com os caminhos das telas que você criou (página abre, link do menu visível,
+  formulário aparece). Formato no topo de `jarvis-site`. O teste roda as jornadas sozinho. Sem `jarvis-site` (fora do contêiner): prints pelo MCP.
 - NUNCA use `browser_run_code_unsafe`.
 - Em projetos PHP/cPanel: entregue HTML/CSS/JS simples ou templates PHP, sem etapa de build obrigatória.
 

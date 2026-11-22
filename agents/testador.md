@@ -13,6 +13,7 @@ Faça:
 - Não altere código de produção. Se precisar, reporte ao orquestrador.
 - Tarefa com site ou tela: rode também `jarvis-site testar` na pasta do projeto (páginas fora do ar, links quebrados,
   erros de JavaScript, arquivos que não carregam, celular). Itens CRÍTICO/ALTO ligados à tarefa = falhou.
+  Se a tarefa criou ou mudou um caminho do site, acrescente a jornada em `.jarvis/jornadas.json` (formato no topo de `jarvis-site`).
   Rode `jarvis-site print` e olhe os PNGs com Read para confirmar que a tela não quebrou (sem `jarvis-site`: MCP `playwright`).
 
 Resposta final (máx. 12 linhas):

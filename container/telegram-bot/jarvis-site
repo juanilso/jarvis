@@ -3,14 +3,20 @@
  * jarvis-site: prévia (prints) e teste automático de sites, para o Jarvis e para você.
  *
  *   jarvis-site print  [pasta|url] [--paginas /,/contato.html] [--saida DIR]
- *   jarvis-site testar [pasta|url] [--max 15] [--saida DIR]
+ *   jarvis-site testar [pasta|url] [--max 15] [--saida DIR]     (inclui as jornadas de .jarvis/jornadas.json)
+ *   jarvis-site jornadas [pasta|url]                            (só as jornadas)
  *
  * pasta: sobe um servidor local temporário (php -S em 127.0.0.1) na raiz do site
  *        (public, public_html, www, dist ou build, se existir). Padrão: a pasta atual.
  * Saída padrão: <projeto>/.jarvis/previas/<data-hora>/ e o ponteiro <projeto>/.jarvis/previas/ultima.json
  * (o painel e o Telegram mostram os prints da última prévia automaticamente).
  *
- * Só lê o site: não clica em botões, não envia formulários, não faz login.
+ * O teste só navega. Quem clica e preenche são as JORNADAS (.jarvis/jornadas.json), escritas para o próprio site:
+ *   [{"nome": "Contato abre", "celular": false, "passos": [
+ *      {"abrir": "/"}, {"ver_link": "Contato"}, {"clicar": "Contato"}, {"url_contem": "contato"},
+ *      {"ver": "Fale conosco"}, {"preencher": {"Nome": "Teste", "#email": "teste@exemplo.com"}},
+ *      {"nao_ver": "Fatal error"}, {"ver_elemento": "form"}, {"esperar": 1000}, {"print": "contato"}]}]
+ * Em endereço publicado (http...), jornadas com clicar/preencher só rodam se tiverem "producao": true.
  */
 "use strict";
 const fs = require("fs");
@@ -75,10 +81,21 @@ function raizDoProjeto(pasta) { // sobe até achar .git ou docs/ (o projeto), se
   return path.resolve(pasta);
 }
 
-async function servidor(pasta) {
+function roteador() {
+  const cands = [process.env.JARVIS_ROTEADOR, "/opt/jarvis-bots/jarvis-roteador.php",
+    path.join(path.dirname(fs.realpathSync(__filename)), "jarvis-roteador.php")];
+  return cands.find(c => c && fs.existsSync(c));
+}
+
+function logPhp(projeto) { return path.join(projeto, ".jarvis", "php-erros.log"); }
+
+async function servidor(pasta, projeto) {
   const raiz = raizDoSite(pasta);
   const porta = await portaLivre();
-  const proc = spawn("php", ["-S", `127.0.0.1:${porta}`, "-t", raiz], { cwd: pasta, stdio: "ignore" });
+  fs.mkdirSync(path.join(projeto, ".jarvis"), { recursive: true });
+  const r = roteador();
+  const proc = spawn("php", ["-d", "display_errors=1", "-d", "error_reporting=E_ALL", "-d", "log_errors=1",
+    "-d", `error_log=${logPhp(projeto)}`, "-S", `127.0.0.1:${porta}`, "-t", raiz, ...(r ? [r] : [])], { cwd: pasta, stdio: "ignore" });
   const base = `http://127.0.0.1:${porta}`;
   for (let i = 0; i < 50; i++) {
     await new Promise(r => setTimeout(r, 100));
@@ -166,17 +183,28 @@ async function checarPagina(navegador, url, base) {
         campos_sem_rotulo: q("input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea").filter(visivel).filter(e => !rotulado(e)).length,
         botoes_sem_texto: q("button, a[href]").filter(visivel).filter(b => !(b.innerText || "").trim() && !b.getAttribute("aria-label") && !b.title && !b.querySelector("img[alt]:not([alt=''])")).length,
         links: q("a[href]").map(a => a.href).filter(h => /^https?:/.test(h)),
+        texto_visivel: (document.body ? document.body.innerText : "").trim().length,
+        midia: q("img, svg, canvas, video, iframe").filter(visivel).length,
+        erro_php: ((document.body ? document.body.innerText : "").match(/(Fatal error|Parse error|Uncaught [A-Za-z]+(Exception|Error)|Warning|Notice|Deprecated):[^\n]{0,200}/) || [""])[0].split(/ Stack trace:|#0 /)[0].trim(),
+        php_cru: /<\?php/.test(document.body ? document.body.innerText : ""),
+        template_cru: /\{\{\s*[\w$.]+\s*\}\}/.test(document.body ? document.body.innerText : ""),
         peso_kb: Math.round(performance.getEntriesByType("resource").reduce((s, e) => s + (e.transferSize || 0), 0) / 1024),
       };
     });
     const P = res.problemas;
     if (res.status >= 400) P.push(["CRÍTICO", `a página respondeu ${res.status}`]);
+    else if (info.texto_visivel < 15 && info.midia === 0) P.push(["CRÍTICO", "PÁGINA EM BRANCO: não aparece nenhum texto nem imagem"]);
+    if (info.erro_php) P.push([/Fatal|Parse|Uncaught/.test(info.erro_php) ? "CRÍTICO" : "ALTO", `erro do PHP aparecendo na página: ${info.erro_php}`]);
+    if (info.php_cru) P.push(["CRÍTICO", "código PHP aparecendo como texto (o PHP não foi executado)"]);
+    if (info.template_cru) P.push(["MÉDIO", "marcação de template aparecendo como texto ({{ ... }})"]);
     if (res.erros_js.length) P.push(["ALTO", `${res.erros_js.length} erro(s) de JavaScript: ${res.erros_js[0]}`]);
     if (res.console.length) P.push(["MÉDIO", `${res.console.length} erro(s) no console: ${res.console[0]}`]);
     if (info.img_quebrada.length) P.push(["ALTO", `${info.img_quebrada.length} imagem(ns) quebrada(s): ${info.img_quebrada[0]}`]);
     const falhos = [...new Set(res.recursos_falhos)];
     res.recursos_falhos = falhos;
     if (falhos.length) P.push(["ALTO", `${falhos.length} arquivo(s) não carregaram (CSS, JS, imagem, fonte): ${falhos[0]}`]);
+    const quebrada = P.some(x => x[0] === "CRÍTICO");  // página quebrada: avisos de SEO/acessibilidade só atrapalham
+    if (quebrada) { res.info = { titulo: info.titulo }; res.links = [...new Set(info.links)]; return res; }
     if (!info.titulo) P.push(["MÉDIO", "sem <title> (aparece na aba e no Google)"]);
     if (!info.descricao) P.push(["BAIXO", "sem meta description (texto do Google)"]);
     if (!info.viewport) P.push(["ALTO", "sem meta viewport: no celular o site aparece minúsculo"]);
@@ -222,11 +250,144 @@ async function checarPagina(navegador, url, base) {
   return res;
 }
 
+// ------------------------------------------------------------ jornadas (.jarvis/jornadas.json)
+function lerJornadas(projeto) {
+  const arq = path.join(projeto, ".jarvis", "jornadas.json");
+  if (!fs.existsSync(arq)) return { lista: [], erro: null };
+  try {
+    const j = JSON.parse(fs.readFileSync(arq, "utf8"));
+    const lista = Array.isArray(j) ? j : (j.jornadas || []);
+    return { lista: lista.filter(x => x && Array.isArray(x.passos)).slice(0, 40), erro: null };
+  } catch (e) { return { lista: [], erro: `jornadas.json inválido: ${e.message}` }; }
+}
+
+const ehSeletor = t => /^[#.\[]|^(form|input|button|select|textarea|nav|header|footer|main|section|a|img|h[1-6])([\s.#\[:>]|$)/i.test(t);
+
+async function achar(pg, alvo, tipo) {
+  if (ehSeletor(alvo)) return pg.locator(alvo).first();
+  const opcoes = tipo === "campo"
+    ? [pg.getByLabel(alvo, { exact: false }), pg.getByPlaceholder(alvo, { exact: false }), pg.locator(`[name="${alvo.replace(/"/g, "")}"]`)]
+    : [pg.getByRole("link", { name: alvo, exact: false }), pg.getByRole("button", { name: alvo, exact: false }),
+       pg.getByText(alvo, { exact: false })];
+  for (const l of opcoes) { if (await l.count().catch(() => 0)) { const v = l.filter({ visible: true }); return (await v.count().catch(() => 0)) ? v.first() : l.first(); } }
+  return opcoes[opcoes.length - 1].first();
+}
+
+async function rodarJornadas(navegador, base, projeto, saida, ehUrl) {
+  const { lista, erro } = lerJornadas(projeto);
+  const out = { resultados: [], puladas: [], erro };
+  for (const j of lista) {
+    const nome = String(j.nome || "jornada sem nome").slice(0, 80);
+    const interage = j.passos.some(p => p.clicar || p.preencher);
+    if (ehUrl && interage && !j.producao) { out.puladas.push(nome); continue; }
+    const ctx = await navegador.newContext({ viewport: j.celular ? CELULAR : DESKTOP, hasTouch: !!j.celular,
+      deviceScaleFactor: j.celular ? 2 : 1, locale: "pt-BR" });
+    const pg = await ctx.newPage();
+    const errosJs = [];
+    pg.on("pageerror", e => errosJs.push(String(e.message || e).slice(0, 200)));
+    const r = { nome, ok: true, passos: j.passos.length, falhou_em: null, erro: null, print: null, celular: !!j.celular };
+    try {
+      for (let i = 0; i < j.passos.length; i++) {
+        const p = j.passos[i] || {};
+        const desc = JSON.stringify(p).slice(0, 120);
+        try {
+          if (p.abrir !== undefined) {
+            const u = /^https?:/.test(p.abrir) ? p.abrir : base + (String(p.abrir).startsWith("/") ? p.abrir : "/" + p.abrir);
+            const resp = await pg.goto(u, { waitUntil: "load", timeout: 30000 });
+            await pg.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
+            if (resp && resp.status() >= 400) throw new Error(`a página respondeu ${resp.status()}`);
+            const txt = (await pg.evaluate(() => document.body ? document.body.innerText.trim().length : 0));
+            const midia = await pg.evaluate(() => document.querySelectorAll("img, svg, canvas, video, iframe").length);
+            if (txt < 15 && !midia) throw new Error("página em branco");
+          } else if (p.ver !== undefined) {
+            await pg.getByText(String(p.ver), { exact: false }).filter({ visible: true }).first().waitFor({ timeout: 5000 });
+          } else if (p.nao_ver !== undefined) {
+            const n = await pg.getByText(String(p.nao_ver), { exact: false }).filter({ visible: true }).count();
+            if (n) throw new Error(`apareceu "${p.nao_ver}"`);
+          } else if (p.ver_link !== undefined) {
+            const t = String(p.ver_link);
+            const porTexto = pg.getByRole("link", { name: t, exact: false }).filter({ visible: true });
+            const porHref = pg.locator(`a[href*="${t.replace(/"/g, "")}"]`).filter({ visible: true });
+            if (!(await porTexto.count()) && !(await porHref.count())) throw new Error(`link "${t}" não está visível`);
+          } else if (p.ver_elemento !== undefined) {
+            await pg.locator(String(p.ver_elemento)).filter({ visible: true }).first().waitFor({ timeout: 5000 });
+          } else if (p.clicar !== undefined) {
+            const el = await achar(pg, String(p.clicar), "clique");
+            await el.click({ timeout: 5000 });
+            await pg.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
+            await pg.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+          } else if (p.preencher !== undefined) {
+            for (const [campo, valor] of Object.entries(p.preencher)) {
+              const el = await achar(pg, campo, "campo");
+              await el.fill(String(valor), { timeout: 5000 });
+            }
+          } else if (p.url_contem !== undefined) {
+            await pg.waitForURL(u => u.href.includes(String(p.url_contem)), { timeout: 8000 })
+              .catch(() => { throw new Error(`o endereço ficou ${pg.url().replace(base, "")}, sem "${p.url_contem}"`); });
+          } else if (p.esperar !== undefined) {
+            await pg.waitForTimeout(Math.min(5000, Number(p.esperar) || 500));
+          } else if (p.print !== undefined) {
+            const arq = path.join(saida, `jornada-${String(p.print).replace(/[^\w-]+/g, "_").slice(0, 40)}.png`);
+            await pg.screenshot({ path: arq, fullPage: false });
+          } else throw new Error("passo desconhecido (use abrir, ver, nao_ver, ver_link, ver_elemento, clicar, preencher, url_contem, esperar, print)");
+        } catch (e) {
+          r.ok = false; r.falhou_em = `passo ${i + 1} ${desc}`;
+          let msg = String(e.message || e).split("\n")[0].replace(/^locator\.\w+: /, "");
+          if (/Timeout/i.test(msg)) msg = p.ver !== undefined ? `não apareceu o texto "${p.ver}"`
+            : p.ver_elemento !== undefined ? `não apareceu o elemento ${p.ver_elemento}`
+            : p.clicar !== undefined ? `não achei "${p.clicar}" para clicar`
+            : p.preencher !== undefined ? `não achei o campo para preencher` : "demorou demais";
+          r.erro = msg.slice(0, 200);
+          const arq = path.join(saida, `falha-${nome.replace(/[^\w-]+/g, "_").slice(0, 40)}.png`);
+          await pg.screenshot({ path: arq, fullPage: false }).catch(() => {});
+          r.print = path.relative(projeto, arq);
+          break;
+        }
+      }
+      if (r.ok && errosJs.length) { r.ok = false; r.falhou_em = "durante a jornada"; r.erro = `erro de JavaScript: ${errosJs[0]}`; }
+    } finally { await ctx.close(); }
+    out.resultados.push(r);
+  }
+  return out;
+}
+
+function textoJornadas(j) {
+  const l = [];
+  if (j.erro) l.push(`- **ALTO** ${j.erro}`);
+  for (const r of j.resultados) l.push(r.ok ? `- ✅ ${r.nome}` : `- **ALTO** ❌ ${r.nome}: ${r.erro} (${r.falhou_em})`);
+  if (j.puladas.length) l.push(`- ⏭ puladas no site publicado (clicam ou preenchem; marque "producao": true para rodar): ${j.puladas.join(", ")}`);
+  return l;
+}
+
+function errosPhpNovos(projeto, inicio) {
+  const arq = logPhp(projeto);
+  if (!fs.existsSync(arq)) return [];
+  const st = fs.statSync(arq);
+  if (st.size <= inicio) return [];
+  const fd = fs.openSync(arq, "r"), tam = Math.min(st.size - inicio, 200000), buf = Buffer.alloc(tam);
+  fs.readSync(fd, buf, 0, tam, st.size - tam); fs.closeSync(fd);
+  const vistos = new Map();
+  for (const linha of buf.toString("utf8").split("\n")) {
+    const m = linha.match(/PHP (Fatal error|Parse error|Warning|Notice|Deprecated):\s+(.*)/);
+    if (!m) continue;
+    const chave = m[1] + m[2].replace(/\d+/g, "#");
+    if (!vistos.has(chave)) vistos.set(chave, [m[1], m[2].slice(0, 220)]);
+  }
+  return [...vistos.values()].slice(0, 15).map(([t, msg]) => [/Fatal|Parse/.test(t) ? "CRÍTICO" : t === "Warning" ? "MÉDIO" : "BAIXO", `PHP ${t}: ${msg}`]);
+}
+
 async function checarLink(ctx, link) {
   try {
     const r = await ctx.request.get(link, { timeout: 15000, maxRedirects: 5, failOnStatusCode: false });
     return r.status();
   } catch (e) { return 0; }
+}
+
+function garantirGitignore(projeto) {  // prints e logs ficam fora do Git; jornadas.json fica no Git
+  const gi = path.join(projeto, ".jarvis", ".gitignore");
+  const atual = fs.existsSync(gi) ? fs.readFileSync(gi, "utf8") : "";
+  const faltam = ["previas/", "*.log"].filter(l => !atual.split("\n").includes(l));
+  if (faltam.length) fs.writeFileSync(gi, atual + (atual && !atual.endsWith("\n") ? "\n" : "") + faltam.join("\n") + "\n");
 }
 
 function salvarPonteiro(projeto, pasta, dados) {
@@ -241,14 +402,13 @@ function salvarPonteiro(projeto, pasta, dados) {
   const antigas = fs.readdirSync(dir).filter(n => /^\d{4}-\d\d-\d\d_/.test(n)).sort().reverse().slice(10)
     .filter(n => path.join(".jarvis", "previas", n) !== teste);  // o último teste fica, mesmo antigo
   for (const n of antigas) fs.rmSync(path.join(dir, n), { recursive: true, force: true });
-  const gi = path.join(projeto, ".jarvis", ".gitignore");
-  if (!fs.existsSync(gi)) fs.writeFileSync(gi, "previas/\n");
+  garantirGitignore(projeto);
 }
 
 async function main() {
   const o = args();
-  if (!["print", "testar"].includes(o.modo)) {
-    console.log("Uso:\n  jarvis-site print  [pasta|url] [--paginas /,/contato.html] [--saida DIR]\n  jarvis-site testar [pasta|url] [--max 15] [--saida DIR]");
+  if (!["print", "testar", "jornadas"].includes(o.modo)) {
+    console.log("Uso:\n  jarvis-site print    [pasta|url] [--paginas /,/contato.html] [--saida DIR]\n  jarvis-site testar   [pasta|url] [--max 15] [--saida DIR]\n  jarvis-site jornadas [pasta|url]   (roda .jarvis/jornadas.json)");
     process.exit(o.modo ? 1 : 0);
   }
   const alvo = o.alvo || process.cwd();
@@ -262,10 +422,11 @@ async function main() {
   if (ehUrl) { const u = new URL(alvo); base = u.origin; inicial = u.href; }
   else {
     const pasta = fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo);
-    srv = await servidor(pasta);
+    srv = await servidor(pasta, projeto);
     base = srv.base;
     inicial = base + (fs.statSync(alvo).isDirectory() ? "/" : "/" + path.relative(srv.raiz, alvo));
   }
+  const logInicio = fs.existsSync(logPhp(projeto)) ? fs.statSync(logPhp(projeto)).size : 0;
   const pw = carregarPlaywright();
   const navegador = await abrir(pw);
   const fim = async (code) => { await navegador.close().catch(() => {}); if (srv) srv.fechar(); process.exit(code); };
@@ -288,6 +449,19 @@ async function main() {
       salvarPonteiro(projeto, saida, { tipo: "print", prints });
       console.log(`\nVeja os prints com a ferramenta Read (são imagens). Pasta: ${saida}`);
       return fim(0);
+    }
+
+    if (o.modo === "jornadas") {
+      const j = await rodarJornadas(navegador, base, projeto, saida, ehUrl);
+      const falhas = j.resultados.filter(r => !r.ok).length + (j.erro ? 1 : 0);
+      const linhas = [`# Jornadas do site`, ``, `- ${j.resultados.length} jornada(s) · ${falhas} falha(s)`, ``, ...textoJornadas(j)];
+      if (!j.resultados.length && !j.erro) linhas.push("Nenhuma jornada em .jarvis/jornadas.json.");
+      for (const [g, t] of errosPhpNovos(projeto, logInicio)) linhas.push(`- **${g}** ${t}`);
+      let rel = linhas.join("\n");
+      if (!ehUrl) rel = rel.split(base).join("");
+      fs.writeFileSync(path.join(saida, "RELATORIO.md"), rel);
+      console.log(rel + `\n\nPrints das falhas: ${saida}`);
+      return fim(falhas ? 3 : 0);
     }
 
     // testar: percorre as páginas do mesmo site (até --max), checa cada uma e os links
@@ -320,6 +494,9 @@ async function main() {
     }
     await ctx.close();
 
+    const jor = await rodarJornadas(navegador, base, projeto, saida, ehUrl);
+    const php = ehUrl ? [] : errosPhpNovos(projeto, logInicio);
+
     // prints da página inicial (o Jarvis olha e você recebe)
     const prints = [];
     for (const tipo of ["desktop", "celular"]) {
@@ -335,6 +512,9 @@ async function main() {
       if (!unicos.has(chave)) { unicos.add(chave); peso[g]++; }
     }
     for (const q of quebrados) if (!vistas.has(semHash(q.link))) peso[q.interno ? "ALTO" : "MÉDIO"]++;
+    for (const r of jor.resultados) if (!r.ok) peso["ALTO"]++;
+    if (jor.erro) peso["ALTO"]++;
+    for (const [g] of php) peso[g]++;
     const nota = Math.max(0, 100 - peso["CRÍTICO"] * 25 - peso["ALTO"] * 8 - peso["MÉDIO"] * 3 - peso["BAIXO"] * 1);
     const linhas = [
       `# Teste automático do site`, ``,
@@ -355,12 +535,23 @@ async function main() {
       for (const q of quebrados.slice(0, 40)) linhas.push(`- **${q.interno ? "ALTO" : "MÉDIO"}** ${q.link} → ${q.status || "não respondeu"} (na página ${q.em})`);
       linhas.push("");
     }
-    if (!quebrados.length && resultados.every(r => !r.problemas.length)) linhas.push("Nenhum problema encontrado nos testes automáticos. 🎉", "");
+    if (php.length) {
+      linhas.push(`## Erros do PHP (registrados pelo servidor durante o teste)`);
+      for (const [g, t] of php) linhas.push(`- **${g}** ${t}`);
+      linhas.push("");
+    }
+    if (jor.resultados.length || jor.erro || jor.puladas.length) {
+      linhas.push(`## Jornadas (.jarvis/jornadas.json)`, ...textoJornadas(jor), "");
+    }
+    const jorOk = jor.resultados.every(r => r.ok) && !jor.erro;
+    if (!quebrados.length && !php.length && jorOk && resultados.every(r => !r.problemas.length)) linhas.push("Nenhum problema encontrado nos testes automáticos. 🎉", "");
     linhas.push("_Os testes automáticos não substituem olhar os prints: confira layout, textos e cores nas imagens._");
     let relatorio = linhas.join("\n");
     if (!ehUrl) relatorio = relatorio.split(base).join("");  // servidor local temporário: mostra só o caminho
     fs.writeFileSync(path.join(saida, "RELATORIO.md"), relatorio);
-    const resumo = { tipo: "teste", nota, contagem: peso, paginas: resultados.length, quebrados: quebrados.length, prints, relatorio: path.relative(projeto, path.join(saida, "RELATORIO.md")) };
+    for (const r of jor.resultados) if (r.print) prints.push({ arquivo: r.print, pagina: "falha: " + r.nome, tipo: r.celular ? "celular" : "desktop", status: 0 });
+    const resumo = { tipo: "teste", nota, contagem: peso, paginas: resultados.length, quebrados: quebrados.length,
+      jornadas: { total: jor.resultados.length, falhas: jor.resultados.filter(r => !r.ok).length }, prints, relatorio: path.relative(projeto, path.join(saida, "RELATORIO.md")) };
     fs.writeFileSync(path.join(saida, "resultado.json"), JSON.stringify({ ...resumo, resultados, quebrados }, null, 1));
     salvarPonteiro(projeto, saida, resumo);
     console.log("\n" + relatorio + `\n\nRelatório: ${path.join(saida, "RELATORIO.md")}\nPrints: ${prints.map(p => path.join(projeto, p.arquivo)).join("  ")}`);

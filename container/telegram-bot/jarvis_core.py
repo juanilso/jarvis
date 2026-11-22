@@ -67,6 +67,13 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
   que mudaram) e OLHE os PNGs com a ferramenta Read (desktop e celular). Se algo estiver feio ou quebrado, corrija e
   tire os prints de novo. Os prints da última execução vão automaticamente para o usuário junto com a sua resposta;
   diga a nota do teste em uma linha. O usuário pede prévia? É o `jarvis-site print`.
+- O site do projeto roda no servidor (prévia ao vivo, PHP + banco de desenvolvimento): o usuário navega pelo link
+  sem upload. Ajuste e confira AQUI antes de qualquer publicação; publicar continua sendo decisão do usuário.
+- Ao construir ou refatorar um site, crie/atualize `.jarvis/jornadas.json` com os caminhos que não podem quebrar
+  (cada página do menu abre e não está em branco, links principais visíveis, formulário de contato, login…).
+  O `jarvis-site testar` roda as jornadas; uma jornada falhando = corrigir antes de responder. Formato no topo do
+  arquivo `/usr/local/bin/jarvis-site` (passos: abrir, ver, nao_ver, ver_link, ver_elemento, clicar, preencher,
+  url_contem, esperar, print). Nunca use dados reais de clientes nas jornadas.
 - Ao concluir um ciclo com alterações: documentador atualiza docs/ESTADO.md e a base de conhecimento.
 - Só responda sem agentes em conversa simples (saudação, dúvida geral que não depende do código).
 - Antes de cada etapa, escreva UMA linha curta dizendo o que vai fazer e qual agente vai trabalhar: o usuário
@@ -508,6 +515,7 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/previa", "Link para navegar no site do projeto rodando no servidor (sem upload)"),
     ("/print", "Prints do site do projeto (computador e celular): /print ou /print /contato.html"),
     ("/testar", "Testa o site do projeto (erros, links, celular, SEO): /testar, /testar <url> ou /testar corrigir"),
     ("/sincronizar", "Envia a base de conhecimento para o GitHub agora"),
@@ -572,10 +580,13 @@ Hermes (ajudante, se ligado)
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
 Prévia e teste de sites
+• /previa: link para navegar no site do projeto rodando no servidor (cada mudança aparece ao recarregar, sem upload)
 • /print: prints do site do projeto (computador e celular) · /print /contato.html /sobre.html
 • /testar: procura erros (páginas fora do ar, links quebrados, erros de JavaScript, celular, SEO) e dá uma nota
 • /testar https://site.com.br: testa um site publicado · /testar corrigir: o Jarvis corrige e confere pelos prints
-• Quando o Jarvis mexe num site, ele mesmo tira os prints, olha, corrige e manda as imagens junto com a resposta
+• Quando o Jarvis mexe num site, ele mesmo testa, tira os prints, olha, corrige e manda as imagens e o link da prévia
+• Jornadas: o Jarvis grava os caminhos importantes (menu → contato → enviar) em .jarvis/jornadas.json e o /testar repete
+• n8n: rotina "Jarvis · Teste dos sites" testa todo dia e só avisa se algo quebrar
 • No painel: botão 🖼
 
 Jogos do dia
@@ -619,6 +630,10 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd == "/previa":
+        if not proj:
+            return "Escolha um projeto primeiro: /projetos e depois /projeto <nome>", None
+        return f"🌐 Ligando a prévia de {proj}…", "site_previa"
     if cmd in ("/print", "/testar"):
         if not proj:
             return "Escolha um projeto primeiro: /projetos e depois /projeto <nome>", None
