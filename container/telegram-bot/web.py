@@ -383,6 +383,8 @@ class Handler(BaseHTTPRequestHandler):
             if a == "faq":
                 atendimento.salvar_faq(str(d.get("texto", "")))
                 return self._json({"ok": True})
+            if a == "diagnostico":
+                return self._json(atendimento.diagnostico())
             if a == "atend_salvar":
                 return self._json({"ok": True, "config": atend_config.salvar(d.get("config") or {})})
             if a in ("painel_salvar", "painel_testar"):

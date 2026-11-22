@@ -550,6 +550,69 @@ def _chamar_dono(e, chat, nome, motivo):
     return True
 
 
+DIAG = "__jarvis_diagnostico__"
+N8N_WEBHOOK = os.environ.get("ATENDIMENTO_N8N_WEBHOOK", "http://n8n:5678/webhook/whatsapp-waha")
+
+
+def diagnostico():
+    """Testa cada etapa do atendimento e diz onde está parando."""
+    passos = []
+
+    def item(ok, titulo, detalhe=""):
+        passos.append({"ok": ok, "titulo": titulo, "detalhe": detalhe})
+        return ok
+
+    e = _ler_estado()
+    w = status_whatsapp()
+    item(w.get("status") == "WORKING", "WhatsApp conectado",
+         w.get("status", "?") + (f" · {w.get('numero')}" if w.get("numero") else "") + (f" · {w.get('erro')}" if w.get("erro") else ""))
+    item(e.get("ligado", True), "Robô ligado", "" if e.get("ligado", True) else "está pausado: clique em ▶️ Ligar robô")
+    # o WAHA está configurado para avisar o n8n?
+    try:
+        s = waha(f"/api/sessions/{SESSAO}")
+        hooks = [h.get("url") for h in ((s.get("config") or {}).get("webhooks") or []) if isinstance(h, dict)]
+        item(True, "Webhook da sessão", ", ".join(hooks) if hooks else "usa o webhook global do WAHA (WHATSAPP_HOOK_URL)")
+    except Exception as erro:  # noqa: BLE001
+        item(False, "Webhook da sessão", f"não consegui ler ({type(erro).__name__})")
+    # n8n recebe e repassa ao Jarvis? (manda um evento de teste pelo mesmo caminho do WhatsApp)
+    antes = e.get("diag", 0)
+    corpo = {"event": "message.any", "session": SESSAO, "payload": {"id": "diag", "from": "diagnostico@c.us", "fromMe": False,
+             "body": DIAG, "timestamp": int(time.time()), "_data": {"notifyName": "diagnóstico"}}}
+    try:
+        req = urllib.request.Request(N8N_WEBHOOK, data=json.dumps(corpo).encode(),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=20) as r:
+            r.read()
+        n8n_ok = item(True, "n8n recebeu (fluxo ativo)", N8N_WEBHOOK)
+    except urllib.error.HTTPError as erro:
+        texto = erro.read().decode("utf-8", "replace")[:300]
+        dica = ("o fluxo 'Jarvis · Atendimento WhatsApp' está DESATIVADO: ligue o botão Active/Publicar no n8n"
+                if erro.code == 404 else texto)
+        n8n_ok = item(False, "n8n recebeu (fluxo ativo)", f"HTTP {erro.code}: {dica}")
+    except Exception as erro:  # noqa: BLE001
+        n8n_ok = item(False, "n8n recebeu (fluxo ativo)", f"n8n fora do ar? ({type(erro).__name__}: {erro})"[:300])
+    if n8n_ok:
+        fim = time.time() + 15
+        while time.time() < fim and _ler_estado().get("diag", 0) <= antes:
+            time.sleep(0.5)
+        chegou = _ler_estado().get("diag", 0) > antes
+        item(chegou, "n8n repassou ao Jarvis", "ok" if chegou else
+             "o n8n recebeu mas não chamou o Jarvis: veja a aba Execuções do fluxo (erro no nó 'Jarvis responde'?)")
+    u = _ler_estado().get("ultimo_recebido") or {}
+    if u.get("t"):
+        mins = int((time.time() - u["t"]) // 60)
+        item(True, "Última mensagem real recebida", f"há {mins} min" + (" (enviada por você/robô)" if u.get("de_mim") else ""))
+    else:
+        item(False, "Última mensagem real recebida", "nenhuma desde a atualização: o WhatsApp não está entregando ao n8n")
+    # modelo responde?
+    try:
+        _perguntar_modelo([{"p": "cliente", "x": "Responda só: ok", "t": time.time()}], "Teste.")
+        item(True, "Modelo do gateway responde", os.environ.get("ATENDIMENTO_MODELO") or "")
+    except Exception as erro:  # noqa: BLE001
+        item(False, "Modelo do gateway responde", str(erro)[:300])
+    return {"ok": all(p["ok"] for p in passos), "passos": passos}
+
+
 def atender(dados):
     """Processa um evento de mensagem. Retorna {"responder": bool, "texto": str, "motivo": str}."""
     chat = str(dados.get("chat") or "")
@@ -560,6 +623,15 @@ def atender(dados):
     ts = float(dados.get("timestamp") or time.time())
     if ts > 1e12:
         ts /= 1000
+    with _lock:  # registra que o n8n entregou algo (para o diagnóstico)
+        e0 = _ler_estado()
+        if texto == DIAG:
+            e0["diag"] = time.time()
+        else:
+            e0["ultimo_recebido"] = {"t": time.time(), "de_mim": de_mim, "evento": str(dados.get("evento") or "")}
+        _salvar_estado(e0)
+    if texto == DIAG:
+        return {"responder": False, "motivo": "diagnóstico: o caminho WhatsApp → n8n → Jarvis está funcionando"}
     if not chat or chat.endswith("@g.us") or chat.startswith("status@") or "@newsletter" in chat or "@broadcast" in chat:
         return {"responder": False, "motivo": "ignorado (grupo, status ou canal)"}
     with _lock:

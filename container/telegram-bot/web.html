@@ -160,7 +160,8 @@ footer{position:relative}
     <div>
       <div class="waSt" id="waStatus">—</div>
       <div class="waNums"><div class="waNum"><b id="waMsgs">0</b>mensagens hoje</div><div class="waNum"><b id="waResp">0</b>respostas do robô</div><div class="waNum"><b id="waHum">0</b>passadas para você</div></div>
-      <div class="lin" style="display:flex;gap:8px;flex-wrap:wrap"><button id="waConectar" class="prim">📲 Conectar</button><button id="waLigar">🤖 —</button></div>
+      <div class="lin" style="display:flex;gap:8px;flex-wrap:wrap"><button id="waConectar" class="prim">📲 Conectar</button><button id="waLigar">🤖 —</button><button id="waDiag">🩺 Diagnóstico</button></div>
+      <div id="waDiagRes" class="waDica" style="margin-top:8px"></div>
       <div class="waDica">Use um número só da empresa. No celular: Configurações → Dispositivos conectados → Conectar dispositivo, e leia o QR code.
         Quando o cliente precisa de você, o robô te avisa no Telegram e <b>continua conversando</b>. Quando você responde pelo
         WhatsApp, ele se cala naquela conversa e <b>volta sozinho</b> depois de 30 min sem mensagem sua (ajuste abaixo). <code>#bot</code> devolve na hora.</div>
@@ -590,6 +591,9 @@ async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||
   $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
     <button class="waRestaura" data-k="${k}" style="margin-top:4px">↺ voltar ao padrão</button></details>`).join("");
   $("waModelos").querySelectorAll(".waRestaura").forEach(b=>b.onclick=()=>{$("waModelos").querySelector(`textarea[data-k="${b.dataset.k}"]`).value=atPadrao[b.dataset.k]||""})}
+$("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa (até 30 s)…";const r=await api("/api/whatsapp/acao",{acao:"diagnostico"});
+  $("waDiagRes").innerHTML=(r.passos||[]).map(p=>`<div>${p.ok?"✅":"❌"} <b>${esc(p.titulo)}</b>${p.detalhe?" — "+esc(p.detalhe):""}</div>`).join("")+
+    (r.ok?"<div style='margin-top:4px'>Tudo certo nesse caminho. Se um cliente não recebeu resposta, veja ÚLTIMOS EVENTOS.</div>":"")};
 $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("textarea").forEach(t=>m[t.dataset.k]=t.value);
   const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked},
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,max_por_minuto:$("prMinuto").value,
