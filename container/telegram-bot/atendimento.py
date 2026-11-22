@@ -842,8 +842,27 @@ def devolver(numero):
     return f"🤖 Conversa {numero} devolvida ao robô." if saiu else "Essa conversa não estava com você nem esperando."
 
 
-def comando(cmd, arg):
+def _pelo_painel(cmd, arg):
+    """No serviço do Telegram não há chave do WhatsApp: pede ao painel (que tem) para executar o comando."""
+    token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+    if not token:
+        return None
+    req = urllib.request.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
+                                 data=json.dumps({"acao": "atendimento_cmd", "cmd": cmd, "arg": arg}).encode(),
+                                 headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read().decode()).get("texto")
+    except Exception as e:  # noqa: BLE001
+        return f"⚠️ não consegui falar com o painel do Jarvis ({type(e).__name__})"
+
+
+def comando(cmd, arg, local=False):
     """/atendimento [on|off|status|faq] · /assumir <número> · /devolver <número>"""
+    if not WAHA_KEY and not local:
+        r = _pelo_painel(cmd, arg)
+        if r:
+            return r
     if cmd == "/assumir":
         return assumir(arg)
     if cmd == "/devolver":
@@ -871,4 +890,11 @@ def comando(cmd, arg):
         linhas.append("🙋 Com você (robô calado): " + ", ".join(f"{x['nome'] or x['numero']} ({x['numero']})" for x in com))
     if w.get("erro"):
         linhas.append("⚠️ " + w["erro"])
+    f = r.get("fila") or {}
+    if f.get("na_fila"):
+        linhas.append(f"📤 Fila: {f['na_fila']} mensagens do robô aguardando" + (" (🌙 horário de silêncio)" if f.get("silencio") else ""))
+    if r.get("eventos"):
+        linhas.append("\n🕑 Últimos eventos:")
+        linhas += [f"{x['h']} {x.get('nome') or x['n']}: {x['m']}" + (f" — “{x['x'][:40]}”" if x.get("x") else "")
+                   for x in r["eventos"][:8]]
     return "\n".join(linhas)

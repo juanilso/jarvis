@@ -28,7 +28,7 @@ import jarvis_core as core
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
-         "pagamento", "painel_consultar", "painel_teste"}
+         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd"}
 _lock = threading.Lock()
 
 
@@ -99,6 +99,12 @@ def executar(dados, publicar, pool, estado):
     if acao == "atender":  # WhatsApp: resposta rápida, sem registrar como rotina (seria ruído)
         import atendimento
         return 200, dict(atendimento.atender(dados), ok=True)
+    if acao == "atendimento_cmd":  # /atendimento, /assumir, /devolver vindos do Telegram
+        import atendimento
+        cmd = str(dados.get("cmd") or "/atendimento")
+        if cmd not in ("/atendimento", "/assumir", "/devolver"):
+            return 400, {"erro": "comando inválido"}
+        return 200, {"ok": True, "texto": atendimento.comando(cmd, str(dados.get("arg") or ""), local=True)}
     if acao == "pagamento":  # mensagem "PAGAMENTO FASTFLOW RECEBIDO" (Telegram ou n8n)
         import pagamentos
         r = pagamentos.processar(str(dados.get("texto", ""))[:4000], fonte=str(dados.get("fonte") or "gatilho"))
