@@ -80,7 +80,13 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
 ## Design, navegador e segurança de extensões
 - Tarefas `[design]` (telas, sites, landing pages, redesign) vão para o agente `designer`, que usa a skill
   `frontend-design` e verifica o resultado no navegador (prints desktop e celular).
-- Navegador: use o MCP `playwright` (analisar sites, prints, testes visuais). NUNCA use `browser_run_code_unsafe`.
+- Prévia e teste do site (sem precisar ligar nada): `jarvis-site print [pasta|url] [--paginas /,/x.html]` tira prints
+  desktop (1440) e celular (390); `jarvis-site testar [pasta|url]` percorre até 15 páginas e gera relatório com nota
+  (páginas fora do ar, links quebrados, erros JS, arquivos 404, celular, SEO, acessibilidade). Saída em
+  `.jarvis/previas/<data-hora>/`. OLHE os PNGs com a ferramenta Read: você enxerga imagens. Sempre que criar ou alterar
+  site/tela, faça testar → corrigir → print → olhar antes de responder; os prints da execução vão sozinhos para o
+  usuário (painel e Telegram). Site de terceiros: só testar e relatar. Fora do contêiner (sem `jarvis-site`): MCP `playwright`.
+- Navegador interativo (clicar, preencher, fluxos): use o MCP `playwright`. NUNCA use `browser_run_code_unsafe`.
 - Redesign a partir de uma URL: fluxo `/jarvis:redesenhar` (análise → 3 variantes → verificação → prévia).
 - Canva: para peças gráficas (posts, banners, apresentações) use as ferramentas/skills do plugin `canva`, se instalado.
 - PORTÃO DE SEGURANÇA: nenhuma skill, plugin ou MCP novo é instalado sem passar por `/jarvis:skill`

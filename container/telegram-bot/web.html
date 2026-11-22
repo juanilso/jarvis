@@ -75,6 +75,16 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #jg h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#jg h3{font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);margin:16px 0 8px}
 #jg .fechar{position:absolute;right:12px;top:10px}#jg .prim{border-color:var(--c);color:var(--c2)}
 .jgGrade{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px}@media (max-width:760px){.jgGrade{grid-template-columns:1fr}}
+#st{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#st.aberto{display:flex}#st .caixa{width:min(1100px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
+#st h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#st h3{font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);margin:16px 0 8px}
+#st .fechar{position:absolute;right:12px;top:10px}#st .prim{border-color:var(--c);color:var(--c2)}
+#st input[type=text]{background:#02080d;border:1px solid var(--ln);color:var(--tx);border-radius:8px;padding:7px 9px;min-width:220px;flex:1}
+.stImgs{display:flex;gap:10px;overflow-x:auto;align-items:flex-start}.stImgs figure{margin:0}.stImgs img{border-radius:8px;border:1px solid var(--ln);display:block}
+.stImgs img.desk{width:420px}.stImgs img.cel{width:160px}.stImgs figcaption{font:11px var(--mono);color:var(--c);margin-top:4px}
+#stRel{background:#02080d;border:1px solid var(--ln);border-radius:8px;padding:10px 12px;max-height:360px;overflow:auto;font-size:13px}
+.stNota{font:600 26px var(--mono);color:var(--c2)}
+.msgPrints{display:flex;gap:6px;overflow-x:auto;margin-top:8px}.msgPrints img{height:150px;border-radius:6px;border:1px solid var(--ln)}
 .jgImgs{display:flex;gap:8px;overflow-x:auto}.jgImgs img{width:280px;border-radius:10px;border:1px solid var(--ln)}
 #jgTexto{width:100%;min-height:360px;padding:10px;font:13px/1.5 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 .jgLigas{display:flex;flex-wrap:wrap;gap:6px 14px}.jgLigas label{font-size:13px;display:flex;gap:5px;align-items:center}
@@ -181,6 +191,29 @@ footer{position:relative}
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="jgSalvar">💾 Salvar configuração</button><span class="waDica" id="jgCfgMsg"></span></div>
   <div class="waDica" style="margin-top:10px">Todo dia: ative no n8n a rotina <b>"Jarvis · Jogos do dia"</b> (8h). No WhatsApp, o robô responde "que jogos tem hoje?" com esta lista
     (📱 → Recursos). No Telegram: <code>/jogos</code>.</div>
+</div></div>
+<div id="st"><div class="caixa">
+  <button class="fechar" id="stFechar">✕</button>
+  <h2>🖼 PRÉVIA E TESTE DO SITE · <span id="stProj"></span></h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button id="stPrint" class="prim">📸 Tirar prints</button>
+    <input type="text" id="stPaginas" placeholder="páginas (opcional): /  /contato.html  /sobre.php">
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+    <button id="stTestar" class="prim">🧪 Testar o site</button>
+    <input type="text" id="stUrl" placeholder="endereço publicado (opcional): https://seusite.com.br">
+    <button id="stCorrigir" title="O Jarvis corrige os problemas e confere pelos prints">🛠 Jarvis, corrija</button>
+  </div>
+  <div class="waDica" id="stMsg" style="margin-top:8px"></div>
+  <h3>ÚLTIMOS PRINTS <span id="stQuando" style="color:var(--tx);letter-spacing:0"></span></h3>
+  <div class="stImgs" id="stImgs"><div class="waDica">nenhum print ainda: clique em Tirar prints</div></div>
+  <div class="waDica">Clique no print para abrir em tamanho real. No celular, toque e segure para salvar.</div>
+  <h3>ÚLTIMO TESTE <span class="stNota" id="stNota"></span></h3>
+  <div id="stRel"><span class="waDica">nenhum teste ainda</span></div>
+  <div class="waDica" style="margin-top:10px">Sem endereço, o teste sobe o site do projeto num servidor temporário (como o 👁) e percorre até 15 páginas:
+    páginas fora do ar, links quebrados, erros de JavaScript, arquivos que não carregam, celular (rolagem lateral, letra miúda), SEO e acessibilidade.
+    Ele só navega: não clica em botões nem envia formulários. Quando o Jarvis mexe num site, ele roda isso sozinho, olha os prints e corrige.
+    No Telegram: <code>/print</code>, <code>/testar</code>, <code>/testar corrigir</code>.</div>
 </div></div>
 <div id="wa"><div class="caixa">
   <button class="fechar" id="waFechar">✕</button>
@@ -374,6 +407,12 @@ footer{position:relative}
    se não veio o login, pergunta ao cliente e conclui quando ele responder. No WhatsApp, o cliente também pode perguntar
    "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure em 📱 → <b>Painel (API) e regras</b>; o leitor de pagamentos liga com <code>./pagamentos-configurar.sh</code>.
    Quem chama a API é código com regras fixas: a IA só entende o pedido.</details>
+  <details><summary>Como ver como o site está ficando e testar (🖼)?</summary>
+   <b>🖼 no painel</b> (ou <code>/print</code> no Telegram) tira prints do site do projeto no computador e no celular, mesmo sem ligar o 👁.
+   <b>🧪 Testar</b> (<code>/testar</code>) percorre o site e dá uma nota de 0 a 100: páginas fora do ar, links quebrados, erros de JavaScript,
+   imagens e arquivos que não carregam, problemas no celular, SEO e acessibilidade. Para um site já publicado: <code>/testar https://seusite.com.br</code>.
+   <b>🛠 Corrigir</b> (<code>/testar corrigir</code>): o Jarvis corrige o que achou, testa de novo e confere os prints.
+   Quando você pede uma mudança de site, o Jarvis faz isso sozinho e as imagens chegam junto com a resposta (aqui e no Telegram).</details>
   <details><summary>Como funcionam os jogos do dia (⚽)?</summary>
    O Jarvis pega a agenda do futebol brasileiro (Série A, B, C, Copa do Brasil e estaduais) na ESPN, pesquisa na internet onde
    passa cada jogo (marca "a confirmar" quando não acha), e gera uma <b>imagem</b> no formato de Status e um <b>texto pronto</b> para grupos.
@@ -418,6 +457,7 @@ footer{position:relative}
     <button id="btnWa" title="WhatsApp: atendimento automático">📱</button>
     <button id="btnKb" title="Base de conhecimento">🧠</button>
     <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
+    <button id="btnSite" title="Prints e teste automático do site">🖼</button>
     <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺</button>
     <button onclick="location.href='/escritorio'" title="Escritório virtual: agentes e rotinas">🏢</button>
     <button id="btnGuia" title="Guia de uso do Jarvis">❔</button>
@@ -508,11 +548,11 @@ function mostrar(ev){
   else if(ev.tipo==="agente_fim"){add("ev "+(ev.erro?"erro":"ok"),`${ev.emoji} ${esc(ev.agente)} ${ev.erro?"✕ erro":"✓ concluiu"} (${ev.segundos}s)`);agente(ev)}
   else if(ev.tipo==="erro")add("msg jv err","⚠ "+esc(ev.texto)+h);
   else if(ev.tipo==="sistema")add("ev",esc(ev.texto));
-  else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+h);if(carregado)painel()}
+  else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+miniPrints(ev)+h);if(carregado)painel()}
   else if(ev.tipo==="hermes"){const d=add("msg jv hermes",'<div class="quem">☤ HERMES</div>'+fmt(ev.texto)+h);if(ev.voz)tocar(ev.voz,d,"hermes")}
   else if(ev.tipo==="resposta"){
     const custo=ev.custo?`<div class="hora">custo US$ ${Number(ev.custo).toFixed(4)}</div>`:"";
-    const d=add("msg jv",(ev.erro?"⚠ ":"")+fmt(ev.texto)+custo+h);
+    const d=add("msg jv",(ev.erro?"⚠ ":"")+fmt(ev.texto)+miniPrints(ev)+custo+h);
     if(ev.voz)tocar(ev.voz,d);
     if(carregado)painel();
   }
@@ -595,6 +635,29 @@ function kbListar(notas){const el=$("kbLista");
     const j=await api("/api/kb/ler?c="+encodeURIComponent(d.dataset.c));$("kbNota").classList.remove("vazio");$("kbNota").innerHTML=j.erro?esc(j.erro):md(j.texto)})}
 async function kbCarregar(){const q=$("kbBusca").value.trim();const j=q?await api("/api/kb/buscar?q="+encodeURIComponent(q)):await api("/api/kb/recentes"+(kbTipo?"?tipo="+kbTipo:""));
   kbListar((j.notas||[]).filter(n=>!kbTipo||n.caminho.startsWith(kbTipo+"/")))}
+/* ---------- Prévia (prints) e teste do site ---------- */
+function urlPrint(c,proj){return "/api/site/arquivo?c="+encodeURIComponent(c)+(proj?"&projeto="+encodeURIComponent(proj):"")}
+function miniPrints(ev){if(!ev.prints||!ev.prints.length)return"";
+  return '<div class="msgPrints">'+ev.prints.map(c=>`<a href="${urlPrint(c,ev.projeto)}" target="_blank"><img loading="lazy" src="${urlPrint(c,ev.projeto)}" alt="print"></a>`).join("")+"</div>"}
+function mdSimples(t){const cor={"CRÍTICO":"#ff5c6c","ALTO":"#ffad5c","MÉDIO":"#ffe08a","BAIXO":"#9fd3ff"};
+  return esc(t).replace(/^# .*\n+/m,"").replace(/\n+(?=## )/g,"\n").replace(/^## (.*)\n?/gm,'<div style="margin-top:10px;color:var(--c2)"><b>$1</b></div>')
+   .replace(/\*\*(CRÍTICO|ALTO|MÉDIO|BAIXO)\*\*/g,(m,g)=>`<b style="color:${cor[g]}">${g}</b>`).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")
+   .replace(/^_(.*)_$/gm,'<i class="waDica">$1</i>').replace(/^\s*\n/,"").replace(/\n/g,"<br>")}
+let stTimer=null,stVisto="";
+async function stCarregar(){const j=await api("/api/site");if(!j)return;$("stProj").textContent=j.projeto||"nenhum projeto";
+  $("stMsg").textContent=j.rodando?`⏳ fazendo ${j.rodando}…`:($("stMsg").textContent.startsWith("⏳")?"✔ pronto":$("stMsg").textContent);
+  const chave=(j.quando||"")+(j.teste_quando||"")+(j.prints||[]).map(p=>p.arquivo).join();if(chave===stVisto)return;stVisto=chave;
+  $("stQuando").textContent=j.quando?"· "+j.quando:"";
+  $("stImgs").innerHTML=(j.prints||[]).length?j.prints.map(p=>`<figure><a href="${urlPrint(p.arquivo,j.projeto)}" target="_blank"><img class="${p.tipo==="celular"?"cel":"desk"}" src="${urlPrint(p.arquivo,j.projeto)}" alt="${esc(p.pagina)}"></a><figcaption>${p.tipo==="celular"?"📱":"🖥"} ${esc(p.pagina)}${p.status>=400?" · HTTP "+p.status:""}</figcaption></figure>`).join(""):'<div class="waDica">nenhum print ainda: clique em Tirar prints</div>';
+  if(j.relatorio){$("stNota").textContent=j.nota+"/100";$("stRel").innerHTML=mdSimples(j.relatorio)}}
+$("btnSite").onclick=()=>{$("st").classList.add("aberto");stVisto="";stCarregar();clearInterval(stTimer);stTimer=setInterval(stCarregar,3000)};
+function stFechar(){$("st").classList.remove("aberto");clearInterval(stTimer)}
+$("stFechar").onclick=stFechar;$("st").onclick=e=>{if(e.target.id==="st")stFechar()};
+async function stAcao(b){const r=await api("/api/site/acao",b);$("stMsg").textContent=r.ok?(b.acao==="corrigir"?"🛠 o Jarvis começou (acompanhe no chat); os prints chegam no fim":"⏳ começou…"):"❌ "+(r.erro||"falhou")}
+$("stPrint").onclick=()=>stAcao({acao:"print",paginas:$("stPaginas").value});
+$("stTestar").onclick=()=>stAcao({acao:"testar",url:$("stUrl").value.trim()});
+$("stCorrigir").onclick=()=>stAcao({acao:"corrigir"});
+
 /* ---------- Jogos do dia ---------- */
 let jgTimer=null,jgGerado=null;
 async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)return;const c=j.config;

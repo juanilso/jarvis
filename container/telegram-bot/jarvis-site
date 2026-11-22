@@ -1,0 +1,374 @@
+#!/usr/bin/env node
+/*
+ * jarvis-site: prévia (prints) e teste automático de sites, para o Jarvis e para você.
+ *
+ *   jarvis-site print  [pasta|url] [--paginas /,/contato.html] [--saida DIR]
+ *   jarvis-site testar [pasta|url] [--max 15] [--saida DIR]
+ *
+ * pasta: sobe um servidor local temporário (php -S em 127.0.0.1) na raiz do site
+ *        (public, public_html, www, dist ou build, se existir). Padrão: a pasta atual.
+ * Saída padrão: <projeto>/.jarvis/previas/<data-hora>/ e o ponteiro <projeto>/.jarvis/previas/ultima.json
+ * (o painel e o Telegram mostram os prints da última prévia automaticamente).
+ *
+ * Só lê o site: não clica em botões, não envia formulários, não faz login.
+ */
+"use strict";
+const fs = require("fs");
+const path = require("path");
+const net = require("net");
+const { spawn, execSync } = require("child_process");
+
+function carregarPlaywright() {
+  const raizes = [];
+  try { raizes.push(execSync("npm root -g", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim()); } catch (e) {}
+  const tentativas = [];
+  for (const r of raizes) {
+    tentativas.push([path.join(r, "playwright")]);
+    tentativas.push(["playwright-core", [path.join(r, "@playwright/mcp")]]);
+    tentativas.push(["playwright", [path.join(r, "@playwright/mcp")]]);
+  }
+  tentativas.push(["playwright"], ["playwright-core"]);
+  for (const [nome, paths] of tentativas) {
+    try { return require(paths ? require.resolve(nome, { paths }) : nome); } catch (e) {}
+  }
+  console.error("Playwright não encontrado (o contêiner do Jarvis já traz; fora dele: npm i -g playwright).");
+  process.exit(2);
+}
+
+const DESKTOP = { width: 1440, height: 900 };
+const CELULAR = { width: 390, height: 844 };
+const ALTURA_MAX = { desktop: 5000, celular: 3600 }; // limite do Telegram para fotos (largura + altura ≤ 10000 px)
+
+function args() {
+  const a = process.argv.slice(2);
+  const o = { modo: a[0], alvo: null, paginas: null, max: 15, saida: null };
+  for (let i = 1; i < a.length; i++) {
+    if (a[i] === "--paginas") o.paginas = a[++i].split(",").map(s => s.trim()).filter(Boolean);
+    else if (a[i] === "--max") o.max = Math.max(1, Math.min(60, parseInt(a[++i], 10) || 15));
+    else if (a[i] === "--saida") o.saida = a[++i];
+    else if (!o.alvo) o.alvo = a[i];
+  }
+  return o;
+}
+
+function portaLivre() {
+  return new Promise((ok, erro) => {
+    const s = net.createServer();
+    s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => ok(p)); });
+    s.on("error", erro);
+  });
+}
+
+function raizDoSite(pasta) {
+  for (const d of ["public", "public_html", "www", "dist", "build"])
+    if (fs.existsSync(path.join(pasta, d)) && fs.statSync(path.join(pasta, d)).isDirectory()) return path.join(pasta, d);
+  return pasta;
+}
+
+function raizDoProjeto(pasta) { // sobe até achar .git ou docs/ (o projeto), senão a própria pasta
+  let p = path.resolve(pasta);
+  while (p !== path.dirname(p)) {
+    if (fs.existsSync(path.join(p, ".git")) || fs.existsSync(path.join(p, "docs"))) return p;
+    if (path.dirname(p) === "/workspace") return p;
+    p = path.dirname(p);
+  }
+  return path.resolve(pasta);
+}
+
+async function servidor(pasta) {
+  const raiz = raizDoSite(pasta);
+  const porta = await portaLivre();
+  const proc = spawn("php", ["-S", `127.0.0.1:${porta}`, "-t", raiz], { cwd: pasta, stdio: "ignore" });
+  const base = `http://127.0.0.1:${porta}`;
+  for (let i = 0; i < 50; i++) {
+    await new Promise(r => setTimeout(r, 100));
+    const pronto = await new Promise(r => { const c = net.connect(porta, "127.0.0.1", () => { c.end(); r(true); }); c.on("error", () => r(false)); });
+    if (pronto) break;
+  }
+  return { base, raiz, fechar: () => { try { proc.kill(); } catch (e) {} } };
+}
+
+function nomeArquivo(u) {
+  const p = new URL(u).pathname.replace(/\/+$/, "") || "/inicio";
+  return p.replace(/^\//, "").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 60) || "inicio";
+}
+
+function carimbo() {
+  const d = new Date(), z = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
+}
+
+async function abrir(pw) {
+  const op = { headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] };
+  try { return await pw.chromium.launch(op); } catch (e) {
+    for (const exe of [process.env.JARVIS_CHROME, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"]) {
+      if (exe && fs.existsSync(exe)) { try { return await pw.chromium.launch({ ...op, executablePath: exe }); } catch (e2) {} }
+    }
+    throw e;
+  }
+}
+
+async function fotografar(navegador, url, destino, tipo) {
+  const vp = tipo === "desktop" ? DESKTOP : CELULAR;
+  const ctx = await navegador.newContext({ viewport: vp, deviceScaleFactor: tipo === "desktop" ? 1 : 2,
+    hasTouch: tipo === "celular", locale: "pt-BR",
+    userAgent: tipo === "celular" ? "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36" : undefined });
+  const pg = await ctx.newPage();
+  let status = 0;
+  try {
+    const r = await pg.goto(url, { waitUntil: "networkidle", timeout: 30000 }).catch(async () => pg.goto(url, { waitUntil: "load", timeout: 30000 }));
+    status = r ? r.status() : 0;
+    await rolarTudo(pg);
+    const alt = await pg.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+    if (alt <= ALTURA_MAX[tipo]) await pg.screenshot({ path: destino, fullPage: true });
+    else await pg.screenshot({ path: destino, fullPage: true, clip: { x: 0, y: 0, width: vp.width, height: ALTURA_MAX[tipo] } });
+    return { status, cortado: alt > ALTURA_MAX[tipo] };
+  } finally { await ctx.close(); }
+}
+
+async function rolarTudo(pg) { // carrega imagens "lazy" e animações de entrada antes do print
+  await pg.evaluate(async () => {
+    const passo = window.innerHeight * 0.8;
+    for (let y = 0; y < Math.min(document.body ? document.body.scrollHeight : 0, 20000); y += passo) {
+      window.scrollTo(0, y); await new Promise(r => setTimeout(r, 120));
+    }
+    window.scrollTo(0, 0); await new Promise(r => setTimeout(r, 300));
+  }).catch(() => {});
+}
+
+async function checarPagina(navegador, url, base) {
+  const res = { url, status: 0, ms: 0, erros_js: [], console: [], recursos_falhos: [], links: [], problemas: [], celular: {} };
+  const ctx = await navegador.newContext({ viewport: DESKTOP, locale: "pt-BR" });
+  const pg = await ctx.newPage();
+  pg.on("pageerror", e => res.erros_js.push(String(e.message || e).slice(0, 300)));
+  pg.on("console", m => { if (m.type() === "error") res.console.push(m.text().slice(0, 300)); });
+  pg.on("response", r => { if (r.status() >= 400 && r.url() !== url) res.recursos_falhos.push(`${r.status()} ${r.url()}`); });
+  pg.on("requestfailed", r => { if (!/favicon/.test(r.url())) res.recursos_falhos.push(`falhou ${r.url()} (${(r.failure() || {}).errorText || ""})`); });
+  const t0 = Date.now();
+  try {
+    const r = await pg.goto(url, { waitUntil: "load", timeout: 30000 });
+    res.status = r ? r.status() : 0;
+    res.ms = Date.now() - t0;
+    await pg.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    const info = await pg.evaluate(() => {
+      const q = s => Array.from(document.querySelectorAll(s));
+      const visivel = el => { const r = el.getBoundingClientRect(); const st = getComputedStyle(el); return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none"; };
+      const rotulado = el => el.getAttribute("aria-label") || el.getAttribute("aria-labelledby") || el.title ||
+        (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) || el.closest("label") || el.placeholder;
+      return {
+        titulo: document.title.trim(),
+        descricao: (document.querySelector('meta[name="description"]') || {}).content || "",
+        viewport: !!document.querySelector('meta[name="viewport"]'),
+        lang: document.documentElement.lang || "",
+        h1: q("h1").filter(visivel).length,
+        img_sem_alt: q("img").filter(i => !i.hasAttribute("alt")).map(i => i.currentSrc || i.src).slice(0, 10),
+        img_quebrada: q("img").filter(i => i.complete && i.naturalWidth === 0 && (i.currentSrc || i.src)).map(i => i.currentSrc || i.src).slice(0, 10),
+        campos_sem_rotulo: q("input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea").filter(visivel).filter(e => !rotulado(e)).length,
+        botoes_sem_texto: q("button, a[href]").filter(visivel).filter(b => !(b.innerText || "").trim() && !b.getAttribute("aria-label") && !b.title && !b.querySelector("img[alt]:not([alt=''])")).length,
+        links: q("a[href]").map(a => a.href).filter(h => /^https?:/.test(h)),
+        peso_kb: Math.round(performance.getEntriesByType("resource").reduce((s, e) => s + (e.transferSize || 0), 0) / 1024),
+      };
+    });
+    const P = res.problemas;
+    if (res.status >= 400) P.push(["CRÍTICO", `a página respondeu ${res.status}`]);
+    if (res.erros_js.length) P.push(["ALTO", `${res.erros_js.length} erro(s) de JavaScript: ${res.erros_js[0]}`]);
+    if (res.console.length) P.push(["MÉDIO", `${res.console.length} erro(s) no console: ${res.console[0]}`]);
+    if (info.img_quebrada.length) P.push(["ALTO", `${info.img_quebrada.length} imagem(ns) quebrada(s): ${info.img_quebrada[0]}`]);
+    const falhos = [...new Set(res.recursos_falhos)];
+    res.recursos_falhos = falhos;
+    if (falhos.length) P.push(["ALTO", `${falhos.length} arquivo(s) não carregaram (CSS, JS, imagem, fonte): ${falhos[0]}`]);
+    if (!info.titulo) P.push(["MÉDIO", "sem <title> (aparece na aba e no Google)"]);
+    if (!info.descricao) P.push(["BAIXO", "sem meta description (texto do Google)"]);
+    if (!info.viewport) P.push(["ALTO", "sem meta viewport: no celular o site aparece minúsculo"]);
+    if (!info.lang) P.push(["BAIXO", "sem lang no <html> (use lang=\"pt-BR\")"]);
+    if (info.h1 === 0) P.push(["MÉDIO", "nenhum título principal <h1> visível"]);
+    if (info.h1 > 1) P.push(["BAIXO", `${info.h1} títulos <h1> (o ideal é 1 por página)`]);
+    if (info.img_sem_alt.length) P.push(["BAIXO", `${info.img_sem_alt.length} imagem(ns) sem texto alternativo (alt)`]);
+    if (info.campos_sem_rotulo) P.push(["MÉDIO", `${info.campos_sem_rotulo} campo(s) de formulário sem rótulo`]);
+    if (info.botoes_sem_texto) P.push(["MÉDIO", `${info.botoes_sem_texto} botão(ões)/link(s) sem texto ou aria-label`]);
+    if (res.ms > 4000) P.push(["MÉDIO", `página lenta: ${(res.ms / 1000).toFixed(1)} s para carregar`]);
+    if (info.peso_kb > 3000) P.push(["MÉDIO", `página pesada: ${(info.peso_kb / 1024).toFixed(1)} MB (otimize imagens)`]);
+    res.info = { titulo: info.titulo, peso_kb: info.peso_kb, h1: info.h1 };
+    res.links = [...new Set(info.links)];
+  } catch (e) {
+    res.problemas.push(["CRÍTICO", `não abriu: ${String(e.message || e).split("\n")[0]}`]);
+  } finally { await ctx.close(); }
+
+  // celular: rolagem lateral (algo mais largo que a tela) e textos/toques muito pequenos
+  const cx = await navegador.newContext({ viewport: CELULAR, isMobile: true, hasTouch: true, deviceScaleFactor: 2, locale: "pt-BR" });
+  try {
+    const pm = await cx.newPage();
+    await pm.goto(url, { waitUntil: "load", timeout: 30000 });
+    await pm.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
+    res.celular = await pm.evaluate(() => {
+      const largura = window.innerWidth;
+      const vis = el => { const r = el.getBoundingClientRect(); const st = getComputedStyle(el); return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none"; };
+      const largos = Array.from(document.querySelectorAll("body *")).filter(vis).filter(el => {
+        const r = el.getBoundingClientRect(); return r.right > largura + 2 && getComputedStyle(el).position !== "fixed";
+      }).filter(el => !el.closest("[style*='overflow'], .swiper, .slick-track, .carousel"));
+      const nome = el => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/)[0] : "");
+      const pequenos = Array.from(document.querySelectorAll("a[href], button, input[type=submit], input[type=checkbox], input[type=radio]")).filter(vis)
+        .filter(el => { const r = el.getBoundingClientRect(); return r.width < 24 || r.height < 24; }).length;
+      const letraMiuda = Array.from(document.querySelectorAll("p, li, a, span, td, label")).filter(vis)
+        .filter(el => el.childNodes.length && (el.innerText || "").trim().length > 20 && parseFloat(getComputedStyle(el).fontSize) < 12).length;
+      return { rolagem_lateral: document.documentElement.scrollWidth > largura + 2, largura_pagina: document.documentElement.scrollWidth,
+               culpados: largos.slice(0, 3).map(nome), toques_pequenos: pequenos, letra_miuda: letraMiuda };
+    });
+    const c = res.celular;
+    if (c.rolagem_lateral) res.problemas.push(["ALTO", `no celular a página fica mais larga que a tela (${c.largura_pagina}px em 390px)` + (c.culpados.length ? `: ${c.culpados.join(", ")}` : "")]);
+    if (c.toques_pequenos > 3) res.problemas.push(["BAIXO", `${c.toques_pequenos} botões/links pequenos demais para o dedo (menos de 24px)`]);
+    if (c.letra_miuda > 3) res.problemas.push(["BAIXO", `${c.letra_miuda} textos com letra menor que 12px no celular`]);
+  } catch (e) { /* o erro de abertura já foi registrado na versão desktop */ } finally { await cx.close(); }
+  return res;
+}
+
+async function checarLink(ctx, link) {
+  try {
+    const r = await ctx.request.get(link, { timeout: 15000, maxRedirects: 5, failOnStatusCode: false });
+    return r.status();
+  } catch (e) { return 0; }
+}
+
+function salvarPonteiro(projeto, pasta, dados) {
+  const dir = path.join(projeto, ".jarvis", "previas");
+  fs.mkdirSync(dir, { recursive: true });
+  const ponteiro = { ...dados, pasta: path.relative(projeto, pasta), quando: new Date().toISOString() };
+  fs.writeFileSync(path.join(dir, "ultima.json"), JSON.stringify(ponteiro, null, 1));
+  if (dados.tipo === "teste") fs.writeFileSync(path.join(dir, "ultimo-teste.json"), JSON.stringify(ponteiro, null, 1));
+  // guarda só as 10 últimas prévias
+  let teste = "";
+  try { teste = JSON.parse(fs.readFileSync(path.join(dir, "ultimo-teste.json"), "utf8")).pasta || ""; } catch (e) {}
+  const antigas = fs.readdirSync(dir).filter(n => /^\d{4}-\d\d-\d\d_/.test(n)).sort().reverse().slice(10)
+    .filter(n => path.join(".jarvis", "previas", n) !== teste);  // o último teste fica, mesmo antigo
+  for (const n of antigas) fs.rmSync(path.join(dir, n), { recursive: true, force: true });
+  const gi = path.join(projeto, ".jarvis", ".gitignore");
+  if (!fs.existsSync(gi)) fs.writeFileSync(gi, "previas/\n");
+}
+
+async function main() {
+  const o = args();
+  if (!["print", "testar"].includes(o.modo)) {
+    console.log("Uso:\n  jarvis-site print  [pasta|url] [--paginas /,/contato.html] [--saida DIR]\n  jarvis-site testar [pasta|url] [--max 15] [--saida DIR]");
+    process.exit(o.modo ? 1 : 0);
+  }
+  const alvo = o.alvo || process.cwd();
+  const ehUrl = /^https?:\/\//i.test(alvo);
+  if (!ehUrl && !fs.existsSync(alvo)) { console.error(`Não achei a pasta ${alvo}`); process.exit(1); }
+  const projeto = ehUrl ? process.cwd() : raizDoProjeto(fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo));
+  const saida = path.resolve(o.saida || path.join(projeto, ".jarvis", "previas", carimbo()));
+  fs.mkdirSync(saida, { recursive: true });
+
+  let srv = null, base, inicial;
+  if (ehUrl) { const u = new URL(alvo); base = u.origin; inicial = u.href; }
+  else {
+    const pasta = fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo);
+    srv = await servidor(pasta);
+    base = srv.base;
+    inicial = base + (fs.statSync(alvo).isDirectory() ? "/" : "/" + path.relative(srv.raiz, alvo));
+  }
+  const pw = carregarPlaywright();
+  const navegador = await abrir(pw);
+  const fim = async (code) => { await navegador.close().catch(() => {}); if (srv) srv.fechar(); process.exit(code); };
+  process.on("SIGTERM", () => fim(143));
+
+  try {
+    const paginas = (o.paginas || [inicial]).map(p => /^https?:/.test(p) ? p : base + (p.startsWith("/") ? p : "/" + p));
+    if (o.modo === "print") {
+      const prints = [];
+      for (const url of paginas.slice(0, 8)) {
+        const n = nomeArquivo(url);
+        for (const tipo of ["desktop", "celular"]) {
+          const arq = path.join(saida, `${n}-${tipo}.png`);
+          const r = await fotografar(navegador, url, arq, tipo);
+          prints.push({ arquivo: path.relative(projeto, arq), pagina: new URL(url).pathname, tipo, status: r.status, cortado: r.cortado });
+          console.log(`📸 ${tipo.padEnd(7)} ${new URL(url).pathname} → ${arq}${r.status >= 400 ? `  ⚠️ HTTP ${r.status}` : ""}${r.cortado ? "  (cortado no limite de altura)" : ""}`);
+        }
+      }
+      fs.writeFileSync(path.join(saida, "manifesto.json"), JSON.stringify({ tipo: "print", base: ehUrl ? base : "local", prints }, null, 1));
+      salvarPonteiro(projeto, saida, { tipo: "print", prints });
+      console.log(`\nVeja os prints com a ferramenta Read (são imagens). Pasta: ${saida}`);
+      return fim(0);
+    }
+
+    // testar: percorre as páginas do mesmo site (até --max), checa cada uma e os links
+    const fila = [...paginas], vistas = new Set(), resultados = [], linksVistos = new Map();
+    const semHash = u => { const x = new URL(u); x.hash = ""; x.pathname = x.pathname.replace(/\/index\.(html?|php)$/i, "/"); return x.href; };
+    const arquivoEstatico = u => /\.(pdf|zip|jpe?g|png|gif|webp|svg|mp4|mp3|docx?|xlsx?|rar|apk)$/i.test(new URL(u).pathname);
+    while (fila.length && resultados.length < o.max) {
+      const url = semHash(fila.shift());
+      if (vistas.has(url)) continue;
+      vistas.add(url);
+      const r = await checarPagina(navegador, url, base);
+      resultados.push(r);
+      console.log(`🧪 ${new URL(url).pathname}  ${r.status || "—"}  ${r.ms}ms  ${r.problemas.length} ponto(s)`);
+      for (const l of r.links) {
+        if (!linksVistos.has(l)) linksVistos.set(l, url);
+        const mesmo = new URL(l).origin === new URL(base).origin;
+        if (mesmo && !arquivoEstatico(l) && !vistas.has(semHash(l))) fila.push(l);
+      }
+    }
+    // links quebrados: todos os internos e até 40 externos
+    const ctx = await navegador.newContext();
+    const quebrados = [];
+    let externos = 0;
+    for (const [l, origem] of linksVistos) {
+      const interno = new URL(l).origin === new URL(base).origin;
+      if (!interno && ++externos > 40) continue;
+      if (interno && vistas.has(semHash(l))) { const r = resultados.find(x => x.url === semHash(l)); if (r && r.status && r.status < 400) continue; }
+      const st = await checarLink(ctx, l);
+      if (st >= 400 || (st === 0 && interno)) quebrados.push({ link: l, status: st, em: new URL(origem).pathname, interno });
+    }
+    await ctx.close();
+
+    // prints da página inicial (o Jarvis olha e você recebe)
+    const prints = [];
+    for (const tipo of ["desktop", "celular"]) {
+      const arq = path.join(saida, `${nomeArquivo(paginas[0])}-${tipo}.png`);
+      const r = await fotografar(navegador, paginas[0], arq, tipo).catch(() => null);
+      if (r) prints.push({ arquivo: path.relative(projeto, arq), pagina: new URL(paginas[0]).pathname, tipo, status: r.status });
+    }
+
+    const peso = { "CRÍTICO": 0, "ALTO": 0, "MÉDIO": 0, "BAIXO": 0 };
+    const unicos = new Set();  // o mesmo problema em várias páginas (ex.: falta description) conta uma vez na nota
+    for (const r of resultados) for (const [g, t] of r.problemas) {
+      const chave = g + "|" + t.replace(/https?:\/\/\S+/g, "").replace(/\d+/g, "#");
+      if (!unicos.has(chave)) { unicos.add(chave); peso[g]++; }
+    }
+    for (const q of quebrados) if (!vistas.has(semHash(q.link))) peso[q.interno ? "ALTO" : "MÉDIO"]++;
+    const nota = Math.max(0, 100 - peso["CRÍTICO"] * 25 - peso["ALTO"] * 8 - peso["MÉDIO"] * 3 - peso["BAIXO"] * 1);
+    const linhas = [
+      `# Teste automático do site`, ``,
+      `- Endereço: ${ehUrl ? base : "local (" + path.relative(projeto, srv.raiz || projeto) + ")"}`,
+      `- Quando: ${new Date().toLocaleString("pt-BR", { timeZone: process.env.TZ || "America/Sao_Paulo" })}`,
+      `- Páginas testadas: ${resultados.length}${fila.length ? ` (limite ${o.max}; há mais páginas)` : ""} · links conferidos: ${linksVistos.size}`,
+      `- **Nota: ${nota}/100** · críticos ${peso["CRÍTICO"]} · altos ${peso["ALTO"]} · médios ${peso["MÉDIO"]} · baixos ${peso["BAIXO"]}`, ``,
+    ];
+    const ordem = ["CRÍTICO", "ALTO", "MÉDIO", "BAIXO"];
+    for (const r of resultados) {
+      if (!r.problemas.length) continue;
+      linhas.push(`## ${new URL(r.url).pathname}  (HTTP ${r.status || "—"}, ${(r.ms / 1000).toFixed(1)} s)`);
+      for (const [g, t] of r.problemas.sort((a, b) => ordem.indexOf(a[0]) - ordem.indexOf(b[0]))) linhas.push(`- **${g}** ${t}`);
+      linhas.push("");
+    }
+    if (quebrados.length) {
+      linhas.push(`## Links quebrados`);
+      for (const q of quebrados.slice(0, 40)) linhas.push(`- **${q.interno ? "ALTO" : "MÉDIO"}** ${q.link} → ${q.status || "não respondeu"} (na página ${q.em})`);
+      linhas.push("");
+    }
+    if (!quebrados.length && resultados.every(r => !r.problemas.length)) linhas.push("Nenhum problema encontrado nos testes automáticos. 🎉", "");
+    linhas.push("_Os testes automáticos não substituem olhar os prints: confira layout, textos e cores nas imagens._");
+    let relatorio = linhas.join("\n");
+    if (!ehUrl) relatorio = relatorio.split(base).join("");  // servidor local temporário: mostra só o caminho
+    fs.writeFileSync(path.join(saida, "RELATORIO.md"), relatorio);
+    const resumo = { tipo: "teste", nota, contagem: peso, paginas: resultados.length, quebrados: quebrados.length, prints, relatorio: path.relative(projeto, path.join(saida, "RELATORIO.md")) };
+    fs.writeFileSync(path.join(saida, "resultado.json"), JSON.stringify({ ...resumo, resultados, quebrados }, null, 1));
+    salvarPonteiro(projeto, saida, resumo);
+    console.log("\n" + relatorio + `\n\nRelatório: ${path.join(saida, "RELATORIO.md")}\nPrints: ${prints.map(p => path.join(projeto, p.arquivo)).join("  ")}`);
+    return fim(0);
+  } catch (e) {
+    console.error("Erro:", e.message || e);
+    return fim(1);
+  }
+}
+
+main();

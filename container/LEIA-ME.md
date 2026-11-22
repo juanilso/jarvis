@@ -111,6 +111,22 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.17: prévia (prints) e teste automático dos sites
+
+- **O Jarvis enxerga o site:** sempre que cria ou altera um site, ele roda `jarvis-site testar`, corrige o que quebrou,
+  tira prints (computador 1440 e celular 390), **olha as imagens** e só então responde. Os prints chegam junto com a
+  resposta, no painel e no Telegram.
+- **🖼 no painel:** 📸 Tirar prints (páginas opcionais, ex.: `/ /contato.html`), 🧪 Testar o site (pasta do projeto ou
+  um endereço publicado) e 🛠 Jarvis, corrija. Mostra os últimos prints e o último relatório com nota de 0 a 100.
+- **Telegram:** `/print`, `/print /contato.html`, `/testar`, `/testar https://seusite.com.br`, `/testar corrigir`.
+- **O que o teste confere** (até 15 páginas do mesmo site): página fora do ar, links quebrados, erros de JavaScript,
+  CSS/JS/imagens/fontes que não carregam, imagens quebradas, rolagem lateral e letra miúda no celular, meta viewport,
+  título, description, lang, h1, campos sem rótulo, botões sem texto, páginas lentas ou pesadas.
+- Não precisa ligar o 👁: o teste sobe um servidor temporário só para ele. Ele só navega (não clica em botões, não envia
+  formulários). Os arquivos ficam em `<projeto>/.jarvis/previas/` (as 10 últimas; fora do Git).
+- Para fluxos com clique e formulário (login, compra), continue usando `/jarvis:qa`, que agora começa por esse teste.
+- Atualizar: `git pull` e `docker compose build && docker compose --profile web --profile telegram up -d --force-recreate jarvisweb telegram`.
+
 ## Jarvis 1.16: jogos do dia (futebol brasileiro)
 
 - **⚽ no painel:** gera a agenda do dia (Série A, B, C, Copa do Brasil e estaduais), pesquisa **onde passa** cada jogo

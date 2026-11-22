@@ -65,6 +65,7 @@ def _escritorio(ev):
 
 def publicar(ev, projeto=None):
     """Registra um evento no histórico do projeto (cada projeto tem o seu, salvo em disco)."""
+    ev.pop("prints_abs", None)  # o painel usa os caminhos relativos ("prints") pelo /api/site/arquivo
     with ev_lock:
         _contador[0] += 1
         ev["id"] = _contador[0]
@@ -162,6 +163,24 @@ def pesquisar(tema, tipo="pesquisa"):
         publicar({"tipo": "info", "texto": f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}"}, proj)
 
 
+def site_no_painel(modo, arg="", paginas=None):
+    """Prints/teste do site do projeto atual; o resultado aparece no chat com as imagens."""
+    import site_previa
+    proj = estado.ler()["projeto"]
+    alvo = arg if arg.lower().startswith("http") and " " not in arg else None
+    if modo == "print" and not paginas and not alvo:
+        paginas = [p for p in arg.split() if p.startswith("/")] or None
+    ok, saida, d = site_previa.rodar(modo, proj, alvo=alvo, paginas=paginas)
+    if not d:
+        publicar({"tipo": "erro", "texto": "Não consegui " + ("tirar os prints" if modo == "print" else "testar o site") +
+                  ".\n" + saida[-1500:]}, proj)
+        return
+    texto = site_previa.resumo_teste(d) if modo == "testar" else f"📸 Prints de {proj} ({len(d.get('prints') or [])})"
+    if modo == "testar" and not alvo and d.get("nota", 100) < 100:
+        texto += "\n\n🛠 Para o Jarvis corrigir e conferir: /testar corrigir"
+    publicar({"tipo": "info", "texto": texto, "prints": [x["arquivo"] for x in d.get("prints") or []]}, proj)
+
+
 def iniciar(texto, veio_de_audio):
     if texto.startswith("/"):
         resposta, acao = core.comando(estado, pool, texto)
@@ -174,6 +193,12 @@ def iniciar(texto, veio_de_audio):
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
             elif acao == "tendencias":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(), "tendencias"), daemon=True).start()
+            elif acao in ("site_print", "site_testar"):
+                threading.Thread(target=site_no_painel, args=("print" if acao == "site_print" else "testar",
+                                 texto.partition(" ")[2].strip()), daemon=True).start()
+            elif acao == "site_corrigir":
+                import site_previa
+                return iniciar(site_previa.PROMPT_CORRIGIR, veio_de_audio)
             elif acao == "hermes":
                 proj = estado.ler()["projeto"]
                 threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), proj,
@@ -289,6 +314,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"config": jogos.config(), "ligas": jogos.LIGAS, "dia": d.get("dia"), "texto": d.get("texto", ""),
                                "imagens": len(d.get("imagens") or []), "total": len(d.get("jogos") or []),
                                "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0)})
+        if url.path == "/api/site":
+            import site_previa
+            proj = estado.ler()["projeto"]
+            d = site_previa.ultima(proj) or {}
+            t = site_previa.ultima(proj, arquivo="ultimo-teste.json") or {}
+            return self._json({"projeto": proj, "rodando": site_previa.ocupado(proj),
+                               "quando": site_previa.quando(d) if d else "", "prints": d.get("prints") or [],
+                               "teste_quando": site_previa.quando(t) if t else "", "nota": t.get("nota"),
+                               "contagem": t.get("contagem"), "relatorio": t.get("relatorio_texto", "")})
+        if url.path == "/api/site/arquivo":
+            import site_previa
+            q = urllib.parse.parse_qs(url.query)
+            proj = (q.get("projeto") or [estado.ler()["projeto"]])[0]
+            if proj not in core.listar_projetos():
+                return self._json({"erro": "projeto"}, 404)
+            cam = site_previa.seguro(proj, (q.get("c") or [""])[0])
+            if not cam or not cam.lower().endswith(".png"):
+                return self._json({"erro": "sem imagem"}, 404)
+            png = open(cam, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "private, max-age=86400")
+            self.send_header("Content-Length", str(len(png)))
+            self.end_headers()
+            return self.wfile.write(png)
         if url.path == "/api/jogos/imagem":
             import jogos
             d = jogos.do_dia() or {}
@@ -505,6 +555,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": msg})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/site/acao":
+            import site_previa
+            a = dados.get("acao")
+            proj = estado.ler()["projeto"]
+            if not proj:
+                return self._json({"erro": "Escolha um projeto primeiro."}, 400)
+            if site_previa.ocupado(proj):
+                return self._json({"erro": f"Já estou fazendo {site_previa.ocupado(proj)}."}, 409)
+            if a == "corrigir":
+                erro = iniciar(site_previa.PROMPT_CORRIGIR, False)
+                return self._json({"erro": erro}, 409) if erro else self._json({"ok": True})
+            if a not in ("print", "testar"):
+                return self._json({"erro": "ação inválida"}, 400)
+            paginas = [p.strip() for p in str(dados.get("paginas") or "").replace(",", " ").split() if p.strip().startswith("/")]
+            threading.Thread(target=site_no_painel, args=(a, str(dados.get("url") or "").strip(), paginas or None),
+                             daemon=True).start()
+            return self._json({"ok": True})
         if url.path == "/api/previa":
             try:
                 msg = previa(dados.get("acao", "iniciar"))

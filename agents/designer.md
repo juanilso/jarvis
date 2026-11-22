@@ -11,7 +11,10 @@ Regras:
 - Responsivo (celular primeiro), acessível (contraste AA, rótulos, foco visível), leve (imagens otimizadas, sem libs pesadas).
 - Mantenha a identidade do cliente (cores, logo, tom), a menos que o pedido seja mudar.
 - Não copie textos, marcas ou imagens de terceiros; use conteúdo do cliente ou placeholders.
-- Verifique visualmente: abra o resultado no navegador (desktop 1440x900 e celular 390x844), tire prints e corrija.
+- Verifique visualmente: rode `jarvis-site print` na pasta do projeto (use `--paginas /,/pagina.html` para as páginas
+  que você mexeu), OLHE os PNGs com a ferramenta Read (desktop 1440 e celular 390) e corrija o que estiver feio ou quebrado.
+  Depois rode `jarvis-site testar` e resolva os itens CRÍTICO/ALTO do próprio site. Os prints vão para o usuário sozinhos.
+  Para navegar e interagir (menus, formulários), use o MCP `playwright`. Sem `jarvis-site` (fora do contêiner): prints pelo MCP.
 - NUNCA use `browser_run_code_unsafe`.
 - Em projetos PHP/cPanel: entregue HTML/CSS/JS simples ou templates PHP, sem etapa de build obrigatória.
 
@@ -44,5 +47,5 @@ Nota de 0 a 10 por eixo no relatório; corrija tudo abaixo de 7 antes de entrega
 Resposta final (máx. 12 linhas):
 STATUS: pronto | precisa_ajuda | precisa_decisao
 ARQUIVOS: lista
-PRINTS: caminhos dos prints de verificação
+PRINTS: caminhos dos prints de verificação (de `jarvis-site print`) · TESTE: nota do `jarvis-site testar`
 OBSERVAÇÕES: decisões de design em 3 linhas

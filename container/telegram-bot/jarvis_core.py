@@ -62,6 +62,11 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
   revisor → commit local. Sem pular o testador e o revisor.
 - Evolução, escopo, arquitetura ou decisão técnica: arquiteto primeiro.
 - Tela, site, layout ou visual: designer.
+- Sempre que criar ou alterar um site/tela, ANTES de responder: rode `jarvis-site testar` na pasta do projeto, corrija
+  os problemas críticos/altos do próprio site, rode `jarvis-site print` (use `--paginas /,/outra.html` para as páginas
+  que mudaram) e OLHE os PNGs com a ferramenta Read (desktop e celular). Se algo estiver feio ou quebrado, corrija e
+  tire os prints de novo. Os prints da última execução vão automaticamente para o usuário junto com a sua resposta;
+  diga a nota do teste em uma linha. O usuário pede prévia? É o `jarvis-site print`.
 - Ao concluir um ciclo com alterações: documentador atualiza docs/ESTADO.md e a base de conhecimento.
 - Só responda sem agentes em conversa simples (saudação, dúvida geral que não depende do código).
 - Antes de cada etapa, escreva UMA linha curta dizendo o que vai fazer e qual agente vai trabalhar: o usuário
@@ -211,6 +216,7 @@ class Execucao:
         if extra:
             cmd += list(extra)
         agentes, resultado, code, erro = {}, None, None, ""
+        t0 = time.time()
         try:
             ao_evento({"tipo": "inicio", "projeto": projeto})
             with self._lock:
@@ -291,9 +297,17 @@ class Execucao:
         if MARCA_RESUMO in resposta:
             resposta, _, resumo = resposta.rpartition(MARCA_RESUMO)
             resposta, resumo = resposta.strip(), resumo.strip()
-        ao_evento({"tipo": "resposta", "texto": resposta, "resumo": resumo or resposta,
-                   "custo": resultado.get("total_cost_usd"), "erro": bool(resultado.get("is_error")),
-                   "audio": responder_audio})
+        ev = {"tipo": "resposta", "texto": resposta, "resumo": resumo or resposta,
+              "custo": resultado.get("total_cost_usd"), "erro": bool(resultado.get("is_error")), "audio": responder_audio}
+        try:  # prints que o Jarvis tirou durante este pedido (jarvis-site) vão junto com a resposta
+            import site_previa
+            nova = site_previa.ultima(projeto, desde=t0)
+            if nova and nova.get("prints_abs"):
+                ev["prints"] = [x["arquivo"] for x in nova["prints"]][:8]
+                ev["prints_abs"] = nova["prints_abs"][:8]
+        except Exception as e:  # noqa: BLE001
+            print("prints da resposta:", e, flush=True)
+        ao_evento(ev)
 
 
 # ------------------------------------------------------------------ painel do projeto
@@ -494,6 +508,8 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/print", "Prints do site do projeto (computador e celular): /print ou /print /contato.html"),
+    ("/testar", "Testa o site do projeto (erros, links, celular, SEO): /testar, /testar <url> ou /testar corrigir"),
     ("/sincronizar", "Envia a base de conhecimento para o GitHub agora"),
     ("/projetos", "Lista os projetos"),
     ("/projeto", "Escolhe o projeto: /projeto <nome>"),
@@ -555,6 +571,13 @@ Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
+Prévia e teste de sites
+• /print: prints do site do projeto (computador e celular) · /print /contato.html /sobre.html
+• /testar: procura erros (páginas fora do ar, links quebrados, erros de JavaScript, celular, SEO) e dá uma nota
+• /testar https://site.com.br: testa um site publicado · /testar corrigir: o Jarvis corrige e confere pelos prints
+• Quando o Jarvis mexe num site, ele mesmo tira os prints, olha, corrige e manda as imagens junto com a resposta
+• No painel: botão 🖼
+
 Jogos do dia
 • /jogos: imagem + texto pronto para grupos no seu Telegram (também no 📱 → Jogos do dia)
 
@@ -596,6 +619,18 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd in ("/print", "/testar"):
+        if not proj:
+            return "Escolha um projeto primeiro: /projetos e depois /projeto <nome>", None
+        import site_previa
+        if site_previa.ocupado(proj):
+            return f"⏳ Já estou fazendo {site_previa.ocupado(proj)} de {proj}.", None
+        if cmd == "/testar" and arg.lower() == "corrigir":
+            return f"🛠 O Jarvis vai testar, corrigir e conferir pelos prints o site de {proj}.", "site_corrigir"
+        if cmd == "/print":
+            return f"📸 Tirando prints de {proj} (computador e celular)…", "site_print"
+        return (f"🧪 Testando {arg or proj}: páginas, links, erros, celular e SEO. Leva de 20 s a alguns minutos.",
+                "site_testar")
     if cmd == "/jogos":
         import urllib.request as _u
         token = os.environ.get("JARVIS_GATILHO_TOKEN", "")

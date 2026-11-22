@@ -24,7 +24,7 @@ Regras:
    - A: evolução segura (mesma estrutura, visual moderno e limpo);
    - B: moderna e ousada (tipografia forte, layout mais editorial);
    - C: focada em conversão (CTA claro, prova social, formulário em destaque).
-3. **Verificação visual**: abra cada variante pelo navegador, tire prints em desktop e celular, corrija o que estiver
+3. **Verificação visual**: `jarvis-site print redesign/variante-X` (prints desktop e celular) e olhe os PNGs com Read, corrija o que estiver
    quebrado (sobreposição, texto cortado, contraste) e salve os prints em `redesign/variante-X/prints/`.
 4. Crie `redesign/index.html` com links para as 3 variantes lado a lado (para a prévia do painel).
 5. Registre um resumo em `/workspace/.jarvis-conhecimento/projetos/<projeto>.md` (seção Redesign) se a base existir.

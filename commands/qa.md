@@ -17,6 +17,9 @@ Carregue a skill `orquestrador`. Use o navegador (ferramentas do MCP `playwright
 **1. Plano (máx. 10 linhas)**: liste as jornadas a testar, priorizando o foco pedido e o que dá dinheiro ou dá
 suporte (login, cadastro, pagamento/renovação, painel principal, formulários). Inclua celular (390x844).
 
+**1b. Varredura automática**: rode `jarvis-site testar <url ou pasta do projeto>` e use o relatório como ponto de partida
+(páginas fora do ar, links quebrados, erros de JavaScript, celular, SEO). Depois explore as jornadas no navegador.
+
 **2. Exploração**: para cada jornada, navegue como um usuário: caminho feliz, campos vazios e inválidos, voltar e
 recarregar, duplo clique em botões, mensagens de erro, estados vazios, links quebrados, console do navegador e
 responsividade. Para cada bug, registre: passos para reproduzir, esperado × obtido, print e gravidade

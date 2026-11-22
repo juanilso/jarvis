@@ -172,10 +172,52 @@ def rodar(chat_id, texto, responder_audio, compactar=False, proj=None):
         elif ev["tipo"] == "resposta":
             rodape = f"\n\n💲 custo estimado: US$ {ev['custo']:.4f}" if ev.get("custo") else ""
             enviar(chat_id, f"📁 {proj}\n" + ("⚠️ " if ev["erro"] else "") + ev["texto"] + rodape)
+            if ev.get("prints_abs"):
+                enviar_prints(chat_id, ev["prints_abs"], f"📸 {proj} · prévia")
             if ev["audio"]:
                 falar(chat_id, ev["resumo"])
 
     pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
+
+
+def enviar_prints(chat_id, caminhos, legenda=""):
+    """Manda os prints como foto; se o Telegram recusar (imagem muito alta), manda como arquivo."""
+    for i, cam in enumerate(caminhos[:8]):
+        nome = os.path.basename(cam).rsplit(".", 1)[0].replace("-desktop", " · computador").replace("-celular", " · celular")
+        leg = (legenda + "\n" if legenda and i == 0 else "") + nome
+        try:
+            r = tg_upload("sendPhoto", "photo", cam, chat_id=chat_id, caption=leg[:1000])
+            if not r.get("ok"):
+                raise ValueError(r)
+        except Exception:  # noqa: BLE001
+            try:
+                tg_upload("sendDocument", "document", cam, chat_id=chat_id, caption=leg[:1000])
+            except Exception as e:  # noqa: BLE001
+                print("erro ao enviar print:", e, flush=True)
+
+
+def site_no_telegram(chat_id, acao, arg):
+    """/print [páginas] e /testar [url]: roda o jarvis-site e devolve imagens + resumo."""
+    import site_previa
+    proj = estado.ler()["projeto"]
+    if acao == "site_print":
+        paginas = [p for p in arg.split() if p.startswith("/") or p.lower().startswith("http")] or None
+        alvo = paginas[0] if paginas and len(paginas) == 1 and paginas[0].lower().startswith("http") else None
+        ok, saida, d = site_previa.rodar("print", proj, alvo=alvo, paginas=None if alvo else paginas)
+        if d and d.get("prints_abs"):
+            enviar_prints(chat_id, d["prints_abs"], f"📸 {proj}")
+        else:
+            enviar(chat_id, "⚠️ Não consegui tirar os prints.\n" + saida[-1500:])
+        return
+    alvo = arg if arg.lower().startswith("http") else None
+    ok, saida, d = site_previa.rodar("testar", proj, alvo=alvo)
+    if not d:
+        enviar(chat_id, "⚠️ O teste não terminou.\n" + saida[-1500:])
+        return
+    enviar(chat_id, f"[{proj}] " + site_previa.resumo_teste(d) +
+           ("\n\n🛠 Para o Jarvis corrigir e conferir: /testar corrigir" if not alvo and d.get("nota", 100) < 100 else ""))
+    if d.get("prints_abs"):
+        enviar_prints(chat_id, d["prints_abs"], "📸 página inicial")
 
 
 def pesquisar(chat_id, tema, tipo="pesquisa"):
@@ -341,7 +383,8 @@ def tratar(msg):
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",
-                                                  "/atendimento", "/assumir", "/devolver", "/jogos") \
+                                                  "/atendimento", "/assumir", "/devolver", "/jogos",
+                                                  "/print", "/testar") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
@@ -352,6 +395,12 @@ def tratar(msg):
         elif acao == "tendencias":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip(), "tendencias"),
                              daemon=True).start()
+        elif acao in ("site_print", "site_testar"):
+            threading.Thread(target=site_no_telegram, args=(chat_id, acao, texto.partition(" ")[2].strip()),
+                             daemon=True).start()
+        elif acao == "site_corrigir":
+            import site_previa
+            iniciar_pedido(chat_id, site_previa.PROMPT_CORRIGIR, veio_de_audio=False)
         elif acao == "hermes":
             threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
                              lambda tipo, t: responder_hermes(chat_id, tipo, t)), daemon=True).start()
