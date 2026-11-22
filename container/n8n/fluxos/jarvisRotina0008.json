@@ -1,0 +1,91 @@
+{
+  "id": "jarvisRotina0008",
+  "name": "Jarvis · Jogos do dia",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "3d1c095a-68c6-4622-a93f-2003a07f3bdf",
+      "name": "Todo dia 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Jogos do dia\",\n  \"acao\": \"jogos\",\n  \"forcar\": true,\n  \"avisar\": true\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "065f9a3f-b617-46c3-a4fe-bc51118ef7b1",
+      "name": "Gerar jogos do dia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Jogos do dia\nTodo dia às 8h o Jarvis monta os jogos do futebol brasileiro, pesquisa os canais e manda no seu Telegram a **imagem** (Status) e o **texto pronto** para grupos. O robô do WhatsApp passa a responder com a lista.\n\n- Troque o horário no nó *Todo dia 8h* se quiser.\n- Ative no botão **Active**.",
+        "height": 260,
+        "width": 420
+      },
+      "id": "59799bd8-a668-4434-952d-ac9555f54352",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Todo dia 8h": {
+      "main": [
+        [
+          {
+            "node": "Gerar jogos do dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

@@ -493,6 +493,7 @@ COMANDOS = [
     ("/lembrar", "Procura na base de conhecimento"),
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
+    ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
     ("/sincronizar", "Envia a base de conhecimento para o GitHub agora"),
     ("/projetos", "Lista os projetos"),
     ("/projeto", "Escolhe o projeto: /projeto <nome>"),
@@ -554,6 +555,9 @@ Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
+Jogos do dia
+• /jogos: imagem + texto pronto para grupos no seu Telegram (também no 📱 → Jogos do dia)
+
 WhatsApp (atendimento automático)
 • 📱 no painel: conectar pelo QR code, ligar/desligar e editar a base de respostas
 • /atendimento · /assumir <número> · /devolver <número> · no próprio WhatsApp, escrever #bot devolve ao robô
@@ -592,6 +596,19 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd == "/jogos":
+        import urllib.request as _u
+        token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+        if not token:
+            return "⚽ Para usar os jogos do dia, ligue as automações: ./automacoes-configurar.sh", None
+        req = _u.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
+                         data=json.dumps({"acao": "jogos", "forcar": True, "avisar": True}).encode(),
+                         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+        try:
+            _u.urlopen(req, timeout=20).read()
+            return "⚽ Montando os jogos de hoje (pesquisando os canais). Em alguns minutos chegam aqui a imagem e o texto.", None
+        except Exception as e:  # noqa: BLE001
+            return f"⚠️ não consegui pedir os jogos ao painel ({type(e).__name__})", None
     if cmd in ("/atendimento", "/assumir", "/devolver"):
         import atendimento
         return atendimento.comando(cmd, arg), None

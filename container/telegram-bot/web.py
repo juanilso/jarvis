@@ -283,6 +283,27 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(png)))
             self.end_headers()
             return self.wfile.write(png)
+        if url.path == "/api/jogos":
+            import jogos
+            d = jogos.do_dia() or {}
+            return self._json({"config": jogos.config(), "ligas": jogos.LIGAS, "dia": d.get("dia"), "texto": d.get("texto", ""),
+                               "imagens": len(d.get("imagens") or []), "total": len(d.get("jogos") or []),
+                               "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0)})
+        if url.path == "/api/jogos/imagem":
+            import jogos
+            d = jogos.do_dia() or {}
+            try:
+                n = int(urllib.parse.parse_qs(url.query).get("n", ["1"])[0])
+                cam = (d.get("imagens") or [])[n - 1]
+                png = open(cam, "rb").read()
+            except (ValueError, IndexError, OSError):
+                return self._json({"erro": "sem imagem"}, 404)
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(png)))
+            self.end_headers()
+            return self.wfile.write(png)
         if url.path == "/api/atendimento/config":
             return self._json(dict(atend_config.carregar(), nomes=atend_config.NOMES_MENSAGENS,
                                    padrao=atend_config.MENSAGENS))
@@ -383,6 +404,18 @@ class Handler(BaseHTTPRequestHandler):
             if a == "faq":
                 atendimento.salvar_faq(str(d.get("texto", "")))
                 return self._json({"ok": True})
+            if a in ("jogos_gerar", "jogos_config", "jogos_telegram"):
+                import jogos
+                if a == "jogos_config":
+                    return self._json({"ok": True, "config": jogos.salvar_config(d.get("config") or {})})
+                if a == "jogos_telegram":
+                    jd = jogos.do_dia()
+                    if not jd:
+                        return self._json({"ok": False, "erro": "gere os jogos primeiro"}, 400)
+                    threading.Thread(target=jogos.enviar_telegram, args=(jd,), daemon=True).start()
+                    return self._json({"ok": True})
+                threading.Thread(target=jogos.gerar, kwargs={"forcar": True}, daemon=True).start()
+                return self._json({"ok": True, "msg": "gerando (alguns minutos por causa da pesquisa de canais)"})
             if a == "diagnostico":
                 return self._json(atendimento.diagnostico())
             if a == "atend_salvar":

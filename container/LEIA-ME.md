@@ -111,6 +111,19 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.16: jogos do dia (futebol brasileiro)
+
+- **⚽ no painel:** gera a agenda do dia (Série A, B, C, Copa do Brasil e estaduais), pesquisa **onde passa** cada jogo
+  e monta uma **imagem 1080×1920** (formato de Status; divide em várias se tiver muitos jogos) e o **texto pronto** para grupos,
+  com botões para copiar e mandar no Telegram. Configure campeonatos, nome da marca e rodapé.
+- **Telegram:** `/jogos` manda a imagem e o texto. **n8n:** rotina "Jarvis · Jogos do dia" (todo dia às 8h).
+- **WhatsApp:** o robô responde "que jogos tem hoje?" com a lista (📱 → Recursos → ⚽).
+- **Fontes:** agenda da API pública da ESPN (sem chave; não oficial, pode mudar sem aviso). Canais: pesquisa na internet em
+  sites de notícia — quando não acha, aparece "a confirmar". Confira os jogos mais importantes antes de divulgar.
+
+**Aplicar:** `git pull && docker compose build && docker compose --profile web --profile telegram up -d --force-recreate jarvisweb telegram`.
+Para a rotina diária: `./automacoes-configurar.sh` importa "Jarvis · Jogos do dia" (depois ative no n8n).
+
 ## Jarvis 1.15: mensagens editáveis, liga/desliga e proteção do número
 
 No **📱** há três seções novas:

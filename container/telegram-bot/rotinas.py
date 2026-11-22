@@ -28,7 +28,7 @@ import jarvis_core as core
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
-         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd"}
+         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "jogos"}
 _lock = threading.Lock()
 
 
@@ -85,6 +85,32 @@ def avisar_telegram(texto):
     return ok
 
 
+def avisar_telegram_foto(caminho, legenda=""):
+    """Manda uma imagem (PNG/JPG) para o seu Telegram."""
+    import uuid
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    chats = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
+    if not token or not chats or not os.path.isfile(caminho):
+        return False
+    dados = open(caminho, "rb").read()
+    ok = False
+    for chat in chats:
+        b = uuid.uuid4().hex
+        corpo = b"".join([
+            f"--{b}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat}\r\n".encode(),
+            f"--{b}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{legenda[:1000]}\r\n".encode(),
+            f"--{b}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"{os.path.basename(caminho)}\"\r\n"
+            f"Content-Type: image/png\r\n\r\n".encode(), dados, f"\r\n--{b}--\r\n".encode()])
+        req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendPhoto", data=corpo,
+                                     headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+        try:
+            urllib.request.urlopen(req, timeout=60)
+            ok = True
+        except Exception as e:  # noqa: BLE001
+            print("erro ao mandar foto no Telegram:", e, flush=True)
+    return ok
+
+
 def _limpar_nome(nome):
     return re.sub(r"[^\w .:-]", "", str(nome or "rotina"))[:60] or "rotina"
 
@@ -99,6 +125,20 @@ def executar(dados, publicar, pool, estado):
     if acao == "atender":  # WhatsApp: resposta rápida, sem registrar como rotina (seria ruído)
         import atendimento
         return 200, dict(atendimento.atender(dados), ok=True)
+    if acao == "jogos":  # jogos do dia: gera (pesquisa canais) e, se pedido, manda imagem + texto no Telegram
+        import jogos
+
+        def _jogos():
+            try:
+                d = jogos.gerar(forcar=bool(dados.get("forcar", True)))
+                if dados.get("avisar", True):
+                    jogos.enviar_telegram(d)
+                registrar({"id": f"jogos-{d['dia']}", "rotina": "Jogos do dia", "acao": "jogos", "projeto": "",
+                           "ok": True, "resultado": f"{len(d['jogos'])} jogos · {d['canais_pesquisados']} canais pesquisados"})
+            except Exception as e:  # noqa: BLE001
+                avisar_telegram(f"⚽ Não consegui montar os jogos do dia: {type(e).__name__}: {e}"[:500])
+        threading.Thread(target=_jogos, daemon=True).start()
+        return 202, {"ok": True, "status": "gerando os jogos do dia (alguns minutos por causa da pesquisa de canais)"}
     if acao == "atendimento_cmd":  # /atendimento, /assumir, /devolver vindos do Telegram
         import atendimento
         cmd = str(dados.get("cmd") or "/atendimento")

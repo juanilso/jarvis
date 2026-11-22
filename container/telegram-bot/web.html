@@ -70,6 +70,14 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #guia code{background:#081420;padding:1px 5px;border-radius:4px}#guia li{margin:3px 0}#guia table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0}
 #guia th,#guia td{border-bottom:1px dashed var(--ln);padding:5px 6px;text-align:left;vertical-align:top}#guia th{color:var(--c2);font-weight:500}
 #guia details{border:1px dashed var(--ln);border-radius:8px;padding:6px 10px;margin:6px 0}#guia summary{cursor:pointer;color:var(--t)}#guia .fechar{position:absolute;right:12px;top:10px}
+#jg{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#jg.aberto{display:flex}#jg .caixa{width:min(1000px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
+#jg h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#jg h3{font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);margin:16px 0 8px}
+#jg .fechar{position:absolute;right:12px;top:10px}#jg .prim{border-color:var(--c);color:var(--c2)}
+.jgGrade{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px}@media (max-width:760px){.jgGrade{grid-template-columns:1fr}}
+.jgImgs{display:flex;gap:8px;overflow-x:auto}.jgImgs img{width:280px;border-radius:10px;border:1px solid var(--ln)}
+#jgTexto{width:100%;min-height:360px;padding:10px;font:13px/1.5 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
+.jgLigas{display:flex;flex-wrap:wrap;gap:6px 14px}.jgLigas label{font-size:13px;display:flex;gap:5px;align-items:center}
 #wa{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
 #wa.aberto{display:flex}
 #wa .caixa{width:min(900px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
@@ -152,6 +160,28 @@ footer{position:relative}
   <div class="lin"><input type="text" id="gMsgCommit" placeholder="mensagem do commit (opcional)"><button class="prim" id="gPush">⬆ Salvar e enviar</button><button id="gPull">⬇ Atualizar</button><button id="gCriarRepo">Criar repositório</button><a id="gLink" target="_blank" style="display:none;color:var(--c2);font-size:13px">abrir no GitHub ↗</a></div>
   <div id="gMsg"></div>
 </div></div>
+<div id="jg"><div class="caixa">
+  <button class="fechar" id="jgFechar">✕</button>
+  <h2>⚽ JOGOS DO DIA · FUTEBOL BRASILEIRO</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button id="jgGerar" class="prim">⚽ Gerar agora</button><button id="jgTg">📨 Mandar no meu Telegram</button>
+    <button id="jgCopiar">📋 Copiar texto</button><span class="waDica" id="jgMsg"></span></div>
+  <div class="jgGrade" style="margin-top:12px">
+    <div><h3>IMAGEM (STATUS / DIVULGAÇÃO)</h3><div class="jgImgs" id="jgImgs"><div class="waDica">ainda não gerado hoje</div></div>
+      <div class="waDica">Toque e segure a imagem para salvar no celular.</div></div>
+    <div><h3>TEXTO PRONTO PARA GRUPOS</h3><textarea id="jgTexto" spellcheck="false" placeholder="clique em Gerar agora"></textarea></div>
+  </div>
+  <h3>CONFIGURAÇÃO</h3>
+  <div class="jgLigas" id="jgLigas"></div>
+  <div class="waCfg" style="margin-top:8px">
+    <label>Nome da marca na imagem<input id="jgMarca" placeholder="ex.: IT Suport"></label>
+    <label>Frase do rodapé<input id="jgRodape" placeholder="Bom jogo! ⚽"></label>
+    <label><span><input type="checkbox" id="jgCanais"> Pesquisar onde passa cada jogo (leva alguns minutos)</span></label>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="jgSalvar">💾 Salvar configuração</button><span class="waDica" id="jgCfgMsg"></span></div>
+  <div class="waDica" style="margin-top:10px">Todo dia: ative no n8n a rotina <b>"Jarvis · Jogos do dia"</b> (8h). No WhatsApp, o robô responde "que jogos tem hoje?" com esta lista
+    (📱 → Recursos). No Telegram: <code>/jogos</code>.</div>
+</div></div>
 <div id="wa"><div class="caixa">
   <button class="fechar" id="waFechar">✕</button>
   <h2>WHATSAPP · ATENDIMENTO</h2>
@@ -184,6 +214,7 @@ footer{position:relative}
     <label><input type="checkbox" id="recPag"> 💰 Pagamentos automáticos (confirmar / pedir login)</label>
     <label><input type="checkbox" id="recTeste"> 🎁 Teste grátis</label>
     <label><input type="checkbox" id="recCons"> 📅 Consulta de vencimento</label>
+    <label><input type="checkbox" id="recJogos"> ⚽ Responder sobre os jogos do dia</label>
     <label><input type="checkbox" id="recCalar"> 🙋 Quando eu respondo (celular ou WhatsApp Web), o robô se cala naquela conversa</label>
   </div>
   <div class="waDica">Com essa opção <b>desligada</b>, o robô continua respondendo mesmo depois de você; para calar uma conversa, escreva
@@ -343,6 +374,11 @@ footer{position:relative}
    se não veio o login, pergunta ao cliente e conclui quando ele responder. No WhatsApp, o cliente também pode perguntar
    "quando vence?" e pedir teste grátis (1 a cada 30 dias por telefone). Configure em 📱 → <b>Painel (API) e regras</b>; o leitor de pagamentos liga com <code>./pagamentos-configurar.sh</code>.
    Quem chama a API é código com regras fixas: a IA só entende o pedido.</details>
+  <details><summary>Como funcionam os jogos do dia (⚽)?</summary>
+   O Jarvis pega a agenda do futebol brasileiro (Série A, B, C, Copa do Brasil e estaduais) na ESPN, pesquisa na internet onde
+   passa cada jogo (marca "a confirmar" quando não acha), e gera uma <b>imagem</b> no formato de Status e um <b>texto pronto</b> para grupos.
+   Use o botão ⚽ do painel, <code>/jogos</code> no Telegram, ou ative no n8n a rotina "Jarvis · Jogos do dia" (todo dia às 8h, chega no Telegram).
+   O robô do WhatsApp responde "que jogos tem hoje?" com a lista. Os canais vêm de sites de notícias: confira os jogos mais importantes.</details>
   <details><summary>Posso responder os clientes pelo WhatsApp Web junto com o robô?</summary>
    Pode. O robô conecta como mais um "dispositivo" e o seu WhatsApp Web/celular continuam funcionando. Em 📱 → <b>Recursos</b> você escolhe:
    <b>ligado</b> (padrão) = quando você responde, o robô se cala naquela conversa e volta depois dos minutos sem resposta sua;
@@ -378,6 +414,7 @@ footer{position:relative}
     </select>
     <button id="agentesBtn" title="Avisos dos agentes">👥 on</button>
     <button id="btnGestao" title="Projetos e GitHub">📁</button>
+    <button id="btnJg" title="Jogos do dia (futebol brasileiro)">⚽</button>
     <button id="btnWa" title="WhatsApp: atendimento automático">📱</button>
     <button id="btnKb" title="Base de conhecimento">🧠</button>
     <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
@@ -558,6 +595,23 @@ function kbListar(notas){const el=$("kbLista");
     const j=await api("/api/kb/ler?c="+encodeURIComponent(d.dataset.c));$("kbNota").classList.remove("vazio");$("kbNota").innerHTML=j.erro?esc(j.erro):md(j.texto)})}
 async function kbCarregar(){const q=$("kbBusca").value.trim();const j=q?await api("/api/kb/buscar?q="+encodeURIComponent(q)):await api("/api/kb/recentes"+(kbTipo?"?tipo="+kbTipo:""));
   kbListar((j.notas||[]).filter(n=>!kbTipo||n.caminho.startsWith(kbTipo+"/")))}
+/* ---------- Jogos do dia ---------- */
+let jgTimer=null,jgGerado=null;
+async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)return;const c=j.config;
+  $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
+  if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;
+  if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
+    $("jgImgs").innerHTML=j.imagens?Array.from({length:j.imagens},(_,i)=>`<a href="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" target="_blank"><img src="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" alt="jogos ${i+1}"></a>`).join(""):'<div class="waDica">sem imagem</div>';
+    $("jgMsg").textContent=`✔ ${j.total} jogos · ${j.canais_pesquisados} canais pesquisados · ${new Date(j.gerado*1000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`}}
+$("btnJg").onclick=()=>{$("jg").classList.add("aberto");jgCarregar();clearInterval(jgTimer);jgTimer=setInterval(jgCarregar,5000)};
+function jgFechar(){$("jg").classList.remove("aberto");clearInterval(jgTimer)}
+$("jgFechar").onclick=jgFechar;$("jg").onclick=e=>{if(e.target.id==="jg")jgFechar()};
+$("jgGerar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_gerar"});$("jgMsg").textContent="⏳ "+(r.msg||r.erro||"")};
+$("jgTg").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_telegram"});$("jgMsg").textContent=r.ok?"📨 enviando no Telegram…":"❌ "+(r.erro||"")};
+$("jgCopiar").onclick=async()=>{try{await navigator.clipboard.writeText($("jgTexto").value);$("jgMsg").textContent="📋 copiado!"}catch(e){$("jgTexto").select();document.execCommand("copy");$("jgMsg").textContent="📋 copiado"}};
+$("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
+  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked}});
+  $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;
 const WA_ST={WORKING:["✅ conectado","waOk"],SCAN_QR_CODE:["📷 aguardando leitura do QR code",""],STARTING:["⏳ iniciando…",""],
@@ -593,7 +647,7 @@ $("cfgSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"p
 $("cfgTestar").onclick=async()=>{$("cfgMsg").textContent="⏳ testando…";const r=await api("/api/whatsapp/acao",{acao:"painel_testar"});$("cfgMsg").textContent=r.msg||r.erro||"?"};
 let atPadrao={};
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
-  $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;
+  $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;$("recJogos").checked=c.recursos.jogos!==false;
   const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prMinuto").value=p.max_por_minuto;
   $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
   $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
@@ -603,7 +657,7 @@ $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa 
   $("waDiagRes").innerHTML=(r.passos||[]).map(p=>`<div>${p.ok?"✅":"❌"} <b>${esc(p.titulo)}</b>${p.detalhe?" — "+esc(p.detalhe):""}</div>`).join("")+
     (r.ok?"<div style='margin-top:4px'>Tudo certo nesse caminho. Se um cliente não recebeu resposta, veja ÚLTIMOS EVENTOS.</div>":"")};
 $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("textarea").forEach(t=>m[t.dataset.k]=t.value);
-  const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked,calar_quando_respondo:$("recCalar").checked},
+  const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked,calar_quando_respondo:$("recCalar").checked,jogos:$("recJogos").checked},
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},mensagens:m}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};

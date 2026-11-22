@@ -770,6 +770,15 @@ def atender(dados):
                                                 "- Testes grátis estão PAUSADOS: diga isso com gentileza.")
                     if not C.recurso("consulta"):
                         regras += "\n- Consulta de vencimento está desligada: chame o atendente ([[HUMANO]]).\n"
+                if C.recurso("jogos"):
+                    try:
+                        import jogos as _jogos
+                        jd = _jogos.do_dia()
+                        if jd and jd.get("texto"):
+                            regras += ("\n\nJOGOS DE HOJE (se o cliente perguntar sobre jogos, futebol ou programação de hoje, "
+                                       "responda com esta lista, do jeito que está):\n" + jd["texto"] + "\n")
+                    except Exception:  # noqa: BLE001
+                        pass
                 resposta = _perguntar_modelo(_historico(chat), ler_faq() + regras, aviso)
             except Exception as erro:  # noqa: BLE001
                 detalhe = str(erro)[:160]
