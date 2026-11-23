@@ -111,23 +111,6 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
-## Jarvis 1.29: rede credenciada por dados oficiais (ANS + CNES), atualizada todo mês
-
-- **O que faz:** baixa as bases abertas da **ANS** (quem atende cada operadora, por estado) e do **CNES/DATASUS**
-  (endereço, telefone, e-mail, localização, profissionais e ocupação/especialidade), cruza pelo código CNES e
-  manda no Telegram o resumo + um zip com 3 planilhas (abrem no Excel): `estabelecimentos.csv`,
-  `profissionais.csv` e `hospitais_planos.csv` (qual hospital atende qual plano).
-- **Padrão: AMIL no Rio de Janeiro.** No Telegram: `/rede` (gera agora), `/rede SP AMIL`, `/rede RJ 326305`
-  (código ANS). A escolha fica salva.
-- **Todo mês:** fluxo do n8n "Jarvis · Rede credenciada" (dia 12, 6h). Avisa **quem entrou e quem saiu** da rede
-  em relação ao mês anterior. Importe só ele e clique em **Active**:
-  `docker compose --profile automacoes exec -T -u node n8n n8n import:workflow --input=/opt/jarvis-n8n/fluxos/jarvisRotina0010.json`
-- **Primeira vez:** baixa arquivos grandes (o CNES tem centenas de MB) e pode levar de 10 a 40 minutos. Os downloads
-  ficam guardados por 20 dias. Se algo der errado chega o `DIAGNOSTICO.txt` (arquivos e colunas encontrados): me mande.
-- **Limites da fonte:** a ANS atualiza uma vez por mês; os profissionais vêm do CNES (trabalham no local, mas nem
-  todos atendem pelo convênio); a ligação com o plano só existe para a rede hospitalar.
-- Gatilho: `{"acao":"rede_ans","config":{"uf":"RJ","operadora":"AMIL"}}`. Restauração: branch `versao-1.28.0`.
-
 ## Jarvis 1.28: alerta antes dos jogos (no seu Telegram e num grupo)
 
 - ⚽ → **⏰ Alerta antes do jogo**: X minutos antes (padrão 30) de cada jogo da lista, o Jarvis manda a imagem

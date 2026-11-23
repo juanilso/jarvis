@@ -31,9 +31,8 @@ TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
          "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "jogos",
-         "previa", "site_testar", "rede_ans"}
+         "previa", "site_testar"}
 _lock = threading.Lock()
-_rede = {"rodando": False}
 
 
 def autorizado(cabecalho):
@@ -115,32 +114,6 @@ def avisar_telegram_foto(caminho, legenda=""):
     return ok
 
 
-def avisar_telegram_documento(caminho, legenda=""):
-    """Manda um arquivo (zip, csv, pdf…) para o seu Telegram (até 50 MB)."""
-    import uuid
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    chats = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
-    if not token or not chats or not os.path.isfile(caminho) or os.path.getsize(caminho) > 49 * 1024 * 1024:
-        return False
-    dados = open(caminho, "rb").read()
-    ok = False
-    for chat in chats:
-        b = uuid.uuid4().hex
-        corpo = b"".join([
-            f"--{b}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat}\r\n".encode(),
-            f"--{b}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{legenda[:1000]}\r\n".encode(),
-            f"--{b}\r\nContent-Disposition: form-data; name=\"document\"; filename=\"{os.path.basename(caminho)}\"\r\n"
-            f"Content-Type: application/octet-stream\r\n\r\n".encode(), dados, f"\r\n--{b}--\r\n".encode()])
-        req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendDocument", data=corpo,
-                                     headers={"Content-Type": f"multipart/form-data; boundary={b}"})
-        try:
-            urllib.request.urlopen(req, timeout=120)
-            ok = True
-        except Exception as e:  # noqa: BLE001
-            print("erro ao mandar arquivo no Telegram:", e, flush=True)
-    return ok
-
-
 def _limpar_nome(nome):
     return re.sub(r"[^\w .:-]", "", str(nome or "rotina"))[:60] or "rotina"
 
@@ -174,42 +147,6 @@ def executar(dados, publicar, pool, estado):
                 avisar_telegram(f"⚽ Não consegui montar os jogos do dia: {type(e).__name__}: {e}"[:500])
         threading.Thread(target=_jogos, daemon=True).start()
         return 202, {"ok": True, "status": "gerando os jogos do dia (alguns minutos por causa da pesquisa de canais)"}
-    if acao == "rede_ans":  # rede credenciada por dados oficiais (ANS + CNES), planilhas no Telegram
-        import rede_ans
-        if dados.get("config"):
-            try:
-                rede_ans.salvar_config(dados["config"])
-            except ValueError as e:
-                return 400, {"erro": str(e)}
-        if _rede["rodando"]:
-            return 409, {"erro": "a rede já está sendo montada; aguarde o aviso no Telegram"}
-
-        def _rede_rodar():
-            _rede["rodando"] = True
-            try:
-                r = rede_ans.gerar()
-                avisar_telegram(rede_ans.texto_resumo(r))
-                pacote = os.path.join(r["pasta"], f"rede-{r['uf'].lower()}-{time.strftime('%Y-%m')}.zip")
-                import zipfile
-                with zipfile.ZipFile(pacote, "w", zipfile.ZIP_DEFLATED) as z:
-                    for n in ("estabelecimentos.csv", "profissionais.csv", "hospitais_planos.csv", "DIAGNOSTICO.txt"):
-                        if os.path.exists(os.path.join(r["pasta"], n)):
-                            z.write(os.path.join(r["pasta"], n), n)
-                if not avisar_telegram_documento(pacote, "📎 Planilhas da rede (abrem no Excel/Google Planilhas)"):
-                    avisar_telegram(f"As planilhas ficaram no servidor em {r['pasta']} (grandes demais para o Telegram).")
-                registrar({"id": f"rede-{time.time():.0f}", "rotina": dados.get("rotina") or "Rede credenciada",
-                           "acao": "rede_ans", "projeto": "", "ok": True,
-                           "resultado": f"{r['estabelecimentos']} estabelecimentos · +{len(r['entrou'])} −{len(r['saiu'])}"})
-            except Exception as e:  # noqa: BLE001
-                avisar_telegram(f"🏥 Não consegui montar a rede: {type(e).__name__}: {str(e)[:300]}")
-                import glob
-                diags = sorted(glob.glob(os.path.join(rede_ans.DIR, "*", "*", "DIAGNOSTICO.txt")), key=os.path.getmtime)
-                if diags:
-                    avisar_telegram_documento(diags[-1], "🔎 Diagnóstico (me mande para eu ajustar)")
-            finally:
-                _rede["rodando"] = False
-        threading.Thread(target=_rede_rodar, daemon=True).start()
-        return 202, {"ok": True, "status": "montando a rede; o resumo e as planilhas chegam no Telegram"}
     if acao in ("previa", "site_testar"):
         import site_previa
         projeto = str(dados.get("projeto") or estado.ler()["projeto"] or "")
