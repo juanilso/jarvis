@@ -38,14 +38,15 @@ read -r -p "Ordem de preferência [$ordem]: " o; gravar JARVIS_AJUDANTES "${o:-$
 echo; echo "→ Recriando os contêineres para lerem as chaves…"
 docker compose --profile web --profile telegram up -d --force-recreate jarvisweb telegram >/dev/null
 docker compose up -d --force-recreate dev >/dev/null 2>&1 || true
-echo "→ Testando cada ajudante (uma pergunta curta)…"
-docker compose --profile telegram exec -T telegram python3 - <<'PY' || true
+echo "→ Testando cada ajudante (até 20 s cada; as chaves já estão gravadas, Ctrl+C pula o teste)…"
+timeout 200 docker compose --profile telegram exec -T -e JARVIS_AJUDANTE_TIMEOUT=20 telegram python3 -u - <<'PY' || echo "  (teste interrompido ou demorou demais: confira depois com /ajudantes no Telegram)"
 import sys; sys.path.insert(0, "/opt/jarvis-bots")
 import ajudantes as a
-for n in a.configurados():
-    r = a.perguntar("Responda só: ok", ia=n, maximo=20)
-    print(f"  {n}: {'✅ ' + r['modelo'] if r['ok'] else '❌ ' + '; '.join(r.get('tentativas', []))[:200]}")
 if not a.configurados():
     print("  nenhuma chave configurada")
+for n in a.configurados():
+    print(f"  {n}: testando…", flush=True)
+    r = a.perguntar("Responda só: ok", ia=n, maximo=20)
+    print(f"  {n}: {'✅ ' + r['modelo'] if r['ok'] else '❌ ' + '; '.join(r.get('tentativas', []))[:200]}", flush=True)
 PY
 echo; echo "Pronto. No Telegram: /ajudantes (situação) · /ajudante <tarefa> (pedido direto)."
