@@ -27,7 +27,8 @@ LIGAS = {  # código ESPN -> nome em português
     "bra.camp.mineiro": "Mineiro", "bra.camp.gaucho": "Gaúcho",
 }
 PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo! ⚽",
-          "estilo": "arte"}  # arte: fundo gerado por IA (cai para o simples se falhar) · simples: o de sempre
+          "estilo": "arte",
+          "escudos": False}  # mostra o escudo de cada time (imagem informada pela ESPN) no lugar do selo com a sigla  # arte: fundo gerado por IA (cai para o simples se falhar) · simples: o de sempre
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
 
@@ -48,6 +49,8 @@ def salvar_config(novo):
             c[k] = str(novo[k])[:60]
     if "canais" in novo:
         c["canais"] = bool(novo["canais"])
+    if "escudos" in novo:
+        c["escudos"] = bool(novo["escudos"])
     if novo.get("estilo") in ("arte", "simples"):
         c["estilo"] = novo["estilo"]
     os.makedirs(DIR, exist_ok=True)
@@ -116,7 +119,8 @@ def agenda(dia=None, baixar=_baixar):
                           # sigla e cores do clube (para os selos do banner; nada de escudo oficial)
                           "sigla_casa": _sigla(casa), "sigla_fora": _sigla(fora),
                           "cor_casa": (casa.get("team") or {}).get("color") or "", "cor2_casa": (casa.get("team") or {}).get("alternateColor") or "",
-                          "cor_fora": (fora.get("team") or {}).get("color") or "", "cor2_fora": (fora.get("team") or {}).get("alternateColor") or ""})
+                          "cor_fora": (fora.get("team") or {}).get("color") or "", "cor2_fora": (fora.get("team") or {}).get("alternateColor") or "",
+                          "logo_casa": (casa.get("team") or {}).get("logo") or "", "logo_fora": (fora.get("team") or {}).get("logo") or ""})
     ordem = {nome: i for i, nome in enumerate(LIGAS.values())}  # Série A primeiro; dentro de cada um, por horário
     jogos.sort(key=lambda j: (ordem.get(j["liga"], 99), j["ts"]))
     return jogos, erros

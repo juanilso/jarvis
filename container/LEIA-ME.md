@@ -111,6 +111,12 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.27.1: escudos dos times (opcional)
+
+- ⚽ → "Mostrar os escudos dos times": usa a imagem de cada time informada pela ESPN (baixada uma vez e guardada),
+  dentro de um círculo claro no cartão. Uso informativo, sob sua responsabilidade. Escudo que não baixar → selo com
+  cores e sigla. O fundo da IA continua sem escudos (a IA desenharia escudos falsos).
+
 ## Jarvis 1.27: banner dos jogos com arte de IA
 
 - Estilo novo **🎨 Arte com IA** (padrão): fundo gerado por IA todo dia (estádio à noite, refletores, bola e dois

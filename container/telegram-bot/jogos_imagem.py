@@ -136,8 +136,45 @@ def _contraste(cor):
     return (15, 15, 15) if (0.299 * r + 0.587 * g + 0.114 * b) > 160 else (255, 255, 255)
 
 
+def _escudo(url, pasta):
+    """Baixa (uma vez) o escudo informado pela ESPN. Devolve imagem RGBA ou None."""
+    if not url or not url.startswith("https://"):
+        return None
+    import hashlib
+    import urllib.request
+    dirc = os.path.join(pasta, "escudos")
+    cam = os.path.join(dirc, hashlib.sha1(url.encode()).hexdigest()[:16] + ".png")
+    try:
+        if not os.path.exists(cam):
+            os.makedirs(dirc, exist_ok=True)
+            req = urllib.request.Request(url, headers={"User-Agent": "Jarvis/1.27 (jogos do dia)"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                bruto = r.read(3_000_000)
+            from io import BytesIO
+            Image.open(BytesIO(bruto)).convert("RGBA").save(cam)
+        return Image.open(cam).convert("RGBA")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _colar_escudo(img, cx, cy, raio, escudo):
+    """Escudo dentro de um círculo claro, centralizado e sem distorcer."""
+    sombra = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sombra).ellipse([cx - raio - 6, cy - raio + 4, cx + raio + 6, cy + raio + 16], fill=(0, 0, 0, 150))
+    img.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(10)))
+    d = ImageDraw.Draw(img)
+    d.ellipse([cx - raio, cy - raio, cx + raio, cy + raio], fill=(245, 247, 250))
+    caixa = escudo.getbbox()
+    if caixa:
+        escudo = escudo.crop(caixa)
+    lado = int(raio * 1.42)
+    esc = min(lado / escudo.width, lado / escudo.height)
+    e2 = escudo.resize((max(1, int(escudo.width * esc)), max(1, int(escudo.height * esc))), Image.LANCZOS)
+    img.alpha_composite(e2, (int(cx - e2.width / 2), int(cy - e2.height / 2)))
+
+
 def _selo(img, cx, cy, raio, cor, cor2, sigla):
-    """Selo redondo nas cores do clube com a sigla (sem escudo oficial)."""
+    """Selo redondo nas cores do clube com a sigla (usado quando não há escudo)."""
     sombra = Image.new("RGBA", img.size, (0, 0, 0, 0))
     ImageDraw.Draw(sombra).ellipse([cx - raio - 6, cy - raio + 4, cx + raio + 6, cy + raio + 16], fill=(0, 0, 0, 150))
     img.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(10)))
@@ -200,8 +237,13 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
         liga = j["liga"].upper()
         w = d.textlength(liga, font=f_liga)
         d.text(((L - w) / 2, y + 18), liga, font=f_liga, fill=CIANO)
-        _selo(img, 205, y + 112, 74, cor_c, _hex(j.get("cor2_casa"), (255, 255, 255)), j.get("sigla_casa") or j["casa"][:3].upper())
-        _selo(img, L - 205, y + 112, 74, cor_f, _hex(j.get("cor2_fora"), (255, 255, 255)), j.get("sigla_fora") or j["fora"][:3].upper())
+        for lado, cx, cor_t in (("casa", 205, cor_c), ("fora", L - 205, cor_f)):
+            escudo = _escudo(j.get(f"logo_{lado}"), cfg.get("_pasta", "")) if cfg.get("escudos") and cfg.get("_pasta") else None
+            if escudo is not None:
+                _colar_escudo(img, cx, y + 112, 74, escudo)
+            else:
+                _selo(img, cx, y + 112, 74, cor_t, _hex(j.get(f"cor2_{lado}"), (255, 255, 255)),
+                      j.get(f"sigla_{lado}") or j[lado][:3].upper())
         d = ImageDraw.Draw(img)
         for nome_t, cx in ((j["casa"], 205), (j["fora"], L - 205)):
             t = _caber(d, nome_t.upper(), f_time, 270)
@@ -249,7 +291,7 @@ def _desenhar_arte(jogos, dia, cfg, pasta, info):
     caminhos = []
     for i, p in enumerate(paginas, 1):
         cam = os.path.join(pasta, f"{dia.isoformat()}-jogos-{i}.png")
-        _pagina_arte(fundo, p, dia, cfg, i, len(paginas)).save(cam, optimize=True)
+        _pagina_arte(fundo, p, dia, {**cfg, "_pasta": pasta}, i, len(paginas)).save(cam, optimize=True)
         caminhos.append(cam)
     info.update(estilo="arte", arte=origem)
     return caminhos
