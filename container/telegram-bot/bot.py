@@ -461,7 +461,7 @@ def tratar(msg):
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp",
-                                                  "/print", "/testar", "/previa", "/piloto",
+                                                  "/print", "/testar", "/previa", "/piloto", "/rede",
                                                   "/ajudantes", "/ajudante") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)

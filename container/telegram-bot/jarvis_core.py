@@ -526,6 +526,7 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/rede", "Rede credenciada por dados oficiais (ANS + CNES): /rede · /rede RJ AMIL · /rede SP 326305"),
     ("/planejar", "Planeja um projeto antes de desenvolver: perguntas, fluxos, regras, protótipo e testes (n8n)"),
     ("/ajudantes", "Outras IAs (Gemini, Groq, NVIDIA, Cloudflare…) como mão de obra do Jarvis: situação e cota do dia"),
     ("/ajudante", "Pede uma tarefa de texto a outra IA: /ajudante <tarefa> ou /ajudante nvidia <tarefa>"),
@@ -604,6 +605,11 @@ WhatsApp: vigia
 • /whatsapp: situação · /whatsapp testar · /whatsapp reiniciar (sem QR) · /whatsapp reconectar (QR novo no Telegram)
 • O vigia testa sozinho a cada 5 min, conserta (sessão, webhook, fluxo do n8n) e te avisa, com a lista de quem
   escreveu e ficou sem resposta
+
+Rede credenciada (dados oficiais ANS + CNES)
+• /rede: monta a rede da operadora configurada (padrão: AMIL no RJ) com endereço, telefone, especialidades e
+  profissionais; manda o resumo e as planilhas aqui; todo mês o n8n atualiza e avisa quem entrou e quem saiu
+• /rede SP AMIL · /rede RJ 326305 (código ANS da operadora) · a escolha fica salva para as próximas
 
 Planejar antes de desenvolver
 • /planejar sistema de rede credenciada com app do membro e painel do credenciado: o Jarvis faz as perguntas
@@ -713,6 +719,34 @@ def comando(estado, pool, texto):
             return f"📸 Tirando prints de {proj} (computador e celular)…", "site_print"
         return (f"🧪 Testando {arg or proj}: páginas, links, erros, celular e SEO. Leva de 20 s a alguns minutos.",
                 "site_testar")
+    if cmd == "/rede":
+        import urllib.request as _u
+        token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+        if not token:
+            return "🏥 Para montar a rede, ligue as automações: ./automacoes-configurar.sh", None
+        corpo = {"acao": "rede_ans"}
+        partes = arg.split()
+        uf = next((x.upper() for x in partes if len(x) == 2 and x.isalpha()), None)
+        resto = " ".join(x for x in partes if x.upper() != uf).strip()
+        cfg = {}
+        if uf:
+            cfg["uf"] = uf
+        if resto:
+            if re.fullmatch(r"[\d, ]+", resto):
+                cfg["codigos"] = resto
+            else:
+                cfg.update(operadora=resto, codigos=[])
+        if cfg:
+            corpo["config"] = cfg
+        req = _u.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
+                         data=json.dumps(corpo).encode(),
+                         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+        try:
+            _u.urlopen(req, timeout=30).read()
+            return ("🏥 Montando a rede credenciada pelos dados oficiais (ANS + CNES). Na primeira vez baixa arquivos "
+                    "grandes e pode levar de 10 a 40 minutos; o resumo e as planilhas chegam aqui."), None
+        except Exception as e:  # noqa: BLE001
+            return f"⚠️ não consegui pedir ao painel ({type(e).__name__})", None
     if cmd == "/jogos":
         import urllib.request as _u
         token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
