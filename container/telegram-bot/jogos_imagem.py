@@ -210,7 +210,8 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
     wt = d.textlength(tag, font=f_tag)
     d.rounded_rectangle([(L - wt) / 2 - 26, 60, (L + wt) / 2 + 26, 112], 26, fill=VERDE)
     d.text(((L - wt) / 2, 70), tag, font=f_tag, fill=(6, 20, 12))
-    for txt, f, y, cor in (("DESTAQUES", f_tit, 120, BRANCO), ("DO DIA", f_sub, 280, OURO)):
+    for txt, f, y, cor in ((cfg.get("_titulo") or "DESTAQUES", f_tit, 120, BRANCO),
+                           (cfg.get("_subtitulo") or "DO DIA", f_sub, 280, OURO)):
         w = d.textlength(txt, font=f)
         d.text(((L - w) / 2 + 4, y + 5), txt, font=f, fill=(0, 0, 0))
         d.text(((L - w) / 2, y), txt, font=f, fill=cor)
@@ -283,7 +284,7 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
 
 def _desenhar_arte(jogos, dia, cfg, pasta, info):
     import jogos_arte
-    fundo, origem = jogos_arte.fundo_ia(dia, jogos[0], pasta)
+    fundo, origem = jogos_arte.fundo_ia(dia, jogos[0], cfg.get("_pasta_arte") or pasta)
     if fundo is None:
         info["aviso"] = f"arte com IA indisponível ({origem[:200]}); saiu o banner simples"
         return None

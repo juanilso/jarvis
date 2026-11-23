@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.28: alerta antes dos jogos (no seu Telegram e num grupo)
+
+- ⚽ → **⏰ Alerta antes do jogo**: X minutos antes (padrão 30) de cada jogo da lista, o Jarvis manda a imagem
+  "COMEÇA EM 30 MINUTOS" (mesmo estilo do banner) + texto com times, campeonato, horário e canal. Jogos no mesmo
+  horário saem num alerta só. Não repete.
+- Destinos: o seu Telegram (bot do Jarvis) e/ou **um grupo**, por um **bot próprio só de envio**: crie no
+  @BotFather (/newbot), cole o token no painel, coloque o bot no grupo, mande uma mensagem lá e clique em
+  **🔎 Detectar grupo**. **📨 Testar envio** confere tudo. O token fica em `/segredos/jogos_grupo.json` (600) e nunca
+  aparece inteiro no painel.
+- Opcional: **mandar no grupo também a lista do dia** quando ela sai (rotina das 8h).
+- Se o bot perder permissão no grupo, você recebe o aviso no seu Telegram.
+
 ## Jarvis 1.27.1: escudos dos times (opcional)
 
 - ⚽ → "Mostrar os escudos dos times": usa a imagem de cada time informada pela ESPN (baixada uma vez e guardada),

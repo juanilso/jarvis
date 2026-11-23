@@ -136,6 +136,11 @@ def executar(dados, publicar, pool, estado):
                 d = jogos.gerar(forcar=bool(dados.get("forcar", True)))
                 if dados.get("avisar", True):
                     jogos.enviar_telegram(d)
+                    try:  # e no grupo, se você ligou "mandar a lista do dia no grupo"
+                        import jogos_alertas
+                        jogos_alertas.lista_no_grupo(d)
+                    except Exception as e:  # noqa: BLE001
+                        print("lista no grupo:", e, flush=True)
                 registrar({"id": f"jogos-{d['dia']}", "rotina": "Jogos do dia", "acao": "jogos", "projeto": "",
                            "ok": True, "resultado": f"{len(d['jogos'])} jogos · {d['canais_pesquisados']} canais pesquisados"})
             except Exception as e:  # noqa: BLE001

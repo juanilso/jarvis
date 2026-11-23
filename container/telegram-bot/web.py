@@ -29,6 +29,8 @@ import atend_config  # noqa: E402
 atendimento.iniciar_fila()  # mensagens que o robô inicia saem por uma fila protegida
 import vigia_whatsapp  # noqa: E402
 vigia_whatsapp.iniciar()  # testa a corrente do atendimento de 5 em 5 min, conserta e avisa no Telegram
+import jogos_alertas  # noqa: E402
+jogos_alertas.iniciar()  # alerta X minutos antes de cada jogo (seu Telegram e/ou grupo)
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -373,7 +375,8 @@ class Handler(BaseHTTPRequestHandler):
                                "imagens": len(d.get("imagens") or []), "total": len(d.get("jogos") or []),
                                "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0),
                                "estilo": d.get("estilo", "simples"), "arte": d.get("arte", ""),
-                               "avisos": [a for a in d.get("avisos") or [] if "arte com IA" in a]})
+                               "avisos": [a for a in d.get("avisos") or [] if "arte com IA" in a],
+                               "alertas": __import__("jogos_alertas").publico()})
         if url.path == "/api/site":
             import site_previa
             proj = estado.ler()["projeto"]
@@ -514,6 +517,16 @@ class Handler(BaseHTTPRequestHandler):
             if a == "faq":
                 atendimento.salvar_faq(str(d.get("texto", "")))
                 return self._json({"ok": True})
+            if a in ("alerta_salvar", "alerta_detectar", "alerta_testar"):
+                import jogos_alertas
+                try:
+                    if a == "alerta_salvar":
+                        return self._json({"ok": True, "config": jogos_alertas.salvar(d.get("config") or {})})
+                    if a == "alerta_detectar":
+                        return self._json({"ok": True, "grupos": jogos_alertas.detectar_grupos()})
+                    return self._json({"ok": True, "resultados": jogos_alertas.testar()})
+                except ValueError as e:
+                    return self._json({"ok": False, "erro": str(e)}, 400)
             if a in ("jogos_gerar", "jogos_config", "jogos_telegram"):
                 import jogos
                 if a == "jogos_config":

@@ -193,6 +193,24 @@ footer{position:relative}
       Os jogadores são genéricos (sem pessoas reais) e, sem os escudos ligados, cada time aparece com um selo nas cores do clube e a sigla.</div>
   </div>
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="jgSalvar">💾 Salvar configuração</button><span class="waDica" id="jgCfgMsg"></span></div>
+  <h3>⏰ ALERTA ANTES DO JOGO</h3>
+  <div class="waCfg">
+    <label><span><input type="checkbox" id="alLigado"> Avisar antes de cada jogo</span></label>
+    <label>Quantos minutos antes<input id="alMin" type="number" min="5" max="180" value="30"></label>
+    <label><span><input type="checkbox" id="alMim"> No meu Telegram (bot do Jarvis)</span></label>
+    <label><span><input type="checkbox" id="alGrupo"> Num grupo do Telegram (bot próprio, abaixo)</span></label>
+    <label><span><input type="checkbox" id="alLista"> Mandar no grupo também a lista do dia (quando ela sai, às 8h)</span></label>
+    <label>Token do bot do grupo <span class="waDica" id="alBot"></span><input id="alToken" type="password" autocomplete="off" placeholder="cole o token do @BotFather (deixe vazio para manter; - para remover)"></label>
+    <label>Grupo <span class="waDica" id="alGrupoNome"></span><input id="alGrupoId" placeholder="número do grupo (ex.: -1001234567890) ou use Detectar"></label>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
+    <button id="alSalvar" class="prim">💾 Salvar alertas</button><button id="alDetectar">🔎 Detectar grupo</button><button id="alTestar">📨 Testar envio</button>
+    <span class="waDica" id="alMsg"></span></div>
+  <div id="alGrupos" style="margin-top:6px"></div>
+  <div class="waDica" style="margin-top:8px">Como criar o bot do grupo: no Telegram, abra o <b>@BotFather</b> → <code>/newbot</code> → escolha nome e
+    usuário → copie o <b>token</b> e cole aqui → Salvar. Coloque o bot no grupo (de preferência como administrador), mande qualquer mensagem
+    no grupo e clique em <b>🔎 Detectar grupo</b>. Esse bot só envia: o bot do Jarvis continua só com você.
+    Jogos no mesmo horário saem num alerta só, com a imagem do confronto.</div>
   <div class="waDica" style="margin-top:10px">Todo dia: ative no n8n a rotina <b>"Jarvis · Jogos do dia"</b> (8h). No WhatsApp, o robô responde "que jogos tem hoje?" com esta lista
     (📱 → Recursos). No Telegram: <code>/jogos</code>.</div>
 </div></div>
@@ -675,6 +693,7 @@ $("stNavegar").onclick=()=>$("btnPrevia").click();
 /* ---------- Jogos do dia ---------- */
 let jgTimer=null,jgGerado=null;
 async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)return;const c=j.config;
+  if(!jgGerado||!$("jg").contains(document.activeElement))alMostrar(j.alertas);
   $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
   if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";$("jgEscudos").checked=!!c.escudos;
   if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
@@ -687,6 +706,25 @@ $("jgNovaArte").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"
 $("jgGerar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_gerar"});$("jgMsg").textContent="⏳ "+(r.msg||r.erro||"")};
 $("jgTg").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_telegram"});$("jgMsg").textContent=r.ok?"📨 enviando no Telegram…":"❌ "+(r.erro||"")};
 $("jgCopiar").onclick=async()=>{try{await navigator.clipboard.writeText($("jgTexto").value);$("jgMsg").textContent="📋 copiado!"}catch(e){$("jgTexto").select();document.execCommand("copy");$("jgMsg").textContent="📋 copiado"}};
+function alMostrar(c){if(!c)return;$("alLigado").checked=!!c.ligado;$("alMin").value=c.minutos||30;$("alMim").checked=c.para_mim!==false;
+  $("alGrupo").checked=!!c.para_grupo;$("alLista").checked=!!c.lista_no_grupo;
+  $("alBot").textContent=c.tem_token?`(${c.bot_nome||""} ${c.token_mascarado})`:"(nenhum)";
+  if(document.activeElement!==$("alGrupoId"))$("alGrupoId").value=c.grupo||"";$("alGrupoNome").textContent=c.grupo_nome?`(${c.grupo_nome})`:""}
+async function alSalvar(extra){const b={ligado:$("alLigado").checked,minutos:$("alMin").value,para_mim:$("alMim").checked,para_grupo:$("alGrupo").checked,
+  lista_no_grupo:$("alLista").checked,grupo:$("alGrupoId").value.trim(),...(extra||{})};if($("alToken").value.trim())b.token=$("alToken").value.trim();
+  const r=await api("/api/whatsapp/acao",{acao:"alerta_salvar",config:b});$("alMsg").textContent=r.ok?"✔ salvo":"❌ "+(r.erro||"erro");
+  if(r.ok){$("alToken").value="";alMostrar(r.config)}return r}
+$("alSalvar").onclick=()=>alSalvar();
+$("alDetectar").onclick=async()=>{if($("alToken").value.trim()){const s=await alSalvar();if(!s.ok)return}
+  $("alMsg").textContent="⏳ procurando…";const r=await api("/api/whatsapp/acao",{acao:"alerta_detectar"});
+  if(!r.ok){$("alMsg").textContent="❌ "+(r.erro||"erro");return}
+  if(!r.grupos.length){$("alMsg").textContent="Nenhum grupo ainda: coloque o bot no grupo, mande uma mensagem lá e tente de novo.";$("alGrupos").innerHTML="";return}
+  $("alMsg").textContent="Escolha o grupo:";
+  $("alGrupos").innerHTML=r.grupos.map(g=>`<button data-g="${esc(g.id)}" data-n="${esc(g.nome)}">${esc(g.nome||g.id)} (${esc(g.tipo)})</button>`).join(" ");
+  $("alGrupos").querySelectorAll("button").forEach(b=>b.onclick=async()=>{$("alGrupoId").value=b.dataset.g;$("alGrupo").checked=true;
+    await alSalvar({grupo:b.dataset.g,grupo_nome:b.dataset.n,para_grupo:true});$("alGrupos").innerHTML=""})};
+$("alTestar").onclick=async()=>{$("alMsg").textContent="⏳ enviando…";const r=await api("/api/whatsapp/acao",{acao:"alerta_testar"});
+  $("alMsg").textContent=r.ok?r.resultados.map(x=>`${x[1]?"✅":"❌"} ${x[0]}${x[2]&&x[2]!=="ok"?": "+x[2]:""}`).join(" · "):"❌ "+(r.erro||"erro")};
 $("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
   const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked}});
   $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};

@@ -597,6 +597,9 @@ Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
+Jogos do dia: alerta antes do jogo
+• No painel ⚽ → Alerta antes do jogo: avisa 30 min antes (ajustável) no seu Telegram e/ou num grupo (bot próprio)
+
 WhatsApp: vigia
 • /whatsapp: situação · /whatsapp testar · /whatsapp reiniciar (sem QR) · /whatsapp reconectar (QR novo no Telegram)
 • O vigia testa sozinho a cada 5 min, conserta (sessão, webhook, fluxo do n8n) e te avisa, com a lista de quem
