@@ -3,11 +3,15 @@ import json
 import os
 import random
 import re
+import hashlib
 import threading
+import time
 
 import jarvis_core as core
 
 ARQ = os.path.join(core.CONFIG_DIR, "atendimento", "config.json")
+ARQ_VAR = os.path.join(core.CONFIG_DIR, "atendimento", "variacoes.json")
+_gerando = set()
 _lock = threading.Lock()
 
 # Variáveis: {nome} {login} {valor} {vencimento} {falta}. Várias versões separadas por || (o robô sorteia uma).
@@ -37,7 +41,8 @@ NOMES_MENSAGENS = {
     "teste_ja_fez": "Teste: cliente já fez um",
 }
 RECURSOS = {"pagamentos": True, "teste": True, "consulta": True, "jogos": True,
-            "calar_quando_respondo": True}  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
+            "calar_quando_respondo": True,
+            "variar": True}  # o Jarvis cria versões diferentes de cada mensagem automática (evita texto repetido)  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
     "atraso_min": 2, "atraso_max": 6,   # segundos de pausa antes de responder (+ tempo de "digitar")
@@ -99,10 +104,50 @@ class _Seguro(dict):
         return ""
 
 
+def _ler_var():
+    try:
+        return json.load(open(ARQ_VAR, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def variacoes(chave, modelos):
+    """Versões criadas pelo Jarvis para a mensagem (geradas 1 vez, refeitas se você mudar o texto ou a cada 7 dias).
+    Na primeira vez devolve [] e gera em segundo plano."""
+    if not modelos or not recurso("variar"):
+        return []
+    h = hashlib.sha1("||".join(modelos).encode()).hexdigest()[:12]
+    item = _ler_var().get(chave) or {}
+    valido = item.get("h") == h
+    if valido and time.time() - item.get("t", 0) < 7 * 86400:
+        return item.get("lista", [])
+    if (chave, h) not in _gerando:
+        _gerando.add((chave, h))
+
+        def gerar():
+            try:
+                import atendimento
+                lista = []
+                for base in modelos[:2]:
+                    lista += [x for x in atendimento.gerar_variacoes(base, 6 if len(modelos) == 1 else 4) if x not in lista]
+                with _lock:
+                    d = _ler_var()
+                    d[chave] = {"h": h, "t": time.time(), "lista": lista[:10]}
+                    os.makedirs(os.path.dirname(ARQ_VAR), exist_ok=True)
+                    json.dump(d, open(ARQ_VAR, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+            except Exception as e:  # noqa: BLE001
+                print("variações:", chave, type(e).__name__, e, flush=True)
+            finally:
+                _gerando.discard((chave, h))
+        threading.Thread(target=gerar, daemon=True).start()
+    return item.get("lista", []) if valido else []
+
+
 def msg(chave, **v):
-    """Escolhe uma das versões (separadas por ||) e preenche as variáveis. Variável sem valor fica vazia."""
+    """Escolhe uma das versões (as suas, separadas por ||, e as criadas pelo Jarvis) e preenche as variáveis."""
     modelos = [m.strip() for m in carregar()["mensagens"].get(chave, MENSAGENS.get(chave, "")).split("||") if m.strip()]
-    texto = random.choice(modelos) if modelos else ""
+    todas = modelos + [x for x in variacoes(chave, modelos) if x not in modelos]
+    texto = random.choice(todas) if todas else ""
     texto = texto.format_map(_Seguro({k: ("" if x is None else x) for k, x in v.items()})) if "{" in texto else texto
     texto = re.sub(r"\s+([,!?.])", r"\1", texto)       # "Olá !" -> "Olá!" quando {nome} está vazio
     return re.sub(r"[ \t]{2,}", " ", texto).strip()

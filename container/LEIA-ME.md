@@ -111,6 +111,19 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.25: atendimento sem nome de IA e com textos variados
+
+- **Sem marca de IA:** o robô não diz mais qual IA o move (Claude, Anthropic, GPT, Gemini…). Regra no prompt +
+  filtro que limpa qualquer menção antes de enviar ("Sou o assistente virtual da empresa"). Se o cliente perguntar se
+  é robô, ele diz que é o assistente virtual automático.
+- **Respostas da conversa variadas:** cumprimentos e frases mudam a cada conversa; o robô recebe as últimas frases
+  usadas e é instruído a não repeti-las (temperatura mais alta).
+- **Mensagens automáticas variadas** (pagamento, consulta…): o Jarvis cria sozinho 4–6 versões de cada mensagem,
+  com as mesmas variáveis ({nome} {valor} {login} {vencimento}), descarta versões que perdem variáveis e refaz quando
+  você muda o texto (ou a cada 7 dias). As suas versões com `||` continuam valendo. Liga/desliga em 📱 → Recursos →
+  🔀 Variar o texto.
+- A mensagem de instabilidade (quando o modelo falha) também varia.
+
 ## Jarvis 1.24: WhatsApp no motor GOWS (recebimento em tempo real)
 
 - **Problema:** no motor NOWEB a conexão de recebimento morria em silêncio. A sessão continuava "conectada", enviar
