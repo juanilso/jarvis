@@ -108,6 +108,7 @@ def _pausar(nome, segundos, motivo):
     u = uso()
     u.setdefault(nome, {})["pausado_ate"] = time.time() + segundos
     u[nome]["motivo"] = motivo
+    u[nome]["chave"] = os.environ.get(PROVEDORES[nome][0], "")[-6:]  # chave nova = pausa não vale mais
     os.makedirs(PASTA, exist_ok=True)
     json.dump(u, open(_arq_uso(), "w", encoding="utf-8"), indent=1)
 
@@ -123,7 +124,7 @@ def disponivel(nome):
     if not os.environ.get(PROVEDORES[nome][0]):
         return False, "sem chave"
     u = uso().get(nome, {})
-    if u.get("pausado_ate", 0) > time.time():
+    if u.get("pausado_ate", 0) > time.time() and u.get("chave", "") == os.environ.get(PROVEDORES[nome][0], "")[-6:]:
         return False, u.get("motivo", "pausado")
     if u.get("pedidos", 0) >= cota(nome):
         return False, f"cota do dia ({cota(nome)}) usada"
@@ -152,29 +153,60 @@ def _cache_modelos():
         return {}
 
 
-def modelo(nome):
-    """Modelo do ajudante: o configurado, ou o melhor da lista do provedor (atualizada 1x por dia)."""
+def candidatos(nome, quantos=4):
+    """Modelos do ajudante em ordem de preferência: o fixado, ou os melhores da lista do provedor (1x por dia)."""
     fixo = os.environ.get(f"JARVIS_AJUDANTE_{nome.upper()}_MODELO", "").strip()
     if fixo:
-        return fixo
+        return [fixo]
     c = _cache_modelos()
-    if c.get(nome) and time.time() - c[nome]["quando"] < 86400:
-        return c[nome]["modelo"]
+    if c.get(nome) and time.time() - c[nome]["quando"] < 86400 and c[nome].get("lista"):
+        return c[nome]["lista"]
     ids = [m.get("id", "") for m in (_http(nome, "/models") or {}).get("data", [])]
     ids = [i.split("/", 1)[1] if i.startswith("models/") else i for i in ids]
-    escolhido = None
+    lista = []
     for padrao in PROVEDORES[nome][2]:
         cands = sorted([i for i in ids if re.search(padrao, i)], key=_chave_versao, reverse=True)
-        cands = [i for i in cands if not re.search(r"preview|exp|\d{4}-\d{2}|latest", i)] or cands
-        if cands:
-            escolhido = cands[0]
-            break
-    if not escolhido:
+        estaveis = [i for i in cands if not re.search(r"preview|exp|\d{4}-\d{2}|latest", i)]
+        for i in estaveis + [i for i in cands if i not in estaveis]:
+            if i not in lista:
+                lista.append(i)
+    lista = lista[:quantos]
+    if not lista:
         raise RuntimeError(f"não achei modelo adequado em {nome} ({len(ids)} disponíveis)")
-    c[nome] = {"modelo": escolhido, "quando": time.time()}
+    c[nome] = {"modelo": lista[0], "lista": lista, "quando": time.time()}
+    _gravar_cache(c)
+    return lista
+
+
+def _gravar_cache(c):
     os.makedirs(PASTA, exist_ok=True)
     json.dump(c, open(os.path.join(PASTA, "modelos.json"), "w", encoding="utf-8"), indent=1)
-    return escolhido
+
+
+def _preferir(nome, mod):
+    """Lembra o modelo que funcionou para tentar ele primeiro da próxima vez."""
+    c = _cache_modelos()
+    if c.get(nome) and c[nome].get("lista") and mod in c[nome]["lista"]:
+        c[nome]["lista"] = [mod] + [m for m in c[nome]["lista"] if m != mod]
+        c[nome]["modelo"] = mod
+        _gravar_cache(c)
+
+
+def modelo(nome):
+    return candidatos(nome)[0]
+
+
+def _msg_erro(corpo):
+    """Texto legível do erro do provedor."""
+    try:
+        j = json.loads(corpo)
+        if isinstance(j, list):
+            j = j[0]
+        e = j.get("error", j)
+        msg = e.get("message") if isinstance(e, dict) else (e if isinstance(e, str) else j.get("message"))
+        return str(msg or corpo)[:160]
+    except (ValueError, AttributeError, IndexError, TypeError):
+        return corpo[:160]
 
 
 def _chave_versao(i):
@@ -194,34 +226,67 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
             tentativas.append(f"{nome}: {motivo}")
             continue
         try:
-            mod = modelo(nome)
-            r = _http(nome, "/chat/completions", {"model": mod, "max_tokens": maximo, "temperature": 0.4,
-                                                    "messages": [{"role": "system", "content": PAPEL},
-                                                                 {"role": "user", "content": limpo}]})
-            texto = ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
-            if isinstance(texto, list):
-                texto = "".join(p.get("text", "") for p in texto if isinstance(p, dict))
-            if not texto.strip():
-                raise RuntimeError("resposta vazia")
-            _registrar(nome, "pedidos")
-            if removidos:
-                _registrar(nome, "removidos", removidos)
-            return {"ok": True, "texto": texto.strip(), "ia": nome, "modelo": mod, "removidos": removidos,
-                    "tentativas": tentativas}
+            modelos = candidatos(nome)
         except urllib.error.HTTPError as e:
-            corpo = e.read().decode(errors="replace")[:200]
             _registrar(nome, "falhas")
-            if e.code in (429, 402, 403) or re.search(r"quota|exhaust|credit|billing|rate", corpo, re.I):
-                _pausar(nome, 3600 if e.code == 429 else 6 * 3600, f"sem cota/crédito (HTTP {e.code})")
-            elif e.code in (400, 404) and "model" in corpo.lower():
-                c = _cache_modelos()
-                c.pop(nome, None)  # modelo saiu de linha: escolhe outro na próxima
-                json.dump(c, open(os.path.join(PASTA, "modelos.json"), "w", encoding="utf-8"))
-            tentativas.append(f"{nome}: HTTP {e.code} {corpo[:80]}")
+            msg = _msg_erro(e.read().decode(errors="replace"))
+            if e.code in (401, 403) or (e.code == 400 and re.search(r"api.?key|unauthori|permission", msg, re.I)):
+                _pausar(nome, 30 * 86400, "chave inválida: gere outra e rode ./ajudantes-configurar.sh")
+            tentativas.append(f"{nome}: {_explicar(nome, e.code, msg)}")
+            continue
         except Exception as e:  # noqa: BLE001
             _registrar(nome, "falhas")
-            tentativas.append(f"{nome}: {type(e).__name__} {str(e)[:80]}")
+            tentativas.append(f"{nome}: {type(e).__name__} {str(e)[:100]}")
+            continue
+        for mod in modelos:
+            try:
+                r = _http(nome, "/chat/completions", {"model": mod, "max_tokens": maximo, "temperature": 0.4,
+                                                        "messages": [{"role": "system", "content": PAPEL},
+                                                                     {"role": "user", "content": limpo}]})
+                texto = ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+                if isinstance(texto, list):
+                    texto = "".join(p.get("text", "") for p in texto if isinstance(p, dict))
+                texto = re.sub(r"(?s)<think>.*?</think>", "", texto).strip()  # modelos que mostram o raciocínio
+                if not texto:
+                    raise RuntimeError("resposta vazia")
+                _registrar(nome, "pedidos")
+                if removidos:
+                    _registrar(nome, "removidos", removidos)
+                _preferir(nome, mod)
+                return {"ok": True, "texto": texto, "ia": nome, "modelo": mod, "removidos": removidos,
+                        "tentativas": tentativas}
+            except urllib.error.HTTPError as e:
+                msg = _msg_erro(e.read().decode(errors="replace"))
+                _registrar(nome, "falhas")
+                tentativas.append(f"{nome} ({mod}): {_explicar(nome, e.code, msg)}")
+                if e.code in (401, 403) or (e.code == 400 and re.search(r"api.?key|unauthori|permission", msg, re.I)):
+                    _pausar(nome, 30 * 86400, "chave inválida: gere outra e rode ./ajudantes-configurar.sh")
+                    break  # chave errada: outro modelo não resolve
+                if e.code == 402 or re.search(r"credit|billing|insufficient", msg, re.I):
+                    _pausar(nome, 6 * 3600, "sem crédito")
+                    break
+                # 429/500/503 (modelo lotado), 404/400 de modelo: tenta o próximo modelo do mesmo provedor
+                continue
+            except Exception as e:  # noqa: BLE001
+                _registrar(nome, "falhas")
+                tentativas.append(f"{nome} ({mod}): {type(e).__name__} {str(e)[:100]}")
+                continue
+        else:
+            if tentativas and all(("429" in t or "lotado" in t) for t in tentativas if t.startswith(nome)):
+                _pausar(nome, 1800, "todos os modelos lotados (tenta de novo em 30 min)")
     return {"ok": False, "texto": "Nenhum ajudante conseguiu responder.", "tentativas": tentativas, "removidos": removidos}
+
+
+def _explicar(nome, code, msg):
+    if code in (401, 403) or (code == 400 and re.search(r"api.?key|unauthori", msg, re.I)):
+        return f"chave inválida (HTTP {code}): gere outra e rode ./ajudantes-configurar.sh"
+    if code == 429:
+        return f"lotado/limite por minuto (HTTP 429): {msg[:80]}"
+    if code in (500, 502, 503, 504):
+        return f"modelo lotado no provedor (HTTP {code}), tentando outro"
+    if code == 402:
+        return "sem crédito (HTTP 402)"
+    return f"HTTP {code}: {msg[:100]}"
 
 
 def status():
