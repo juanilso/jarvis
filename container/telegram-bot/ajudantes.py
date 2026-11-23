@@ -37,10 +37,22 @@ PROVEDORES = {
     "mistral": ("MISTRAL_API_KEY", "https://api.mistral.ai/v1",
                 [r"^mistral-small(?!.*(ocr|embed|moderation))", r"^mistral-medium(?!.*(ocr|embed|moderation))",
                  r"^ministral-\d+b"], 300, "plano grátis Experiment: a Mistral pode usar o conteúdo para treinar"),
+    "nvidia": ("NVIDIA_API_KEY", "https://integrate.api.nvidia.com/v1",
+               [r"^meta/llama-[\d.]+-70b-instruct(?!.*(vision|guard))", r"^openai/gpt-oss-120b",
+                r"^qwen/qwen[\d.]+-\d+b(?!.*(vision|vl|embed|coder))", r"^mistralai/mistral-(small|medium)(?!.*vision)",
+                r"^(?!.*(vision|embed|guard|reward|safety|retriev|-vl)).*instruct"],
+               500, "plano grátis de desenvolvedor (40 pedidos/minuto), para protótipo"),
+    "cloudflare": ("CLOUDFLARE_API_TOKEN", "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+                   [], 60, "cota grátis diária pequena (10.000 neurons); a Cloudflare não treina com o conteúdo"),
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1",
                    [r":free$"], 50, "modelos :free têm limite diário baixo e podem registrar o conteúdo"),
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1",
              [r"llama-3\.3-70b", r"llama.*70b", r"qwen", r"llama"], 300, "plano grátis com limite por minuto"),
+}
+
+# provedores sem lista de modelos no formato OpenAI: candidatos fixos (o primeiro que funcionar fica guardado)
+MODELOS_FIXOS = {
+    "cloudflare": ["@cf/openai/gpt-oss-120b", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/openai/gpt-oss-20b"],
 }
 
 PAPEL = (
@@ -137,6 +149,9 @@ def disponivel(nome):
         return False, "desconhecido"
     if not os.environ.get(PROVEDORES[nome][0]):
         return False, "sem chave"
+    for falta in re.findall(r"\{(\w+)\}", PROVEDORES[nome][1]):
+        if not os.environ.get(falta):
+            return False, f"falta {falta}"
     u = uso().get(nome, {})
     if u.get("pausado_ate", 0) > time.time() and u.get("chave", "") == os.environ.get(PROVEDORES[nome][0], "")[-6:]:
         return False, u.get("motivo", "pausado")
@@ -146,13 +161,14 @@ def disponivel(nome):
 
 
 def configurados():
-    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,mistral,openrouter,grok").split(",") if n.strip()]
+    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,nvidia,cloudflare,openrouter,mistral,grok").split(",") if n.strip()]
     return [n for n in ordem if n in PROVEDORES and os.environ.get(PROVEDORES[n][0])]
 
 
 # ------------------------------------------------------------ chamadas
 def _http(nome, caminho, corpo=None):
     var, base = PROVEDORES[nome][0], os.environ.get(f"JARVIS_AJUDANTE_{nome.upper()}_URL", PROVEDORES[nome][1])
+    base = re.sub(r"\{(\w+)\}", lambda m: os.environ.get(m.group(1), ""), base)  # ex.: id da conta Cloudflare
     req = urllib.request.Request(base.rstrip("/") + caminho, data=json.dumps(corpo).encode() if corpo else None,
                                  headers={"Authorization": "Bearer " + os.environ[var], "Content-Type": "application/json",
                                           "User-Agent": UA})
@@ -175,6 +191,11 @@ def candidatos(nome, quantos=4):
     c = _cache_modelos()
     if c.get(nome) and time.time() - c[nome]["quando"] < 86400 and c[nome].get("lista") and c[nome].get("v") == 2:
         return c[nome]["lista"]
+    if nome in MODELOS_FIXOS:
+        lista = list(MODELOS_FIXOS[nome])
+        c[nome] = {"modelo": lista[0], "lista": lista, "quando": time.time(), "v": 2}
+        _gravar_cache(c)
+        return lista
     ids = [m.get("id", "") for m in (_http(nome, "/models") or {}).get("data", [])]
     ids = [i.split("/", 1)[1] if i.startswith("models/") else i for i in ids]
     lista = []
@@ -342,5 +363,5 @@ def status():
         linhas.append(f"• {nome}: {'✅' if ok else '⏸ ' + motivo} · hoje {x.get('pedidos', 0)}/{cota(nome)}"
                       f" · falhas {x.get('falhas', 0)} · dados removidos {x.get('removidos', 0)} · modelo {mod}\n  ⚠️ {aviso}")
     if not configurados():
-        linhas.append("\nPara ligar: ./ajudantes-configurar.sh na VPS (chaves grátis: aistudio.google.com, console.groq.com, console.mistral.ai, openrouter.ai).")
+        linhas.append("\nPara ligar: ./ajudantes-configurar.sh na VPS (chaves grátis: aistudio.google.com, console.groq.com, build.nvidia.com, dash.cloudflare.com, openrouter.ai).")
     return "\n".join(linhas)

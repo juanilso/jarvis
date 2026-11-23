@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pede uma tarefa de TEXTO a outra IA (Gemini, Groq, Mistral, OpenRouter) para economizar o Claude.
+"""Pede uma tarefa de TEXTO a outra IA (Gemini, Groq, NVIDIA, Cloudflare, OpenRouter) para economizar o Claude.
 
 Uso:
   jarvis-ajudante --status

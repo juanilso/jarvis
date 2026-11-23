@@ -111,6 +111,15 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.22.6: NVIDIA e Cloudflare no lugar de Mistral e Grok
+
+- A Mistral encerrou o plano grátis da API e o Grok exige crédito. Entram:
+  - **NVIDIA** (build.nvidia.com → Get API Key, chave `nvapi-…`): grátis para desenvolvedor, 40 pedidos/minuto,
+    muitos modelos (Llama 70B, gpt-oss-120b, Qwen…).
+  - **Cloudflare Workers AI** (dash.cloudflare.com → Workers AI → Use REST API: Account ID + token): 10.000
+    neurons/dia grátis (dezenas de pedidos); a Cloudflare não treina com o conteúdo.
+- Ordem padrão: gemini, groq, nvidia, cloudflare, openrouter. O script oferece remover as chaves de Mistral/Grok.
+
 ## Jarvis 1.22.5: Mistral no lugar do Grok
 
 - O Grok exige crédito na conta da xAI; no lugar dele entra a **Mistral** (plano grátis Experiment, sem cartão,

@@ -14,7 +14,7 @@ gravar() {
 }
 
 echo "== Ajudantes do Jarvis =="
-echo "Gemini, Groq, Mistral e OpenRouter fazem tarefas de TEXTO (rascunhos, traduções, SEO, resumos, ideias) para economizar o Claude."
+echo "Gemini, Groq, NVIDIA, Cloudflare e OpenRouter fazem tarefas de TEXTO (rascunhos, traduções, SEO, resumos, ideias) para economizar o Claude."
 echo "Antes de enviar, o Jarvis apaga e-mails, telefones, CPF, tokens e senhas. Mesmo assim:"
 echo "planos gratuitos costumam usar o conteúdo para treinar os modelos. Não use contas com dados sensíveis."
 echo
@@ -29,15 +29,24 @@ pedir() { # pedir VAR "Nome" "onde pegar"
 }
 pedir GEMINI_API_KEY "Google Gemini (plano grátis)" "https://aistudio.google.com/apikey"
 pedir GROQ_API_KEY "Groq (plano grátis, muito rápido)" "https://console.groq.com/keys"
-pedir MISTRAL_API_KEY "Mistral (plano grátis Experiment, sem cartão)" "https://console.mistral.ai/api-keys"
+pedir NVIDIA_API_KEY "NVIDIA (grátis para desenvolvedor, chave nvapi-…)" "https://build.nvidia.com → entre → Get API Key"
+echo "• Cloudflare Workers AI (cota diária grátis; não treina com o conteúdo)"
+echo "  ID da conta: dash.cloudflare.com → Workers AI → Use REST API (aparece o Account ID)"
+v="$(atual CLOUDFLARE_ACCOUNT_ID)"; read -r -p "  Account ID${v:+ [$v]}: " cid; [ -n "$cid" ] && gravar CLOUDFLARE_ACCOUNT_ID "$cid"
+pedir CLOUDFLARE_API_TOKEN "  Token da Cloudflare (permissão Workers AI)" "na mesma tela: Create a Workers AI API Token"
+if [ -n "$(atual MISTRAL_API_KEY)" ]; then
+  read -r -p "• Mistral: o plano grátis acabou. Remover a chave da Mistral? [S/n] " r
+  case "${r:-s}" in [sS]*) gravar MISTRAL_API_KEY ""; echo "  removida";; esac
+fi
 pedir OPENROUTER_API_KEY "OpenRouter (modelos :free)" "https://openrouter.ai/keys"
 if [ -n "$(atual XAI_API_KEY)" ]; then
   read -r -p "• Grok: a conta precisa de crédito. Remover a chave do Grok? [S/n] " r
   case "${r:-s}" in [sS]*) gravar XAI_API_KEY ""; echo "  removida";; esac
 fi
 
-ordem="$(atual JARVIS_AJUDANTES)"; ordem="${ordem:-gemini,groq,mistral,openrouter}"
-case ",$ordem," in *,mistral,*) ;; *) ordem="$(echo "$ordem" | sed 's/grok/mistral/')"; case ",$ordem," in *,mistral,*) ;; *) ordem="$ordem,mistral";; esac;; esac
+ordem="$(atual JARVIS_AJUDANTES)"; ordem="${ordem:-gemini,groq,nvidia,cloudflare,openrouter}"
+for n in nvidia cloudflare; do case ",$ordem," in *,$n,*) ;; *) ordem="$ordem,$n";; esac; done
+ordem="$(echo ",$ordem," | sed 's/,grok,/,/g; s/,mistral,/,/g; s/^,//; s/,$//')"
 read -r -p "Ordem de preferência [$ordem]: " o; gravar JARVIS_AJUDANTES "${o:-$ordem}"
 
 echo; echo "→ Recriando os contêineres para lerem as chaves…"

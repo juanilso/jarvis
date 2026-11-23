@@ -1,6 +1,6 @@
 {
   "name": "jarvis",
-  "version": "1.22.5",
+  "version": "1.22.6",
   "description": "Orquestrador global de projetos: time de agentes (arquiteto, dev, dba, android, testador, revisor, deploy) com roteamento de modelos por perfil, execução autônoma e fila de decisões pontuais.",
   "author": {
     "name": "Rafael Lessa"
