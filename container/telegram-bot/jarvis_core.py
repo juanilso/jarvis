@@ -526,6 +526,7 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/planejar", "Planeja um projeto antes de desenvolver: perguntas, fluxos, regras, protótipo e testes (n8n)"),
     ("/ajudantes", "Outras IAs (Gemini, Grok…) como mão de obra do Jarvis: situação e cota do dia"),
     ("/ajudante", "Pede uma tarefa de texto a outra IA: /ajudante <tarefa> ou /ajudante grok <tarefa>"),
     ("/piloto", "Piloto automático: /piloto <objetivo> constrói, testa e corrige sozinho até a sua validação · /piloto parar"),
@@ -557,6 +558,8 @@ COMANDOS = [
     ("/jarvis:skill", "Jarvis: verifica e instala uma skill/plugin com segurança"),
     ("/jarvis:qa", "Jarvis: testa como usuário no navegador e corrige bugs"),
     ("/jarvis:novo", "Jarvis: inicia um projeto novo"),
+    ("/jarvis:planejar", "Jarvis: planeja antes de desenvolver (fluxos, regras, protótipo, testes no n8n)"),
+    ("/jarvis:entregar", "Jarvis: uma rodada do piloto (constrói, testa e homologa)"),
     ("/jarvis:modelos", "Jarvis: perfil de modelos dos agentes"),
     ("/jarvis:jarvis", "Jarvis: pedido livre"),
 ]
@@ -592,6 +595,11 @@ Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao ga
 Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
+
+Planejar antes de desenvolver
+• /planejar sistema de rede credenciada com app do membro e painel do credenciado: o Jarvis faz as perguntas
+  certas, desenha fluxos, regras e dados (docs/plano), monta um protótipo para você clicar e testa as partes
+  arriscadas (inclusive fluxos [LAB] no n8n). Só vira desenvolvimento depois que você aprovar o plano.
 
 Ajudantes (outras IAs como mão de obra)
 • /ajudantes: quais estão ligados (Gemini, Grok, OpenRouter, Groq), cota do dia e avisos de privacidade

@@ -87,6 +87,11 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
   `.jarvis/previas/<data-hora>/`. OLHE os PNGs com a ferramenta Read: você enxerga imagens. Sempre que criar ou alterar
   site/tela, faça testar → corrigir → print → olhar antes de responder; os prints da execução vão sozinhos para o
   usuário (painel e Telegram). Site de terceiros: só testar e relatar. Fora do contêiner (sem `jarvis-site`): MCP `playwright`.
+- Planejamento (`/jarvis:planejar`, skill `planejar-projeto`): para sistemas complexos, plano em `docs/plano/`,
+  protótipo em `prototipo/`, experimentos em `laboratorio/`. Desenvolvimento só depois da aprovação do usuário.
+- Laboratório no n8n (`jarvis-n8n`): cria/atualiza/ativa/chama/apaga apenas fluxos "[LAB] …" (webhooks "lab-…");
+  lê qualquer fluxo (listar/exportar). Nunca altere, ative ou dispare fluxos de produção, nem por curl.
+  Dados falsos sempre. Ao terminar um experimento, desative o fluxo [LAB].
 - Ajudantes (`jarvis-ajudante "tarefa" < material`): outras IAs (Gemini, Grok, OpenRouter, Groq) para tarefas de
   TEXTO volumosas e simples — textos e conteúdo provisório do site, traduções, title/description, alt de imagens,
   resumos, ideias, segunda opinião. A resposta é rascunho: revise. Nunca envie dados de clientes, .env, tokens ou

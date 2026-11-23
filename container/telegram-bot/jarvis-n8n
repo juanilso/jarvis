@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""Laboratório no n8n: o Jarvis cria e testa fluxos [LAB] sem encostar nos seus fluxos de produção.
+
+Uso:
+  jarvis-n8n status                       -> confere a conexão com a API do n8n
+  jarvis-n8n listar                       -> todos os fluxos (id, ativo, nome)
+  jarvis-n8n exportar <id> [arquivo]      -> baixa o JSON de qualquer fluxo (só leitura)
+  jarvis-n8n criar <arquivo.json>         -> cria como "[LAB] nome", DESATIVADO; webhooks ganham o prefixo "lab-"
+  jarvis-n8n atualizar <id> <arquivo>     -> só fluxos [LAB]
+  jarvis-n8n ativar|desativar <id>        -> só fluxos [LAB]
+  jarvis-n8n apagar <id>                  -> só fluxos [LAB]
+  jarvis-n8n chamar <caminho> [json|-]    -> POST no webhook de um fluxo [LAB] ATIVO (ex.: lab-pagamento)
+  jarvis-n8n execucoes <id> [n]           -> últimas execuções: situação, erro e saída do último nó
+
+Configuração (./n8n-api-configurar.sh): N8N_API_KEY (n8n → Settings → n8n API) e N8N_URL (padrão http://n8n:5678).
+Regras: nunca altera, ativa, apaga nem dispara fluxos que não começam com [LAB]. Use dados falsos nos testes.
+"""
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+URL = os.environ.get("N8N_URL", "http://n8n:5678").rstrip("/")
+CHAVE = os.environ.get("N8N_API_KEY", "")
+LAB = "[LAB] "
+CAMPOS = ("name", "nodes", "connections", "settings", "staticData")
+
+
+class Erro(Exception):
+    pass
+
+
+def api(metodo, caminho, corpo=None):
+    if not CHAVE:
+        raise Erro("Falta N8N_API_KEY. Na VPS: ./n8n-api-configurar.sh (a chave é criada no n8n → Settings → n8n API).")
+    req = urllib.request.Request(URL + "/api/v1" + caminho, method=metodo,
+                                 data=json.dumps(corpo).encode() if corpo is not None else None,
+                                 headers={"X-N8N-API-KEY": CHAVE, "Content-Type": "application/json",
+                                          "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            t = r.read().decode()
+            return json.loads(t) if t else {}
+    except urllib.error.HTTPError as e:
+        raise Erro(f"n8n respondeu HTTP {e.code}: {e.read().decode(errors='replace')[:300]}")
+    except urllib.error.URLError as e:
+        raise Erro(f"não alcancei o n8n em {URL} ({e.reason}). Ele está ligado? (perfil automacoes)")
+
+
+def fluxos():
+    itens, cursor = [], None
+    while True:
+        r = api("GET", "/workflows?limit=100" + (f"&cursor={urllib.parse.quote(cursor)}" if cursor else ""))
+        itens += r.get("data", [])
+        cursor = r.get("nextCursor")
+        if not cursor:
+            return itens
+
+
+def fluxo(i):
+    return api("GET", f"/workflows/{urllib.parse.quote(str(i))}")
+
+
+def so_lab(i):
+    f = fluxo(i)
+    if not str(f.get("name", "")).startswith(LAB):
+        raise Erro(f"o fluxo {i} (“{f.get('name')}”) não é [LAB]: não mexo em fluxos de produção.")
+    return f
+
+
+def preparar(dados):
+    """Limpa o JSON para a API, força o nome [LAB] e o prefixo lab- nos webhooks."""
+    corpo = {k: dados[k] for k in CAMPOS if k in dados}
+    corpo.setdefault("connections", {})
+    corpo["settings"] = {"executionOrder": (dados.get("settings") or {}).get("executionOrder", "v1")}
+    nome = str(corpo.get("name") or "experimento")
+    corpo["name"] = nome if nome.startswith(LAB) else LAB + nome
+    trocas = []
+    for n in corpo.get("nodes", []):
+        if n.get("type", "").endswith(".webhook"):
+            p = str((n.get("parameters") or {}).get("path") or "")
+            if not p.startswith("lab-"):
+                novo = "lab-" + (p.strip("/") or n.get("name", "webhook").lower().replace(" ", "-"))
+                n.setdefault("parameters", {})["path"] = novo
+                trocas.append(f"{p or '(vazio)'} → {novo}")
+    return corpo, trocas
+
+
+def webhooks_lab_ativos():
+    caminhos = {}
+    for f in fluxos():
+        if f.get("active") and str(f.get("name", "")).startswith(LAB):
+            for n in fluxo(f["id"]).get("nodes", []):
+                if n.get("type", "").endswith(".webhook"):
+                    caminhos[str((n.get("parameters") or {}).get("path", "")).strip("/")] = f["id"]
+    return caminhos
+
+
+def resumo_execucao(e):
+    linha = f"#{e.get('id')} · {e.get('status') or ('ok' if e.get('finished') else 'erro')} · {e.get('startedAt', '')[:19]}"
+    dados = ((e.get("data") or {}).get("resultData") or {})
+    if dados.get("error"):
+        linha += f"\n   erro: {str(dados['error'].get('message', dados['error']))[:300]}"
+    ultimo = dados.get("lastNodeExecuted")
+    if ultimo:
+        saida = (dados.get("runData") or {}).get(ultimo) or []
+        try:
+            item = saida[-1]["data"]["main"][0][:2]
+            linha += f"\n   último nó: {ultimo} → {json.dumps([x.get('json') for x in item], ensure_ascii=False)[:600]}"
+        except (KeyError, IndexError, TypeError):
+            linha += f"\n   último nó: {ultimo}"
+    return linha
+
+
+def main(a):
+    if not a or a[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    cmd = a[0]
+    if cmd == "status":
+        n = len(fluxos())
+        print(f"✅ n8n em {URL}: {n} fluxo(s) visível(is) pela API.")
+    elif cmd == "listar":
+        for f in fluxos():
+            print(f"{f['id']}\t{'ATIVO ' if f.get('active') else 'parado'}\t{f.get('name')}")
+    elif cmd == "exportar" and len(a) >= 2:
+        f = fluxo(a[1])
+        texto = json.dumps({k: f.get(k) for k in ("name", "nodes", "connections", "settings")}, ensure_ascii=False, indent=2)
+        if len(a) >= 3:
+            open(a[2], "w", encoding="utf-8").write(texto)
+            print(f"salvo em {a[2]}")
+        else:
+            print(texto)
+    elif cmd == "criar" and len(a) >= 2:
+        corpo, trocas = preparar(json.load(open(a[1], encoding="utf-8")))
+        r = api("POST", "/workflows", corpo)
+        print(f"✅ criado {r.get('id')} “{r.get('name')}” (desativado)")
+        for t in trocas:
+            print(f"   webhook: {t}")
+    elif cmd == "atualizar" and len(a) >= 3:
+        so_lab(a[1])
+        corpo, trocas = preparar(json.load(open(a[2], encoding="utf-8")))
+        api("PUT", f"/workflows/{a[1]}", corpo)
+        print(f"✅ atualizado {a[1]}" + "".join(f"\n   webhook: {t}" for t in trocas))
+    elif cmd in ("ativar", "desativar") and len(a) >= 2:
+        so_lab(a[1])
+        api("POST", f"/workflows/{a[1]}/{'activate' if cmd == 'ativar' else 'deactivate'}")
+        print(f"✅ {a[1]} {'ativado' if cmd == 'ativar' else 'desativado'}")
+    elif cmd == "apagar" and len(a) >= 2:
+        f = so_lab(a[1])
+        api("DELETE", f"/workflows/{a[1]}")
+        print(f"🗑 apagado {a[1]} “{f.get('name')}”")
+    elif cmd == "chamar" and len(a) >= 2:
+        caminho = a[1].strip("/")
+        if caminho not in webhooks_lab_ativos():
+            raise Erro(f"“{caminho}” não é webhook de um fluxo [LAB] ativo. Ative o fluxo antes (jarvis-n8n ativar <id>).")
+        bruto = sys.stdin.read() if len(a) >= 3 and a[2] == "-" else (a[2] if len(a) >= 3 else "{}")
+        corpo = json.loads(bruto or "{}")
+        req = urllib.request.Request(f"{URL}/webhook/{urllib.parse.quote(caminho)}", data=json.dumps(corpo).encode(),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                print(f"HTTP {r.status}\n{r.read().decode(errors='replace')[:3000]}")
+        except urllib.error.HTTPError as e:
+            print(f"HTTP {e.code}\n{e.read().decode(errors='replace')[:3000]}")
+            return 1
+    elif cmd == "execucoes" and len(a) >= 2:
+        n = int(a[2]) if len(a) >= 3 else 5
+        r = api("GET", f"/executions?workflowId={urllib.parse.quote(a[1])}&limit={n}&includeData=true")
+        itens = r.get("data", [])
+        print("\n".join(resumo_execucao(e) for e in itens) if itens else "nenhuma execução ainda")
+    else:
+        print(__doc__.strip())
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Erro as e:
+        print(f"⛔ {e}", file=sys.stderr)
+        sys.exit(1)

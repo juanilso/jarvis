@@ -81,7 +81,8 @@ RUN install -m 755 /opt/jarvis-bots/jarvis-busca /usr/local/bin/jarvis-busca \
  && install -m 755 /opt/jarvis-bots/jarvis-tendencias /usr/local/bin/jarvis-tendencias \
  && install -m 755 /opt/jarvis-bots/jarvis-hermes /usr/local/bin/jarvis-hermes \
  && install -m 755 /opt/jarvis-bots/jarvis-site /usr/local/bin/jarvis-site \
- && install -m 755 /opt/jarvis-bots/jarvis-ajudante /usr/local/bin/jarvis-ajudante
+ && install -m 755 /opt/jarvis-bots/jarvis-ajudante /usr/local/bin/jarvis-ajudante \
+ && install -m 755 /opt/jarvis-bots/jarvis-n8n /usr/local/bin/jarvis-n8n
 RUN chmod +x /usr/local/bin/primeiro-uso /usr/local/bin/jarvis-extras \
  && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \
  && echo '[ -f ~/.jarvis-ok ] || echo ">> Primeira vez? Rode: primeiro-uso"' >> /home/dev/.bashrc

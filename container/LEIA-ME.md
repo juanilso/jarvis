@@ -111,6 +111,22 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.22: planejar antes de desenvolver (com laboratório no n8n)
+
+- **`/planejar <ideia>`** no Telegram (ou `/jarvis:planejar` no Claude Code), skill `planejar-projeto`:
+  1. **Descoberta:** uma mensagem com o problema reescrito, 2–3 abordagens e até 10 perguntas com respostas sugeridas.
+  2. **Plano** em `docs/plano/`: VISAO, FLUXOS (diagramas), DOMINIO (dados, estados e regras R1, R2…), INTEGRACOES
+     (o que fica no sistema x no n8n), ARQUITETURA (com LGPD), RISCOS (hipóteses a testar) e ROADMAP (M0, M1…).
+  3. **Laboratório:** protótipo navegável com dados falsos em `prototipo/` (você clica pela prévia ao vivo) e
+     experimentos em `laboratorio/` para cada risco, com o resultado em `docs/plano/EXPERIMENTOS.md`.
+  4. **Aprovação:** resumo + link do protótipo; nada de desenvolvimento antes do seu "aprovado".
+  5. **Backlog** a partir do plano (cada regra vira teste) e sugestão de `/piloto` para o M1.
+- **Referência de rede credenciada** embutida: perfis, processos (credenciamento, elegibilidade com token, guias,
+  repasse), entidades, regras para perguntar, papel do n8n, riscos e LGPD (dados de saúde são sensíveis).
+- **Laboratório no n8n (`jarvis-n8n`):** o Jarvis cria fluxos "[LAB] …" desativados (webhooks "lab-…"), ativa, chama
+  com dados falsos e lê o resultado das execuções. Fluxos de produção (como o atendimento do WhatsApp) ele só lê:
+  não altera, não ativa e não dispara. Configure: crie a chave no n8n (Settings → n8n API) e rode `./n8n-api-configurar.sh`.
+
 ## Jarvis 1.21: ajudantes (outras IAs como mão de obra)
 
 - **Gemini, Grok, OpenRouter e Groq** trabalham para o Jarvis em tarefas de TEXTO: rascunhos e conteúdo provisório

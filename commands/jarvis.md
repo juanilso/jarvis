@@ -12,6 +12,8 @@ Carregue a skill `orquestrador`. Depois, identifique a intenção e siga o fluxo
 - Pasta vazia OU pedido de criar algo novo → fluxo **novo**
 - "corrigir", "erro", "bug", "não está funcionando" → crie UMA tarefa no backlog com o erro como critério
   (primeiro um teste que reproduz o erro, depois a correção) e rode o fluxo **executar** só nela
+- "planejar", "desenhar o sistema", "testar antes de desenvolver", projeto novo complexo (vários perfis,
+  financeiro, integrações, n8n) → fluxo **planejar** (skill planejar-projeto)
 - "refatorar/modernizar/redesenhar/deixar bonito o site", "construir site/landing page" → skill **refatorar-site**
   (com o designer); para fazer tudo sozinho até a validação, use o fluxo **entregar**
 - "toca até ficar pronto", "só me chama na validação", "piloto", "entrega", "homologa" → fluxo **entregar**

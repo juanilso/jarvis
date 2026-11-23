@@ -455,6 +455,8 @@ def tratar(msg):
         return
     if texto.startswith("/jarvis_"):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
+    if texto.split()[0].split("@")[0].lower() == "/planejar":  # atalho para o planejamento (skill planejar-projeto)
+        texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",

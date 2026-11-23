@@ -194,6 +194,8 @@ def site_no_painel(modo, arg="", paginas=None):
 
 
 def iniciar(texto, veio_de_audio):
+    if texto.split() and texto.split()[0].lower() == "/planejar":  # atalho para o planejamento
+        texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.startswith("/"):
         resposta, acao = core.comando(estado, pool, texto)
         if resposta is not None:

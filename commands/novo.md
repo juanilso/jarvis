@@ -6,6 +6,8 @@ argument-hint: '<descrição livre do projeto>'
 Ideia: $ARGUMENTS
 
 Carregue a skill `orquestrador`.
+Projeto complexo (vários perfis de usuário, financeiro, regras de negócio, integrações/n8n)? Recomende ao usuário
+começar por `/jarvis:planejar` (planejamento com protótipo e testes) e pare aqui, a menos que ele queira seguir.
 
 Etapa 1 — Leitura rápida: se já houver código no repositório, use o `explorador` (haiku)
 para detectar a stack (composer.json, *.php, build.gradle, migrations etc.) em até 15 linhas.
