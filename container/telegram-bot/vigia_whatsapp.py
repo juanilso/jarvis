@@ -203,12 +203,33 @@ def checar(consertar=True, avisar=True):
                 cod, t = _testar_n8n()
         item(cod == "ok", "n8n recebe e repassa ao Jarvis", t)
 
+        # mensagens de clientes que chegaram muito atrasadas desde o último teste (sintoma de recebimento travado)
+        ult = d.get("ultimo_teste_t", time.time() - INTERVALO)
+        atrasadas = [x for x in at._ler_estado().get("atrasadas", []) if x["t"] > ult]
+        if atrasadas:
+            pior = max(x["atraso"] for x in atrasadas) // 60
+            dica = (" O motor NOWEB tem esse defeito: troque para o GOWS (./whatsapp-trocar-motor.sh)."
+                    if at.motor() == "NOWEB" else "")
+            item(False, "Mensagens chegando na hora",
+                 f"{len(atrasadas)} mensagem(ns) de cliente chegaram até {pior} min atrasadas (o robô não responde mensagem "
+                 f"antiga).{dica}")
+            if consertar:
+                _, t5 = at.reiniciar_sessao()
+                consertos.append("reconexão da sessão para destravar o recebimento: " + t5)
+        else:
+            item(True, "Mensagens chegando na hora", "sem atrasos desde o último teste")
+        d["ultimo_teste_t"] = time.time()
+
         corte = time.time() - 12 * 3600
         d["ja_avisadas"] = {k: t for k, t in (d.get("ja_avisadas") or {}).items() if t > corte}
         lista, aviso = perdidas(d.get("desde", time.time()), d["ja_avisadas"])
+        for x in atrasadas:
+            if x["k"] not in d["ja_avisadas"] and not any(y.get("chave") == x["k"] for y in lista or []):
+                lista = (lista or []) + [{"chave": x["k"], "chat": x["chat"], "nome": x.get("nome", ""), "numero": x["numero"],
+                                          "texto": x["texto"] or "(mídia)", "min": int((time.time() - x["t"] + x["atraso"]) // 60)}]
         if lista is None:
             item(True, "Mensagens de clientes chegando", aviso + " (verificação parcial)")
-        elif lista:
+        elif lista and any(not str(x["chave"]) in {a["k"] for a in atrasadas} for x in lista):
             item(False, "Mensagens de clientes chegando",
                  f"{len(lista)} conversa(s) com mensagem que não chegou ao Jarvis")
             if consertar and cod == "ok":

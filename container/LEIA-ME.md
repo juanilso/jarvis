@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.24: WhatsApp no motor GOWS (recebimento em tempo real)
+
+- **Problema:** no motor NOWEB a conexão de recebimento morria em silêncio. A sessão continuava "conectada", enviar
+  funcionava, mas as mensagens dos clientes só chegavam (horas depois) quando a sessão reiniciava, e o robô as
+  ignorava por serem antigas.
+- **Solução:** o WhatsApp passa para o motor **GOWS** (Go, sem navegador, substituto do NOWEB, grátis no WAHA Core),
+  imagem fixa `devlikeapro/waha:gows-2026.10.1`. Troca: `./whatsapp-trocar-motor.sh` (pede escanear o QR uma vez;
+  o QR chega no Telegram). Voltar: `WAHA_IMAGEM=devlikeapro/waha:latest` e `WAHA_MOTOR=NOWEB` no `.env`.
+- **Vigia:** novo teste "Mensagens chegando na hora". Mensagem de cliente que chega com mais de 10 min de atraso
+  = recebimento travado → reconecta a sessão e te manda a lista de quem ficou sem resposta.
+- O painel mostra o motor em uso.
+
 ## Jarvis 1.23: vigia do atendimento do WhatsApp
 
 - **Vigia** (roda sozinho no painel a cada 5 min, `JARVIS_VIGIA_MIN`): testa a corrente inteira WhatsApp → WAHA → n8n

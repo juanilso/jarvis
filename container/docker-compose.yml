@@ -170,14 +170,16 @@ services:
   # WhatsApp Web (WAHA Core, Apache 2.0) para o atendimento automático: ./whatsapp-configurar.sh
   # Sem porta aberta: o painel do Jarvis mostra o QR code (📱). Só o n8n e o Jarvis falam com ele.
   whatsapp:
-    image: devlikeapro/waha:latest
+    # Motor GOWS (Go, sem navegador): o NOWEB parava de RECEBER em tempo real (só chegava tudo ao reiniciar).
+    # Voltar ao antigo: WAHA_IMAGEM=devlikeapro/waha:latest e WAHA_MOTOR=NOWEB no arquivo .env (pede QR de novo).
+    image: ${WAHA_IMAGEM:-devlikeapro/waha:gows-2026.10.1}
     container_name: jarvis-whatsapp
     profiles: ["whatsapp"]
     env_file:
       - path: .env.whatsapp      # criado pelo script: chave da API e senha do dashboard
         required: false
     environment:
-      WHATSAPP_DEFAULT_ENGINE: NOWEB         # sem navegador: leve
+      WHATSAPP_DEFAULT_ENGINE: ${WAHA_MOTOR:-GOWS}   # sem navegador: leve
       WHATSAPP_RESTART_ALL_SESSIONS: "True"
       WAHA_RESTART_ALL_SESSIONS: "True"
       WAHA_PRINT_QR: "False"

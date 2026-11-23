@@ -471,7 +471,7 @@ def status_whatsapp():
     try:
         s = waha(f"/api/sessions/{SESSAO}")
         return {"ok": True, "status": s.get("status", "?"), "conta": (s.get("me") or {}).get("pushName") or "",
-                "numero": ((s.get("me") or {}).get("id") or "").split("@")[0]}
+                "numero": ((s.get("me") or {}).get("id") or "").split("@")[0], "motor": motor()}
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return {"ok": True, "status": "SEM_SESSAO"}
@@ -588,16 +588,41 @@ DIAG = "__jarvis_diagnostico__"
 N8N_WEBHOOK = os.environ.get("ATENDIMENTO_N8N_WEBHOOK", "http://n8n:5678/webhook/whatsapp-waha")
 
 
+_MOTOR = {}
+
+
+def motor():
+    """Motor do WAHA (GOWS, NOWEB, WEBJS…), lido da API e guardado por 10 min."""
+    if _MOTOR.get("t", 0) > time.time() - 600:
+        return _MOTOR["m"]
+    m = ""
+    try:
+        v = waha("/api/version")
+        m = str(v.get("engine") or "").upper()
+    except Exception:  # noqa: BLE001
+        pass
+    if not m:
+        try:
+            e = waha(f"/api/sessions/{SESSAO}").get("engine") or {}
+            m = str(e.get("engine") if isinstance(e, dict) else e or "").upper()
+        except Exception:  # noqa: BLE001
+            pass
+    _MOTOR.update(m=m or "?", t=time.time())
+    return _MOTOR["m"]
+
+
 def config_sessao():
-    """Configuração completa da sessão: webhook do n8n + histórico do NOWEB (lista de conversas para o vigia)."""
-    return {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}],
-            "noweb": {"store": {"enabled": True, "fullSync": False}}}
+    """Configuração da sessão: webhook do n8n (+ histórico de conversas, no NOWEB; o GOWS já guarda sozinho)."""
+    cfg = {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}]}
+    if motor() == "NOWEB":
+        cfg["noweb"] = {"store": {"enabled": True, "fullSync": False}}
+    return cfg
 
 
 def _sessao_ok(s):
     cfg = s.get("config") or {}
     hooks = [h.get("url") for h in (cfg.get("webhooks") or []) if isinstance(h, dict)]
-    loja = ((cfg.get("noweb") or {}).get("store") or {}).get("enabled")
+    loja = ((cfg.get("noweb") or {}).get("store") or {}).get("enabled") if motor() == "NOWEB" else True
     return N8N_WEBHOOK in hooks, bool(loja)
 
 
@@ -713,6 +738,15 @@ def atender(dados):
         else:
             e0["ultimo_recebido"] = {"t": time.time(), "de_mim": de_mim, "evento": str(dados.get("evento") or "")}
             n = chat.split("@")[0]
+            atraso = time.time() - ts
+            if not de_mim and atraso > 600 and not chat.endswith("@g.us") and "@newsletter" not in chat \
+                    and not chat.startswith("status@"):  # chegou com atraso: o robô não responde (é antiga) → vigia avisa
+                chave = str(dados.get("id") or f"{chat}:{int(ts)}")
+                atr = [x for x in e0.get("atrasadas", []) if x["t"] > time.time() - 12 * 3600]
+                if chave not in {x["k"] for x in atr}:
+                    atr.append({"k": chave, "t": time.time(), "atraso": int(atraso), "chat": chat, "nome": nome,
+                                "numero": telefone or re.sub(r"\D", "", chat.split("@")[0]), "texto": texto[:80]})
+                e0["atrasadas"] = atr[-100:]
             if not de_mim and dados.get("id"):
                 corte = time.time() - 12 * 3600
                 e0["ids_clientes"] = [x for x in e0.get("ids_clientes", []) if x[1] > corte][-500:] + [[str(dados["id"]), time.time()]]

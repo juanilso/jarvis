@@ -690,7 +690,7 @@ const WA_ST={WORKING:["✅ conectado","waOk"],SCAN_QR_CODE:["📷 aguardando lei
   DESLIGADO:["desligado: rode ./whatsapp-configurar.sh na VPS","waEr"],ERRO:["⚠️ WhatsApp fora do ar","waEr"]};
 async function waAtualizar(){
   const j=await api("/api/whatsapp");if(!j.whatsapp)return;const w=j.whatsapp,a=j.atendimento,st=WA_ST[w.status]||[w.status,""];
-  $("waStatus").innerHTML=`WhatsApp: <b class="${st[1]}">${esc(st[0])}</b>`+(w.numero?`<br>conta: <b>${esc(w.conta||"")}</b> · ${esc(w.numero)}`:"")+(w.erro?`<br><span class="waEr">${esc(w.erro)}</span>`:"");
+  $("waStatus").innerHTML=`WhatsApp: <b class="${st[1]}">${esc(st[0])}</b>`+(w.numero?`<br>conta: <b>${esc(w.conta||"")}</b> · ${esc(w.numero)}`:"")+(w.motor&&w.motor!=="?"?` · motor ${esc(w.motor)}`+(w.motor==="NOWEB"?' <span class="waEr">(troque para GOWS: ./whatsapp-trocar-motor.sh)</span>':""):"")+(w.erro?`<br><span class="waEr">${esc(w.erro)}</span>`:"");
   $("waMsgs").textContent=a.mensagens_hoje;$("waResp").textContent=a.respostas_hoje;$("waHum").textContent=a.humano_hoje;
   waLigado=a.ligado;$("waLigar").textContent=a.ligado?"⏸ Pausar robô":"▶️ Ligar robô";$("waLigar").className=a.ligado?"":"prim";
   const q=$("waQr");
