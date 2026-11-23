@@ -528,7 +528,7 @@ COMANDOS = [
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
     ("/planejar", "Planeja um projeto antes de desenvolver: perguntas, fluxos, regras, protótipo e testes (n8n)"),
     ("/ajudantes", "Outras IAs (Gemini, Groq, Mistral…) como mão de obra do Jarvis: situação e cota do dia"),
-    ("/ajudante", "Pede uma tarefa de texto a outra IA: /ajudante <tarefa> ou /ajudante grok <tarefa>"),
+    ("/ajudante", "Pede uma tarefa de texto a outra IA: /ajudante <tarefa> ou /ajudante mistral <tarefa>"),
     ("/piloto", "Piloto automático: /piloto <objetivo> constrói, testa e corrige sozinho até a sua validação · /piloto parar"),
     ("/previa", "Link para navegar no site do projeto rodando no servidor (sem upload)"),
     ("/print", "Prints do site do projeto (computador e celular): /print ou /print /contato.html"),
