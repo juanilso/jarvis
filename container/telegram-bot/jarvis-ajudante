@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Pede uma tarefa de TEXTO a outra IA (Gemini, Grok, OpenRouter, Groq) para economizar o Claude.
+
+Uso:
+  jarvis-ajudante --status
+  jarvis-ajudante "escreva 5 títulos para a página de planos"
+  jarvis-ajudante --ia grok "traduza para inglês" < texto.md      (material pela entrada padrão)
+  jarvis-ajudante --arquivo docs/site/INVENTARIO.md "escreva a meta description de cada página"
+  jarvis-ajudante --max 8000 "..."                                  (tamanho máximo da resposta)
+
+Bom para: rascunhos de textos do site, traduções, títulos/descrições de SEO, textos alternativos de imagem,
+resumos, listas de ideias, conteúdo provisório, segunda opinião sobre um texto ou trecho de código.
+NÃO use para: dados de clientes, .env, tokens, senhas, banco de dados, decisões finais de código.
+Antes de enviar, e-mails, telefones, CPF, tokens e senhas são apagados automaticamente.
+A resposta é RASCUNHO: revise antes de usar (o Claude continua responsável pelo resultado).
+"""
+import os
+import sys
+
+sys.path.insert(0, os.environ.get("JARVIS_BOTS", "/opt/jarvis-bots"))
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import ajudantes as a  # noqa: E402
+
+PROIBIDOS = (".env", "segredos", "/sessao", "id_rsa", ".pem", ".key", "credentials", "painel.json", ".sqlite", ".db")
+
+
+def main(args):
+    if not args or args[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    if args[0] == "--status":
+        print(a.status())
+        return 0
+    ia, maximo, material = "auto", 4000, ""
+    while args and args[0].startswith("--"):
+        op = args.pop(0)
+        if op == "--ia" and args:
+            ia = args.pop(0)
+        elif op == "--max" and args:
+            maximo = max(200, min(16000, int(args.pop(0))))
+        elif op == "--arquivo" and args:
+            cam = args.pop(0)
+            if any(p in cam.lower() for p in PROIBIDOS):
+                print(f"Recusado: {cam} pode ter segredos ou dados de clientes.", file=sys.stderr)
+                return 2
+            material += open(cam, encoding="utf-8", errors="replace").read()[:100000] + "\n"
+        else:
+            print(f"Opção desconhecida: {op}", file=sys.stderr)
+            return 2
+    tarefa = " ".join(args).strip()
+    if not sys.stdin.isatty():
+        material += sys.stdin.read()[:100000]
+    if not tarefa:
+        print("Diga a tarefa. Ex.: jarvis-ajudante \"resuma em 5 tópicos\" < arquivo.md", file=sys.stderr)
+        return 2
+    try:
+        r = a.perguntar(tarefa, material, ia=ia, maximo=maximo)
+    except a.Recusado as e:
+        print(f"Recusado: {e}", file=sys.stderr)
+        return 2
+    if not r["ok"]:
+        print(r["texto"] + ("\n" + "\n".join(r.get("tentativas", [])) if r.get("tentativas") else ""), file=sys.stderr)
+        return 1
+    print(r["texto"])
+    print(f"\n[ajudante: {r['ia']} · {r['modelo']}" + (f" · {r['removidos']} dado(s) sensível(is) removido(s) antes de enviar"
+          if r.get("removidos") else "") + " · rascunho: revise antes de usar]", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

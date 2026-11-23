@@ -183,6 +183,23 @@ def rodar(chat_id, texto, responder_audio, compactar=False, proj=None):
     pool.de(proj).rodar(estado, texto, responder_audio, ao_evento, compactar=compactar, projeto=proj)
 
 
+def pedir_ajudante(chat_id, pedido):
+    """/ajudante [gemini|grok|openrouter|groq] <tarefa>"""
+    import ajudantes
+    ia, _, resto = pedido.partition(" ")
+    if ia.lower() not in ajudantes.PROVEDORES:
+        ia, resto = "auto", pedido
+    try:
+        r = ajudantes.perguntar(resto, ia=ia.lower())
+    except ajudantes.Recusado as e:
+        return enviar(chat_id, f"⛔ {e}")
+    if not r["ok"]:
+        return enviar(chat_id, "⚠️ " + r["texto"] + ("\n" + "\n".join(r.get("tentativas", [])) if r.get("tentativas") else ""))
+    rodape = f"\n\n— {r['ia']} · {r['modelo']}" + (f" · {r['removidos']} dado(s) sensível(is) apagado(s) antes de enviar"
+                                                   if r.get("removidos") else "")
+    enviar(chat_id, r["texto"][:3800] + rodape)
+
+
 def iniciar_piloto(chat_id, objetivo):
     """/piloto <objetivo>: rodadas sozinho até a homologação; só te chama no fim."""
     import piloto
@@ -442,7 +459,8 @@ def tratar(msg):
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos",
-                                                  "/print", "/testar", "/previa", "/piloto") \
+                                                  "/print", "/testar", "/previa", "/piloto",
+                                                  "/ajudantes", "/ajudante") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:
         resposta, acao = core.comando(estado, pool, texto)
         enviar(chat_id, resposta)
@@ -453,6 +471,8 @@ def tratar(msg):
         elif acao == "tendencias":
             threading.Thread(target=pesquisar, args=(chat_id, texto.partition(" ")[2].strip(), "tendencias"),
                              daemon=True).start()
+        elif acao == "ajudante":
+            threading.Thread(target=pedir_ajudante, args=(chat_id, texto.partition(" ")[2].strip()), daemon=True).start()
         elif acao == "piloto":
             iniciar_piloto(chat_id, texto.partition(" ")[2].strip())
         elif acao == "piloto_parar":

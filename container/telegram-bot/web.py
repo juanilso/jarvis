@@ -205,6 +205,20 @@ def iniciar(texto, veio_de_audio):
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(),), daemon=True).start()
             elif acao == "tendencias":
                 threading.Thread(target=pesquisar, args=(texto.partition(" ")[2].strip(), "tendencias"), daemon=True).start()
+            elif acao == "ajudante":
+                def _aj(pedido=texto.partition(" ")[2].strip()):
+                    import ajudantes
+                    ia, _, resto = pedido.partition(" ")
+                    if ia.lower() not in ajudantes.PROVEDORES:
+                        ia, resto = "auto", pedido
+                    try:
+                        r = ajudantes.perguntar(resto, ia=ia.lower())
+                    except ajudantes.Recusado as e:
+                        return publicar({"tipo": "erro", "texto": str(e)})
+                    publicar({"tipo": "info" if r["ok"] else "erro",
+                              "texto": (r["texto"] + (f"\n\n— {r['ia']} · {r['modelo']}" if r["ok"] else
+                                        "\n" + "\n".join(r.get("tentativas", []))))})
+                threading.Thread(target=_aj, daemon=True).start()
             elif acao == "piloto":
                 import piloto
                 proj = estado.ler()["projeto"]

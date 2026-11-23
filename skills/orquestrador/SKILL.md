@@ -87,6 +87,11 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
   `.jarvis/previas/<data-hora>/`. OLHE os PNGs com a ferramenta Read: você enxerga imagens. Sempre que criar ou alterar
   site/tela, faça testar → corrigir → print → olhar antes de responder; os prints da execução vão sozinhos para o
   usuário (painel e Telegram). Site de terceiros: só testar e relatar. Fora do contêiner (sem `jarvis-site`): MCP `playwright`.
+- Ajudantes (`jarvis-ajudante "tarefa" < material`): outras IAs (Gemini, Grok, OpenRouter, Groq) para tarefas de
+  TEXTO volumosas e simples — textos e conteúdo provisório do site, traduções, title/description, alt de imagens,
+  resumos, ideias, segunda opinião. A resposta é rascunho: revise. Nunca envie dados de clientes, .env, tokens ou
+  banco (o comando apaga e-mails/telefones/tokens e recusa arquivos sensíveis, mas a responsabilidade é sua).
+  Código, decisões e revisão final continuam com você e os agentes.
 - Modo piloto (`/jarvis:entregar`, `/piloto` no Telegram): decida o reversível sozinho ([piloto] em DECISOES),
   conteúdo provisório marcado, homologação interna completa e `docs/HOMOLOGACAO.md` com o roteiro de validação.
   Termine com `PILOTO: PRONTO|CONTINUAR|BLOQUEADO`. O Jarvis só aceita PRONTO se o teste do site passar.

@@ -8,3 +8,5 @@ __pycache__/
 .env.whatsapp
 .env.atendimento
 .env.pagamentos
+container/.env.ajudantes
+.env.ajudantes

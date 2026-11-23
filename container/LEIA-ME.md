@@ -111,6 +111,23 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.21: ajudantes (outras IAs como mão de obra)
+
+- **Gemini, Grok, OpenRouter e Groq** trabalham para o Jarvis em tarefas de TEXTO: rascunhos e conteúdo provisório
+  do site, traduções, title/description, alt de imagens, resumos, ideias, segunda opinião. O Claude continua o chefe:
+  decide, programa, revisa e responde por tudo. Os ajudantes não leem arquivos nem mexem no projeto.
+- Configure: `./ajudantes-configurar.sh` (pede as chaves escondidas, grava em `.env.ajudantes` com permissão 600,
+  recria os contêineres e testa cada uma). Chaves grátis: aistudio.google.com/apikey, console.x.ai,
+  openrouter.ai/keys, console.groq.com/keys.
+- **Proteção de dados:** antes de enviar, o Jarvis apaga e-mails, telefones, CPF/CNPJ, tokens, chaves, senhas e links
+  com token; recusa arquivos `.env`, segredos, bancos e chaves privadas. Mesmo assim, **planos gratuitos costumam usar o
+  conteúdo para treinar**: os ajudantes são para conteúdo público do site, não para dados de clientes.
+- **Cota e troca automática:** cota diária por ajudante (`JARVIS_AJUDANTE_GEMINI_DIA=200`…); se um responder "sem cota"
+  ou "sem crédito", o Jarvis pausa esse e passa para o próximo da lista. O modelo é escolhido sozinho pela lista do
+  provedor (troca quando um sai de linha) ou fixado em `JARVIS_AJUDANTE_<NOME>_MODELO`.
+- Telegram/painel: `/ajudantes` (situação, cota, dados apagados) e `/ajudante <tarefa>` ou `/ajudante grok <tarefa>`.
+- Terminal e agentes: `jarvis-ajudante "tarefa" < arquivo` · `jarvis-ajudante --status`.
+
 ## Jarvis 1.20: refatorar sites com qualidade de agência
 
 - **Skill `frontend-design` (oficial da Anthropic) agora vem junto:** o designer pedia essa skill "se disponível", mas

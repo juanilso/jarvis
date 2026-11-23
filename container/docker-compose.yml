@@ -15,6 +15,8 @@ services:
     env_file:
       - path: .env.claude      # opcional: ANTHROPIC_API_KEY=sk-ant-... (uso por API em vez da assinatura)
         required: false
+      - path: .env.ajudantes   # chaves das outras IAs (./ajudantes-configurar.sh)
+        required: false
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace   # pasta compartilhada com o PC (outras IAs/IDE enxergam)
       - claude-config:/home/dev/.claude              # login e configurações do Claude persistem
@@ -40,6 +42,8 @@ services:
     env_file:
       - path: .env.claude
         required: false
+      - path: .env.ajudantes   # chaves das outras IAs (./ajudantes-configurar.sh)
+        required: false
     environment:
       CLAUDE_CONFIG_DIR: /home/dev/.claude
       DB_HOST: mariadb
@@ -63,6 +67,8 @@ services:
     command: ["code-server", "--bind-addr", "0.0.0.0:8443", "--auth", "password", "--disable-telemetry", "/workspace"]
     env_file:
       - path: .env.claude
+        required: false
+      - path: .env.ajudantes   # chaves das outras IAs (./ajudantes-configurar.sh)
         required: false
     environment:
       CLAUDE_CONFIG_DIR: /home/dev/.claude
@@ -89,6 +95,8 @@ services:
     command: ["python3", "/opt/jarvis-bots/web.py"]
     env_file:
       - path: .env.claude
+        required: false
+      - path: .env.ajudantes   # chaves das outras IAs (./ajudantes-configurar.sh)
         required: false
       - path: .env.atendimento   # chave do WhatsApp (WAHA): só o painel usa para responder clientes
         required: false

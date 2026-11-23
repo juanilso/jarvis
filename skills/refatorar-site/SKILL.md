@@ -74,6 +74,10 @@ foco visível, contraste AA, `prefers-reduced-motion`, sem erros no console, not
 Escreva a nota em `docs/PILOTO.md` (ou na resposta): `Nota visual home: 8,6 (hierarquia 9, …)`. Abaixo de 8 em
 qualquer item: corrija e tire o print de novo antes de seguir.
 
+## Economize com os ajudantes
+Textos de seções, conteúdo provisório, title/description de cada página, alt das imagens e traduções podem ser
+rascunhados pelo `jarvis-ajudante` (outras IAs). Mande só o conteúdo público do site, revise e ajuste o tom.
+
 ## O que mostrar ao usuário
 Prints da home e das páginas prontas, o link da prévia ao vivo e, no fim, `docs/HOMOLOGACAO.md` com o roteiro.
 Nada de pedir aprovação de documentação: o usuário quer ver tela.

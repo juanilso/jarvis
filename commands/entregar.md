@@ -20,7 +20,8 @@ Trabalhe o máximo possível nesta rodada.
 - Toda decisão reversível (layout, cores, estrutura de páginas, nome de rota, biblioteca, ordem das tarefas) você toma,
   pela opção recomendada, e registra em `docs/DECISOES.md` com a marca **[piloto]**. Decisões pendentes antigas que
   forem reversíveis: decida e feche.
-- Falta conteúdo do usuário (textos, fotos, logo, preços, telefone)? Use conteúdo provisório realista e marque com
+- Falta conteúdo do usuário (textos, fotos, logo, preços, telefone)? Use conteúdo provisório realista (rascunhe com
+  `jarvis-ajudante` se estiver configurado, para economizar) e marque com
   `<!-- PROVISÓRIO -->`; liste em `docs/HOMOLOGACAO.md` → "O que você precisa me mandar". Isso NÃO bloqueia.
 - Só pare (BLOQUEADO) para o que é irreversível ou que só o usuário tem: senha/credencial/conta de terceiros,
   publicar em produção (deploy, DNS, push), apagar dados reais, pagamento, decisão jurídica. Mesmo assim, termine

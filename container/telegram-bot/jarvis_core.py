@@ -61,6 +61,10 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
 - Qualquer alteração de código: explorador → executor da área (desenvolvedor, dba, android ou designer) → testador →
   revisor → commit local. Sem pular o testador e o revisor.
 - Evolução, escopo, arquitetura ou decisão técnica: arquiteto primeiro.
+- Ajudantes (`jarvis-ajudante`, outras IAs grátis/baratas): delegue tarefas de TEXTO volumosas e simples
+  (rascunhos de textos do site, conteúdo provisório, traduções, title/description, alt de imagens, resumos, listas
+  de ideias, segunda opinião). Revise sempre o que voltar. Nunca mande dados de clientes, .env, tokens ou banco.
+  Sem ajudante configurado (`jarvis-ajudante --status`), faça você mesmo.
 - Tela, site, layout ou visual: designer, com as skills `refatorar-site` e `frontend-design`. Refatorar site = mostrar a
   home pronta e bonita (prints) logo na primeira entrega; nada de horas de documentação antes da primeira tela.
 - Sempre que criar ou alterar um site/tela, ANTES de responder: rode `jarvis-site testar` na pasta do projeto, corrija
@@ -522,6 +526,8 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/ajudantes", "Outras IAs (Gemini, Grok…) como mão de obra do Jarvis: situação e cota do dia"),
+    ("/ajudante", "Pede uma tarefa de texto a outra IA: /ajudante <tarefa> ou /ajudante grok <tarefa>"),
     ("/piloto", "Piloto automático: /piloto <objetivo> constrói, testa e corrige sozinho até a sua validação · /piloto parar"),
     ("/previa", "Link para navegar no site do projeto rodando no servidor (sem upload)"),
     ("/print", "Prints do site do projeto (computador e celular): /print ou /print /contato.html"),
@@ -587,6 +593,12 @@ Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
+Ajudantes (outras IAs como mão de obra)
+• /ajudantes: quais estão ligados (Gemini, Grok, OpenRouter, Groq), cota do dia e avisos de privacidade
+• /ajudante escreva 10 títulos para a página de planos · /ajudante grok traduza: ...
+• O Jarvis também usa sozinho para textos, traduções, SEO e conteúdo provisório (economiza o Claude);
+  antes de enviar, apaga e-mails, telefones, CPF, tokens e senhas. Configure: ./ajudantes-configurar.sh
+
 Piloto automático (só te chama na validação)
 • /piloto refatorar o site da loja com layout moderno: o Jarvis decide o que é reversível, constrói, testa, corrige e
   homologa sozinho, em rodadas. Você recebe 1 linha por rodada e só é chamado quando estiver pronto para validar
@@ -644,6 +656,13 @@ def comando(estado, pool, texto):
     est = estado.ler()
     proj = est["projeto"]
     execucao = pool.de(proj)
+    if cmd == "/ajudantes":
+        import ajudantes
+        return ajudantes.status(), None
+    if cmd == "/ajudante":
+        if not arg.strip():
+            return "Uso: /ajudante <tarefa> · /ajudante gemini <tarefa> · /ajudantes para ver a situação", None
+        return "🧑‍🔧 Pedindo a um ajudante…", "ajudante"
     if cmd == "/piloto":
         import piloto
         if not proj:
