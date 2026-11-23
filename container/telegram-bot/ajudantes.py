@@ -159,21 +159,20 @@ def candidatos(nome, quantos=4):
     if fixo:
         return [fixo]
     c = _cache_modelos()
-    if c.get(nome) and time.time() - c[nome]["quando"] < 86400 and c[nome].get("lista"):
+    if c.get(nome) and time.time() - c[nome]["quando"] < 86400 and c[nome].get("lista") and c[nome].get("v") == 2:
         return c[nome]["lista"]
     ids = [m.get("id", "") for m in (_http(nome, "/models") or {}).get("data", [])]
     ids = [i.split("/", 1)[1] if i.startswith("models/") else i for i in ids]
     lista = []
-    for padrao in PROVEDORES[nome][2]:
+    for padrao in PROVEDORES[nome][2]:  # até 2 de cada tipo (ex.: 2 Flash + 2 Flash-Lite), para variar se um lotar
         cands = sorted([i for i in ids if re.search(padrao, i)], key=_chave_versao, reverse=True)
         estaveis = [i for i in cands if not re.search(r"preview|exp|\d{4}-\d{2}|latest", i)]
-        for i in estaveis + [i for i in cands if i not in estaveis]:
-            if i not in lista:
-                lista.append(i)
+        novos = [i for i in estaveis + [i for i in cands if i not in estaveis] if i not in lista]
+        lista += novos[:2]
     lista = lista[:quantos]
     if not lista:
         raise RuntimeError(f"não achei modelo adequado em {nome} ({len(ids)} disponíveis)")
-    c[nome] = {"modelo": lista[0], "lista": lista, "quando": time.time()}
+    c[nome] = {"modelo": lista[0], "lista": lista, "quando": time.time(), "v": 2}
     _gravar_cache(c)
     return lista
 
@@ -240,15 +239,24 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
             continue
         for mod in modelos:
             try:
-                r = _http(nome, "/chat/completions", {"model": mod, "max_tokens": maximo, "temperature": 0.4,
-                                                        "messages": [{"role": "system", "content": PAPEL},
-                                                                     {"role": "user", "content": limpo}]})
+                corpo = {"model": mod, "max_tokens": maximo, "temperature": 0.4,
+                         "messages": [{"role": "system", "content": PAPEL}, {"role": "user", "content": limpo}]}
+                if nome == "gemini":  # modelos que "pensam": pensar pouco e dar folga para o texto final
+                    corpo["max_tokens"] = max(maximo, 2048)
+                    corpo["reasoning_effort"] = "low"
+                try:
+                    r = _http(nome, "/chat/completions", corpo)
+                except urllib.error.HTTPError as e1:
+                    if e1.code != 400 or "reasoning_effort" not in corpo:
+                        raise
+                    corpo.pop("reasoning_effort")  # modelo que não aceita o ajuste: tenta sem
+                    r = _http(nome, "/chat/completions", corpo)
                 texto = ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
                 if isinstance(texto, list):
                     texto = "".join(p.get("text", "") for p in texto if isinstance(p, dict))
                 texto = re.sub(r"(?s)<think>.*?</think>", "", texto).strip()  # modelos que mostram o raciocínio
                 if not texto:
-                    raise RuntimeError("resposta vazia")
+                    raise RuntimeError("resposta vazia (o modelo gastou o limite pensando)")
                 _registrar(nome, "pedidos")
                 if removidos:
                     _registrar(nome, "removidos", removidos)
