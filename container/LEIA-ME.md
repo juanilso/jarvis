@@ -111,6 +111,15 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.26: mensagens seguidas viram uma resposta só
+
+- O cliente manda "Bom dia" e logo depois "Quero renovar": o robô espera ele terminar (7 s, ajustável em
+  📱 → Proteção → Juntar mensagens seguidas) e responde **uma vez**, lendo tudo junto e indo direto ao ponto.
+- Se chegar mensagem nova enquanto a resposta ainda está sendo escrita, essa resposta é descartada e sai uma só,
+  com tudo. A mesma mensagem entregue duas vezes continua gerando uma resposta.
+- A IA responde fora da trava geral: um cliente não espera mais a resposta do outro.
+- Regras: não se apresentar de novo na mesma conversa; não perguntar o que o cliente já disse.
+
 ## Jarvis 1.25: atendimento sem nome de IA e com textos variados
 
 - **Sem marca de IA:** o robô não diz mais qual IA o move (Claude, Anthropic, GPT, Gemini…). Regra no prompt +

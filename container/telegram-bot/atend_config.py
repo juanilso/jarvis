@@ -46,6 +46,7 @@ RECURSOS = {"pagamentos": True, "teste": True, "consulta": True, "jogos": True,
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
     "atraso_min": 2, "atraso_max": 6,   # segundos de pausa antes de responder (+ tempo de "digitar")
+    "agrupar_seg": 7,            # espera o cliente terminar: mensagens seguidas viram UMA resposta
     "max_por_minuto": 12,        # respostas do robô por minuto (todas as conversas)
     "intervalo_proativas": 45,   # segundos entre mensagens que o robô inicia (pagamentos)
     "max_proativas_hora": 30,

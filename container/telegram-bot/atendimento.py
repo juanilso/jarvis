@@ -73,6 +73,8 @@ REGRAS:
 - NUNCA diga qual inteligência artificial, modelo ou empresa de tecnologia está por trás de você (nada de Claude,
   Anthropic, GPT, OpenAI, Gemini, Google, Llama ou "modelo de linguagem"). Você é o assistente virtual da empresa.
   Se perguntarem se é robô, diga com naturalidade que é o assistente virtual automático e que uma pessoa também atende.
+- Se o cliente mandou várias mensagens seguidas, responda tudo numa mensagem só. Se ele já disse o que precisa,
+  vá direto ao ponto (não pergunte de novo). Não se apresente de novo se já se apresentou nesta conversa.
 - VARIE o jeito de escrever: cumprimentos, frases e emojis diferentes a cada conversa, como uma pessoa faria.
   Nunca copie as frases listadas em FRASES USADAS RECENTEMENTE (escreva com outras palavras).
 - Quando precisar de uma pessoa (pedido do cliente, reclamação, pagamento já feito com problema, assunto fora da BASE),
@@ -681,6 +683,8 @@ def _chamar_dono(e, chat, nome, motivo):
 
 
 DIAG = "__jarvis_diagnostico__"
+_SEQ = {}                      # por conversa: número da última mensagem do cliente (agrupar mensagens seguidas)
+_seq_lock = threading.Lock()
 N8N_WEBHOOK = os.environ.get("ATENDIMENTO_N8N_WEBHOOK", "http://n8n:5678/webhook/whatsapp-waha")
 
 
@@ -923,68 +927,121 @@ def atender(dados):
             _evento(e, chat, "🔇 não respondeu: muitas mensagens seguidas", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "muitas mensagens seguidas"}
+        with _seq_lock:
+            _SEQ[chat] = _SEQ.get(chat, 0) + 1
+            minha = _SEQ[chat]
+        _salvar_estado(e)
+    return _responder(chat, nome, minha)
+
+
+def _ainda_a_vez(chat, minha):
+    with _seq_lock:
+        return _SEQ.get(chat) == minha
+
+
+def _junto(chat):
+    """Mensagens do cliente desde a última resposta (do robô ou sua), juntas: o robô responde tudo de uma vez."""
+    msgs = []
+    for m in reversed(_historico(chat)):
+        if m["p"] != "cliente":
+            break
+        msgs.append(m["x"])
+    return "\n".join(reversed(msgs)).strip()
+
+
+def _responder(chat, nome, minha):
+    """Espera o cliente terminar de escrever (mensagens seguidas viram UMA resposta), gera a resposta sem travar os
+    outros atendimentos e descarta se chegar mensagem nova antes de enviar."""
+    espera = float(C.protecao().get("agrupar_seg", 7) or 0)
+    if espera:
+        time.sleep(min(espera, 60))
+    if not _ainda_a_vez(chat, minha):
+        return {"responder": False, "motivo": "agrupada: respondo junto com a mensagem seguinte"}
+    import painel_api
+    import pagamentos
+    with _lock:
+        e = _ler_estado()
+        ate = e.get("humano", {}).get(chat)
+        if ate and ate > time.time():  # você respondeu enquanto o robô esperava
+            return {"responder": False, "motivo": "aguardando atendente"}
+        if not e.get("ligado", True):
+            return {"responder": False, "motivo": "atendimento desligado"}
+        texto = _junto(chat)
+        so_midia = not texto or texto.replace("[mídia]", "").strip() == ""
         aviso = ""
         if PEDE_HUMANO.search(texto or ""):
             _chamar_dono(e, chat, nome, "o cliente pediu um atendente")
             aviso = "o cliente pediu um atendente e ele JÁ FOI AVISADO."
         elif chat in e.get("esperando", {}):
             aviso = "o atendente JÁ FOI AVISADO e vai responder em breve; continue ajudando e tranquilizando o cliente."
-        import painel_api
-        import pagamentos
-        pend = pagamentos.concluir_pendente(chat, texto) if texto and painel_api.configurado() else None
+        if texto.count("\n"):
+            aviso = (aviso + " " if aviso else "") + ("O cliente mandou várias mensagens seguidas: responda TUDO numa "
+                                                      "mensagem só, indo direto ao que ele pediu.")
+        resposta, regras = None, ""
+        pend = pagamentos.concluir_pendente(chat, texto) if texto and not so_midia and painel_api.configurado() else None
         if pend:
             resposta = pend
-            e.setdefault("logins", {}).update(_ler_estado().get("logins", {}))  # login gravado durante a conferência
-        elif not texto:
-            resposta = "Por enquanto eu consigo ler só mensagens de texto 🙂 Pode me escrever?"
+        elif so_midia:
+            resposta = random.choice(["Por enquanto eu consigo ler só mensagens de texto 🙂 Pode me escrever?",
+                                      "Ainda não consigo abrir áudio nem imagem por aqui 😅 Me escreve, por favor?",
+                                      "Consigo ler só texto por enquanto. Pode me contar por escrito? 🙏"])
         else:
             if painel_api.configurado():
                 login = e.get("logins", {}).get(chat)
                 aviso = (aviso + " " if aviso else "") + (f"O sistema conhece o login deste cliente: {login}." if login else "")
-            try:
-                regras = ""
-                if painel_api.configurado():
-                    regras = REGRAS_PAINEL
-                    if not C.recurso("teste"):
-                        regras = regras.replace("- Cliente pede teste grátis: escreva [[TESTE]].",
-                                                "- Testes grátis estão PAUSADOS: diga isso com gentileza.")
-                    if not C.recurso("consulta"):
-                        regras += "\n- Consulta de vencimento está desligada: chame o atendente ([[HUMANO]]).\n"
-                if C.recurso("jogos"):
-                    try:
-                        import jogos as _jogos
-                        jd = _jogos.do_dia()
-                        if jd and jd.get("texto"):
-                            regras += ("\n\nJOGOS DE HOJE (se o cliente perguntar sobre jogos, futebol ou programação de hoje, "
-                                       "responda com esta lista, do jeito que está):\n" + jd["texto"] + "\n")
-                    except Exception:  # noqa: BLE001
-                        pass
-                resposta = _perguntar_modelo(_historico(chat), ler_faq() + regras, aviso)
-            except Exception as erro:  # noqa: BLE001
-                detalhe = str(erro)[:160]
-                resposta = random.choice([
-                    "Recebi sua mensagem! 🙏 Tive uma instabilidade aqui, mas já avisei o atendente e ele te responde em breve.",
-                    "Oi! Sua mensagem chegou 👍 Estou com uma lentidão agora, mas já chamei o atendente pra te responder.",
-                    "Opa, recebi! 🙌 Já passei pro atendente, ele te chama aqui em instantes.",
-                    "Mensagem recebida! Um atendente já foi avisado e te responde rapidinho. 😉"])
-                _chamar_dono(e, chat, nome, f"o robô falhou ({detalhe})")
-                _evento(e, chat, f"⚠️ robô falhou: {detalhe}", texto)
-            if painel_api.configurado() and ("[[CONSULTAR" in resposta or "[[TESTE]]" in resposta):
-                resposta = _acoes_painel(e, chat, resposta)
-            if "[[HUMANO]]" in resposta:
-                resposta = resposta.replace("[[HUMANO]]", "").strip() or "Já avisei o atendente, ele te responde em breve. 🙌"
-                _chamar_dono(e, chat, nome, "o pedido precisa de uma pessoa")
+                regras = REGRAS_PAINEL
+                if not C.recurso("teste"):
+                    regras = regras.replace("- Cliente pede teste grátis: escreva [[TESTE]].",
+                                            "- Testes grátis estão PAUSADOS: diga isso com gentileza.")
+                if not C.recurso("consulta"):
+                    regras += "\n- Consulta de vencimento está desligada: chame o atendente ([[HUMANO]]).\n"
+            if C.recurso("jogos"):
+                try:
+                    import jogos as _jogos
+                    jd = _jogos.do_dia()
+                    if jd and jd.get("texto"):
+                        regras += ("\n\nJOGOS DE HOJE (se o cliente perguntar sobre jogos, futebol ou programação de hoje, "
+                                   "responda com esta lista, do jeito que está):\n" + jd["texto"] + "\n")
+                except Exception:  # noqa: BLE001
+                    pass
+        historico = _historico(chat)
+        _salvar_estado(e)
+    erro = None
+    if resposta is None:  # a IA responde FORA da trava: um cliente não espera pelo outro
+        try:
+            resposta = _perguntar_modelo(historico, ler_faq() + regras, aviso)
+        except Exception as x:  # noqa: BLE001
+            erro = x
+    if not _ainda_a_vez(chat, minha):
+        return {"responder": False, "motivo": "descartada: chegou mensagem nova (respondo tudo junto)"}
+    with _lock:
+        e = _ler_estado()
+        if erro is not None:
+            detalhe = str(erro)[:160]
+            resposta = random.choice([
+                "Recebi sua mensagem! 🙏 Tive uma instabilidade aqui, mas já avisei o atendente e ele te responde em breve.",
+                "Oi! Sua mensagem chegou 👍 Estou com uma lentidão agora, mas já chamei o atendente pra te responder.",
+                "Opa, recebi! 🙌 Já passei pro atendente, ele te chama aqui em instantes.",
+                "Mensagem recebida! Um atendente já foi avisado e te responde rapidinho. 😉"])
+            _chamar_dono(e, chat, nome, f"o robô falhou ({detalhe})")
+            _evento(e, chat, f"⚠️ robô falhou: {detalhe}", texto)
+        if painel_api.configurado() and ("[[CONSULTAR" in resposta or "[[TESTE]]" in resposta):
+            resposta = _acoes_painel(e, chat, resposta)
+        if "[[HUMANO]]" in resposta:
+            resposta = resposta.replace("[[HUMANO]]", "").strip() or "Já avisei o atendente, ele te responde em breve. 🙌"
+            _chamar_dono(e, chat, nome, "o pedido precisa de uma pessoa")
         resposta = sem_marca_ia(resposta)[:1500]
-        _lembrar_frase(resposta)
-        _evento(e, chat, "💬 respondeu (você foi avisado)" if chat in e.get("esperando", {}) else "💬 respondeu", texto)
+        _evento(e, chat, "💬 respondeu (você foi avisado)" if chat in e.get("esperando", {}) else "💬 respondeu",
+                texto.replace("\n", " / ")[:200])
         _guardar(chat, "bot", resposta)
         _contar(e, "respostas")
         _salvar_estado(e)
+    _lembrar_frase(resposta)
     try:
         enviar(chat, resposta)
         return {"responder": True, "texto": resposta, "enviado": True}
-    except Exception as erro:  # noqa: BLE001
-        return {"responder": True, "texto": resposta, "enviado": False, "erro": f"WAHA: {type(erro).__name__}"}
+    except Exception as erro_envio:  # noqa: BLE001
+        return {"responder": True, "texto": resposta, "enviado": False, "erro": f"WAHA: {type(erro_envio).__name__}"}
 
 
 # ------------------------------------------------------------------ painel e comandos

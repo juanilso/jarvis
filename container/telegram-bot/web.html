@@ -264,6 +264,7 @@ footer{position:relative}
   <div class="waCfg">
     <label><span><input type="checkbox" id="prDig"> Marcar como visto e mostrar "digitando…"</span></label>
     <label>Pausa antes de responder (segundos, mín–máx)<span style="display:flex;gap:6px"><input id="prMin" type="number" min="0" max="60" style="flex:1"><input id="prMax" type="number" min="0" max="60" style="flex:1"></span></label>
+    <label>Juntar mensagens seguidas (segundos esperando o cliente terminar de escrever; 0 = responde cada uma)<input id="prAgrupar" type="number" min="0" max="60"></label>
     <label>Respostas por minuto (máximo)<input id="prMinuto" type="number" min="1" max="60"></label>
     <label>Intervalo entre mensagens que o robô inicia (s)<input id="prInt" type="number" min="10" max="3600"></label>
     <label>Mensagens que o robô inicia por hora (máx.)<input id="prHora" type="number" min="1" max="500"></label>
@@ -728,7 +729,7 @@ $("cfgTestar").onclick=async()=>{$("cfgMsg").textContent="⏳ testando…";const
 let atPadrao={};
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
   $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;$("recVariar").checked=c.recursos.variar!==false;$("recJogos").checked=c.recursos.jogos!==false;
-  const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prMinuto").value=p.max_por_minuto;
+  const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prAgrupar").value=p.agrupar_seg??7;$("prMinuto").value=p.max_por_minuto;
   $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
   $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
     <button class="waRestaura" data-k="${k}" style="margin-top:4px">↺ voltar ao padrão</button></details>`).join("");
@@ -738,7 +739,7 @@ $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa 
     (r.ok?"<div style='margin-top:4px'>Tudo certo nesse caminho. Se um cliente não recebeu resposta, veja ÚLTIMOS EVENTOS.</div>":"")};
 $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("textarea").forEach(t=>m[t.dataset.k]=t.value);
   const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked,calar_quando_respondo:$("recCalar").checked,variar:$("recVariar").checked,jogos:$("recJogos").checked},
-    protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,max_por_minuto:$("prMinuto").value,
+    protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,agrupar_seg:$("prAgrupar").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},mensagens:m}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
 $("btnWa").onclick=async()=>{$("wa").classList.add("aberto");cfgCarregar();atCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
