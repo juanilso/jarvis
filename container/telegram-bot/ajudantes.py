@@ -229,8 +229,10 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
         except urllib.error.HTTPError as e:
             _registrar(nome, "falhas")
             msg = _msg_erro(e.read().decode(errors="replace"))
-            if e.code in (401, 403) or (e.code == 400 and re.search(r"api.?key|unauthori|permission", msg, re.I)):
+            if _chave_invalida(e.code, msg):
                 _pausar(nome, 30 * 86400, "chave inválida: gere outra e rode ./ajudantes-configurar.sh")
+            elif _sem_credito(e.code, msg):
+                _pausar(nome, 6 * 3600, "conta sem crédito/licença")
             tentativas.append(f"{nome}: {_explicar(nome, e.code, msg)}")
             continue
         except Exception as e:  # noqa: BLE001
@@ -267,11 +269,11 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
                 msg = _msg_erro(e.read().decode(errors="replace"))
                 _registrar(nome, "falhas")
                 tentativas.append(f"{nome} ({mod}): {_explicar(nome, e.code, msg)}")
-                if e.code in (401, 403) or (e.code == 400 and re.search(r"api.?key|unauthori|permission", msg, re.I)):
+                if _chave_invalida(e.code, msg):
                     _pausar(nome, 30 * 86400, "chave inválida: gere outra e rode ./ajudantes-configurar.sh")
                     break  # chave errada: outro modelo não resolve
-                if e.code == 402 or re.search(r"credit|billing|insufficient", msg, re.I):
-                    _pausar(nome, 6 * 3600, "sem crédito")
+                if _sem_credito(e.code, msg):
+                    _pausar(nome, 6 * 3600, "conta sem crédito/licença")
                     break
                 # 429/500/503 (modelo lotado), 404/400 de modelo: tenta o próximo modelo do mesmo provedor
                 continue
@@ -285,9 +287,23 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
     return {"ok": False, "texto": "Nenhum ajudante conseguiu responder.", "tentativas": tentativas, "removidos": removidos}
 
 
+def _sem_credito(code, msg):
+    return code == 402 or bool(re.search(r"credit|licen[cs]e|purchase|billing|insufficient|spending.?limit|quota exceeded|payment", msg, re.I))
+
+
+def _chave_invalida(code, msg):
+    if _sem_credito(code, msg):
+        return False
+    return code == 401 or (code in (400, 403) and bool(re.search(r"api.?key|unauthori|invalid|incorrect|not found|revoked", msg, re.I)))
+
+
 def _explicar(nome, code, msg):
-    if code in (401, 403) or (code == 400 and re.search(r"api.?key|unauthori", msg, re.I)):
-        return f"chave inválida (HTTP {code}): gere outra e rode ./ajudantes-configurar.sh"
+    if _sem_credito(code, msg):
+        return f"a conta não tem crédito/licença (HTTP {code}): {msg[:140]}"
+    if _chave_invalida(code, msg):
+        return f"chave inválida (HTTP {code}): {msg[:100]} · gere outra e rode ./ajudantes-configurar.sh"
+    if code == 403:
+        return f"acesso negado (HTTP 403): {msg[:160]}"
     if code == 429:
         return f"lotado/limite por minuto (HTTP 429): {msg[:80]}"
     if code in (500, 502, 503, 504):
