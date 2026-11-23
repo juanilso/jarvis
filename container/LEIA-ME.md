@@ -111,6 +111,23 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.23: vigia do atendimento do WhatsApp
+
+- **Vigia** (roda sozinho no painel a cada 5 min, `JARVIS_VIGIA_MIN`): testa a corrente inteira WhatsApp → WAHA → n8n
+  → Jarvis e **conserta sozinho** quando dá:
+  - sessão parada/falhou/travada → reinicia (sem QR);
+  - webhook ou histórico faltando na sessão → grava de novo (sem QR);
+  - fluxo do n8n despublicado → publica de novo (precisa da chave da API do n8n: `./n8n-api-configurar.sh`;
+    sem ela, ele avisa para você publicar);
+  - **cliente escreveu e a mensagem não chegou** (compara as conversas do WhatsApp com o que o Jarvis recebeu) →
+    regrava o webhook e te manda **a lista de quem ficou sem resposta**;
+  - WhatsApp desconectado → manda o **QR code no Telegram** e avisa quando conectar.
+  Avisa uma vez por problema e quando volta ao normal.
+- O histórico de conversas do motor NOWEB passa a ficar ligado na sessão (é o que permite achar mensagens perdidas).
+- Painel 📱: 🔄 **Reiniciar** (sem QR), 🔌 **Reconectar (QR novo)** e o quadro 🛡 Vigia (último teste, testar agora, ligar/desligar).
+- Telegram: `/whatsapp` (situação do vigia) · `/whatsapp testar` · `/whatsapp reiniciar` · `/whatsapp reconectar`.
+- Cada teste aparece como uma execução no fluxo do n8n (é o teste passando pelo mesmo caminho das mensagens).
+
 ## Jarvis 1.22.6: NVIDIA e Cloudflare no lugar de Mistral e Grok
 
 - A Mistral encerrou o plano grátis da API e o Grok exige crédito. Entram:

@@ -228,8 +228,9 @@ footer{position:relative}
     <div>
       <div class="waSt" id="waStatus">—</div>
       <div class="waNums"><div class="waNum"><b id="waMsgs">0</b>mensagens hoje</div><div class="waNum"><b id="waResp">0</b>respostas do robô</div><div class="waNum"><b id="waHum">0</b>passadas para você</div></div>
-      <div class="lin" style="display:flex;gap:8px;flex-wrap:wrap"><button id="waConectar" class="prim">📲 Conectar</button><button id="waLigar">🤖 —</button><button id="waDiag">🩺 Diagnóstico</button></div>
+      <div class="lin" style="display:flex;gap:8px;flex-wrap:wrap"><button id="waConectar" class="prim">📲 Conectar</button><button id="waLigar">🤖 —</button><button id="waDiag">🩺 Diagnóstico</button><button id="waReiniciar" title="Reinicia a sessão sem desconectar (não pede QR)">🔄 Reiniciar</button><button id="waReconectar" title="Desconecta o aparelho e gera um QR code novo">🔌 Reconectar (QR novo)</button></div>
       <div id="waDiagRes" class="waDica" style="margin-top:8px"></div>
+      <div id="waVigia" class="waDica" style="margin-top:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 10px"></div>
       <div class="waDica">Use um número só da empresa. No celular: Configurações → Dispositivos conectados → Conectar dispositivo, e leia o QR code.
         Quando o cliente precisa de você, o robô te avisa no Telegram e <b>continua conversando</b>. Quando você responde pelo
         WhatsApp, ele se cala naquela conversa e <b>volta sozinho</b> depois de 30 min sem mensagem sua (ajuste abaixo). <code>#bot</code> devolve na hora.</div>
@@ -698,6 +699,14 @@ async function waAtualizar(){
     im.onerror=()=>{q.classList.remove("qr");q.style.backgroundImage="";q.textContent="⏳ gerando o QR code… (se demorar, clique em Conectar)"};
     im.src=u}
   else{q.classList.remove("qr");q.style.backgroundImage="";q.textContent=w.status==="WORKING"?"✅ WhatsApp conectado":(st[0])}
+  const vg=j.vigia||{},vu=vg.ultimo||{};
+  $("waVigia").innerHTML=`🛡 <b>Vigia</b> ${vg.ligado===false?"desligado":"testa a cada "+(vg.min||5)+" min, conserta o que der e avisa no Telegram"}`+
+    ` · <a href="#" id="waVigiaTestar">testar agora</a> · <a href="#" id="waVigiaLigar">${vg.ligado===false?"ligar":"desligar"}</a>`+
+    (vu.quando?`<br>Último teste ${esc(vu.quando)}: ${vu.ok?"✅ tudo funcionando":"❌ "+esc((vu.passos||[]).filter(p=>!p.ok).map(p=>p.titulo+": "+p.detalhe).join(" · "))}`+
+      ((vu.perdidas||[]).length?`<br>📵 Sem resposta: `+vu.perdidas.map(x=>`<b>${esc(x.nome||x.numero)}</b> (${esc(x.numero)}, há ${x.min} min)`).join(", "):""):"");
+  $("waVigiaTestar").onclick=async ev=>{ev.preventDefault();$("waVigia").insertAdjacentHTML("beforeend","<br>⏳ testando (até 40 s)…");
+    await api("/api/whatsapp/acao",{acao:"vigia_testar"});waAtualizar()};
+  $("waVigiaLigar").onclick=async ev=>{ev.preventDefault();await api("/api/whatsapp/acao",{acao:"vigia_ligar",valor:vg.ligado===false});waAtualizar()};
   $("waConectar").style.display=w.status==="WORKING"?"none":"";
   $("waAguard").innerHTML=a.aguardando.length?a.aguardando.map(x=>x.tipo==="esperando"
     ?`<div class="waAg">⏳ <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · esperando você há ${Math.max(1,Math.round(x.desde/60))} min · o robô segue conversando</span><button data-n="${esc(x.numero)}">✓ resolvido</button></div>`
@@ -735,6 +744,11 @@ $("btnWa").onclick=async()=>{$("wa").classList.add("aberto");cfgCarregar();atCar
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)};
 function waFechar(){$("wa").classList.remove("aberto");clearInterval(waTimer)}
 $("waFechar").onclick=waFechar;$("wa").onclick=e=>{if(e.target.id==="wa")waFechar()};
+$("waReiniciar").onclick=async()=>{$("waDiagRes").textContent="⏳ reiniciando a sessão…";const r=await api("/api/whatsapp/acao",{acao:"reiniciar"});
+  $("waDiagRes").textContent=(r.ok?"🔄 ":"⚠️ ")+(r.msg||r.erro||"");setTimeout(waAtualizar,4000)};
+$("waReconectar").onclick=async()=>{if(!confirm("Desconectar o WhatsApp e gerar um QR code novo? Você vai precisar escanear de novo no celular da empresa."))return;
+  $("waDiagRes").textContent="⏳ desconectando…";const r=await api("/api/whatsapp/acao",{acao:"reconectar"});
+  $("waDiagRes").textContent=(r.ok?"🔌 ":"⚠️ ")+(r.msg||r.erro||"");setTimeout(waAtualizar,5000)};
 $("waConectar").onclick=async()=>{$("waQr").textContent="⏳ iniciando…";await api("/api/whatsapp/acao",{acao:"iniciar"});setTimeout(waAtualizar,2500)};
 $("waLigar").onclick=async()=>{await api("/api/whatsapp/acao",{acao:"ligar",valor:!waLigado});waAtualizar()};
 $("waSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"faq",texto:$("waFaq").value});$("waSalvo").textContent=r.ok?"✔ salvo — o robô já usa a nova base":"erro ao salvar"};

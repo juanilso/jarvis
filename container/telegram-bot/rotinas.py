@@ -188,7 +188,7 @@ def executar(dados, publicar, pool, estado):
     if acao == "atendimento_cmd":  # /atendimento, /assumir, /devolver vindos do Telegram
         import atendimento
         cmd = str(dados.get("cmd") or "/atendimento")
-        if cmd not in ("/atendimento", "/assumir", "/devolver"):
+        if cmd not in ("/atendimento", "/assumir", "/devolver", "/whatsapp"):
             return 400, {"erro": "comando inválido"}
         return 200, {"ok": True, "texto": atendimento.comando(cmd, str(dados.get("arg") or ""), local=True)}
     if acao == "pagamento":  # mensagem "PAGAMENTO FASTFLOW RECEBIDO" (Telegram ou n8n)

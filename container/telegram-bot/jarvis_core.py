@@ -544,6 +544,7 @@ COMANDOS = [
     ("/modelos", "Pergunta ao seu gateway quais modelos ele oferece"),
     ("/hermes", "Pede ajuda ao Hermes Agent (pesquisa, análise, automações); sem texto: status"),
     ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq)"),
+    ("/whatsapp", "WhatsApp: vigia (testar), reiniciar sem QR ou reconectar com QR novo"),
     ("/assumir", "WhatsApp: você assume a conversa de um número"),
     ("/devolver", "WhatsApp: devolve a conversa de um número ao robô"),
     ("/custo", "Gasto estimado do projeto atual"),
@@ -595,6 +596,11 @@ Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao ga
 Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
+
+WhatsApp: vigia
+• /whatsapp: situação · /whatsapp testar · /whatsapp reiniciar (sem QR) · /whatsapp reconectar (QR novo no Telegram)
+• O vigia testa sozinho a cada 5 min, conserta (sessão, webhook, fluxo do n8n) e te avisa, com a lista de quem
+  escreveu e ficou sem resposta
 
 Planejar antes de desenvolver
 • /planejar sistema de rede credenciada com app do membro e painel do credenciado: o Jarvis faz as perguntas
@@ -717,7 +723,7 @@ def comando(estado, pool, texto):
             return "⚽ Montando os jogos de hoje (pesquisando os canais). Em alguns minutos chegam aqui a imagem e o texto.", None
         except Exception as e:  # noqa: BLE001
             return f"⚠️ não consegui pedir os jogos ao painel ({type(e).__name__})", None
-    if cmd in ("/atendimento", "/assumir", "/devolver"):
+    if cmd in ("/atendimento", "/assumir", "/devolver", "/whatsapp"):
         import atendimento
         return atendimento.comando(cmd, arg), None
     if cmd == "/tendencias":

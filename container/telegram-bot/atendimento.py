@@ -491,7 +491,7 @@ def iniciar_sessao():
                     return True
             except Exception:  # noqa: BLE001
                 continue
-    hook = {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}]}
+    hook = config_sessao()
     for caminho, corpo in ((f"/api/sessions/{SESSAO}/start", {}), ("/api/sessions", {"name": SESSAO, "start": True, "config": hook}),
                            ("/api/sessions/start", {"name": SESSAO, "config": hook})):
         try:
@@ -502,6 +502,39 @@ def iniciar_sessao():
         except Exception:  # noqa: BLE001
             return False
     return False
+
+
+def reiniciar_sessao():
+    """Reinicia a sessão do WhatsApp sem desconectar (não pede QR). Devolve (ok, texto)."""
+    for caminho, corpo in ((f"/api/sessions/{SESSAO}/restart", {}), ("/api/sessions/restart", {"name": SESSAO})):
+        try:
+            waha(caminho, corpo, tempo=40)
+            return True, "sessão reiniciada (volta em alguns segundos, sem QR)"
+        except urllib.error.HTTPError:
+            continue
+        except Exception as e:  # noqa: BLE001
+            return False, f"WAHA fora do ar ({type(e).__name__})"
+    ok = iniciar_sessao()
+    return ok, "sessão iniciada" if ok else "não consegui reiniciar a sessão"
+
+
+def reconectar_sessao():
+    """Desconecta o aparelho (logout) e inicia de novo: aparece um QR code novo para escanear. Devolve (ok, texto)."""
+    for caminho, corpo in ((f"/api/sessions/{SESSAO}/logout", {}), ("/api/sessions/logout", {"name": SESSAO})):
+        try:
+            waha(caminho, corpo, tempo=40)
+            break
+        except Exception:  # noqa: BLE001
+            continue
+    time.sleep(2)
+    for caminho, corpo in ((f"/api/sessions/{SESSAO}/start", {}), (f"/api/sessions/{SESSAO}/restart", {}),
+                           ("/api/sessions", {"name": SESSAO, "start": True, "config": config_sessao()})):
+        try:
+            waha(caminho, corpo, tempo=40)
+            return True, "desconectado: escaneie o QR code novo (📱 no painel, ou a foto no Telegram)"
+        except Exception:  # noqa: BLE001
+            continue
+    return False, "não consegui reiniciar a sessão depois de desconectar"
 
 
 def qr_png():
@@ -555,20 +588,34 @@ DIAG = "__jarvis_diagnostico__"
 N8N_WEBHOOK = os.environ.get("ATENDIMENTO_N8N_WEBHOOK", "http://n8n:5678/webhook/whatsapp-waha")
 
 
+def config_sessao():
+    """Configuração completa da sessão: webhook do n8n + histórico do NOWEB (lista de conversas para o vigia)."""
+    return {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}],
+            "noweb": {"store": {"enabled": True, "fullSync": False}}}
+
+
+def _sessao_ok(s):
+    cfg = s.get("config") or {}
+    hooks = [h.get("url") for h in (cfg.get("webhooks") or []) if isinstance(h, dict)]
+    loja = ((cfg.get("noweb") or {}).get("store") or {}).get("enabled")
+    return N8N_WEBHOOK in hooks, bool(loja)
+
+
 def _hooks_sessao():
     s = waha(f"/api/sessions/{SESSAO}")
     return [h.get("url") for h in ((s.get("config") or {}).get("webhooks") or []) if isinstance(h, dict)]
 
 
-def garantir_webhook():
-    """Grava o webhook do n8n NA SESSÃO do WhatsApp (não depende do webhook global do WAHA).
-    Devolve (ok, texto). A sessão reconecta sozinha, sem novo QR code."""
+def garantir_webhook(forcar=False):
+    """Grava o webhook do n8n e o histórico do NOWEB NA SESSÃO do WhatsApp (não depende do webhook global do WAHA).
+    Devolve (ok, texto). A sessão reconecta sozinha, sem novo QR code. forcar=True regrava mesmo se já estiver certo."""
     try:
-        if N8N_WEBHOOK in _hooks_sessao():
+        hook, loja = _sessao_ok(waha(f"/api/sessions/{SESSAO}"))
+        if hook and loja and not forcar:
             return True, "já configurado na sessão"
     except Exception:  # noqa: BLE001
         pass
-    config = {"webhooks": [{"url": N8N_WEBHOOK, "events": ["message.any"]}]}
+    config = config_sessao()
     ultimo = "?"
     for metodo, caminho, corpo in (("PUT", f"/api/sessions/{SESSAO}", {"name": SESSAO, "config": config}),
                                    ("PUT", f"/api/sessions/{SESSAO}", {"config": config}),
@@ -666,6 +713,9 @@ def atender(dados):
         else:
             e0["ultimo_recebido"] = {"t": time.time(), "de_mim": de_mim, "evento": str(dados.get("evento") or "")}
             n = chat.split("@")[0]
+            if not de_mim and dados.get("id"):
+                corte = time.time() - 12 * 3600
+                e0["ids_clientes"] = [x for x in e0.get("ids_clientes", []) if x[1] > corte][-500:] + [[str(dados["id"]), time.time()]]
             e0["recebidos"] = (e0.get("recebidos", []) + [{
                 "h": time.strftime("%H:%M:%S"), "n": (n[:4] + "…" + n[-4:]) if len(n) > 8 else n,
                 "tipo": chat.split("@")[-1] if "@" in chat else "?", "de_mim": de_mim,
@@ -867,7 +917,7 @@ def _pelo_painel(cmd, arg):
                                  data=json.dumps({"acao": "atendimento_cmd", "cmd": cmd, "arg": arg}).encode(),
                                  headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=120) as r:
             return json.loads(r.read().decode()).get("texto")
     except Exception as e:  # noqa: BLE001
         return f"⚠️ não consegui falar com o painel do Jarvis ({type(e).__name__})"
@@ -879,6 +929,21 @@ def comando(cmd, arg, local=False):
         r = _pelo_painel(cmd, arg)
         if r:
             return r
+    if cmd == "/whatsapp":
+        import vigia_whatsapp
+        a = arg.lower().strip()
+        if a == "reiniciar":
+            ok, t = reiniciar_sessao()
+            return ("🔄 " if ok else "⚠️ ") + t
+        if a == "reconectar":
+            ok, t = reconectar_sessao()
+            if ok:
+                vigia_whatsapp.mandar_qr_depois()
+            return ("🔌 " if ok else "⚠️ ") + t
+        if a in ("testar", "teste", "vigia"):
+            return vigia_whatsapp.texto(vigia_whatsapp.checar(consertar=True, avisar=False))
+        return vigia_whatsapp.texto(vigia_whatsapp.ultimo()) + \
+            "\n\n/whatsapp testar · /whatsapp reiniciar (sem QR) · /whatsapp reconectar (QR novo)"
     if cmd == "/assumir":
         return assumir(arg)
     if cmd == "/devolver":

@@ -460,7 +460,7 @@ def tratar(msg):
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/tendencias",
-                                                  "/atendimento", "/assumir", "/devolver", "/jogos",
+                                                  "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp",
                                                   "/print", "/testar", "/previa", "/piloto",
                                                   "/ajudantes", "/ajudante") \
             or texto.split()[0].split("@")[0].lower() in core.INTERATIVOS:

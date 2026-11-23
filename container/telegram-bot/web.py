@@ -27,6 +27,8 @@ import rotinas  # noqa: E402
 import atendimento  # noqa: E402
 import atend_config  # noqa: E402
 atendimento.iniciar_fila()  # mensagens que o robô inicia saem por uma fila protegida
+import vigia_whatsapp  # noqa: E402
+vigia_whatsapp.iniciar()  # testa a corrente do atendimento de 5 em 5 min, conserta e avisa no Telegram
 
 SENHA = os.environ.get("JARVIS_WEB_PASSWORD") or os.environ.get("PASSWORD", "")
 PORTA = int(os.environ.get("JARVIS_WEB_PORT", "8090"))
@@ -348,7 +350,11 @@ class Handler(BaseHTTPRequestHandler):
             forcar = urllib.parse.parse_qs(url.query).get("atualizar", [""])[0] == "1"
             return self._json({"texto": core.texto_modelos_gateway(forcar)})
         if url.path == "/api/whatsapp":
-            return self._json({"whatsapp": atendimento.status_whatsapp(), "atendimento": atendimento.resumo()})
+            import vigia_whatsapp
+            v = vigia_whatsapp._ler()
+            return self._json({"whatsapp": atendimento.status_whatsapp(), "atendimento": atendimento.resumo(),
+                               "vigia": {"ligado": v.get("ligado", True), "ultimo": v.get("ultimo"),
+                                         "min": vigia_whatsapp.INTERVALO // 60}})
         if url.path == "/api/whatsapp/qr":
             try:
                 png = atendimento.qr_png()
@@ -520,6 +526,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": "gerando (alguns minutos por causa da pesquisa de canais)"})
             if a == "diagnostico":
                 return self._json(atendimento.diagnostico())
+            if a in ("reiniciar", "reconectar", "vigia_testar", "vigia_ligar"):
+                import vigia_whatsapp
+                if a == "reiniciar":
+                    ok, t = atendimento.reiniciar_sessao()
+                    return self._json({"ok": ok, "msg": t})
+                if a == "reconectar":
+                    ok, t = atendimento.reconectar_sessao()
+                    if ok:
+                        vigia_whatsapp.mandar_qr_depois()
+                    return self._json({"ok": ok, "msg": t})
+                if a == "vigia_ligar":
+                    vigia_whatsapp.ligar(bool(d.get("valor")))
+                    return self._json({"ok": True})
+                return self._json(vigia_whatsapp.checar(consertar=True, avisar=False))
             if a == "atend_salvar":
                 return self._json({"ok": True, "config": atend_config.salvar(d.get("config") or {})})
             if a in ("painel_salvar", "painel_testar"):
