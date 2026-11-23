@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.27: banner dos jogos com arte de IA
+
+- Estilo novo **🎨 Arte com IA** (padrão): fundo gerado por IA todo dia (estádio à noite, refletores, bola e dois
+  jogadores **genéricos** nas cores dos times do jogo principal) + layout "DESTAQUES DO DIA" com cartões: selo de cada
+  time **nas cores do clube com a sigla** (COR, CAM, FLA…), horário grande, canal em destaque, placar ao vivo em dourado.
+- Sem jogadores reais (direito de imagem) e sem escudos oficiais (marcas dos clubes): a IA recebe essa proibição.
+- Usa as chaves dos ajudantes: **Gemini** (modelo de imagem) e, se não der, **Cloudflare Workers AI** (FLUX).
+  Sem chave ou se a IA falhar, sai o **banner simples** de antes (o aviso aparece no ⚽).
+- A arte é gerada 1 vez por dia e reaproveitada; **🎨 Nova arte** no ⚽ pede outra. Estilo escolhido no ⚽ → Salvar.
+- Fonte Bebas Neue (OFL) incluída no projeto para os títulos.
+
 ## Jarvis 1.26: mensagens seguidas viram uma resposta só
 
 - O cliente manda "Bom dia" e logo depois "Quero renovar": o robô espera ele terminar (7 s, ajustável em

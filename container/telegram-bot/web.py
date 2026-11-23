@@ -371,7 +371,9 @@ class Handler(BaseHTTPRequestHandler):
             d = jogos.do_dia() or {}
             return self._json({"config": jogos.config(), "ligas": jogos.LIGAS, "dia": d.get("dia"), "texto": d.get("texto", ""),
                                "imagens": len(d.get("imagens") or []), "total": len(d.get("jogos") or []),
-                               "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0)})
+                               "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0),
+                               "estilo": d.get("estilo", "simples"), "arte": d.get("arte", ""),
+                               "avisos": [a for a in d.get("avisos") or [] if "arte com IA" in a]})
         if url.path == "/api/site":
             import site_previa
             proj = estado.ler()["projeto"]
@@ -522,6 +524,11 @@ class Handler(BaseHTTPRequestHandler):
                         return self._json({"ok": False, "erro": "gere os jogos primeiro"}, 400)
                     threading.Thread(target=jogos.enviar_telegram, args=(jd,), daemon=True).start()
                     return self._json({"ok": True})
+                if d.get("nova_arte"):  # apaga a arte do dia: a IA desenha outra
+                    try:
+                        os.remove(os.path.join(jogos.DIR, f"{jogos.hoje().isoformat()}-arte.png"))
+                    except OSError:
+                        pass
                 threading.Thread(target=jogos.gerar, kwargs={"forcar": True}, daemon=True).start()
                 return self._json({"ok": True, "msg": "gerando (alguns minutos por causa da pesquisa de canais)"})
             if a == "diagnostico":

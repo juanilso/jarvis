@@ -174,7 +174,7 @@ footer{position:relative}
   <button class="fechar" id="jgFechar">✕</button>
   <h2>⚽ JOGOS DO DIA · FUTEBOL BRASILEIRO</h2>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <button id="jgGerar" class="prim">⚽ Gerar agora</button><button id="jgTg">📨 Mandar no meu Telegram</button>
+    <button id="jgGerar" class="prim">⚽ Gerar agora</button><button id="jgNovaArte" title="A IA desenha um fundo novo">🎨 Nova arte</button><button id="jgTg">📨 Mandar no meu Telegram</button>
     <button id="jgCopiar">📋 Copiar texto</button><span class="waDica" id="jgMsg"></span></div>
   <div class="jgGrade" style="margin-top:12px">
     <div><h3>IMAGEM (STATUS / DIVULGAÇÃO)</h3><div class="jgImgs" id="jgImgs"><div class="waDica">ainda não gerado hoje</div></div>
@@ -187,6 +187,9 @@ footer{position:relative}
     <label>Nome da marca na imagem<input id="jgMarca" placeholder="ex.: IT Suport"></label>
     <label>Frase do rodapé<input id="jgRodape" placeholder="Bom jogo! ⚽"></label>
     <label><span><input type="checkbox" id="jgCanais"> Pesquisar onde passa cada jogo (leva alguns minutos)</span></label>
+    <label>Estilo do banner<select id="jgEstilo"><option value="arte">🎨 Arte com IA (estádio, bola, jogadores genéricos nas cores dos times)</option><option value="simples">Simples (o de antes)</option></select></label>
+    <div class="waDica">A arte usa as chaves dos ajudantes (Gemini ou Cloudflare). Se não houver chave ou a IA falhar, sai o banner simples.
+      Os jogadores são genéricos (sem pessoas reais) e os times aparecem com selos nas cores do clube e a sigla (sem escudo oficial).</div>
   </div>
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="jgSalvar">💾 Salvar configuração</button><span class="waDica" id="jgCfgMsg"></span></div>
   <div class="waDica" style="margin-top:10px">Todo dia: ative no n8n a rotina <b>"Jarvis · Jogos do dia"</b> (8h). No WhatsApp, o robô responde "que jogos tem hoje?" com esta lista
@@ -672,18 +675,19 @@ $("stNavegar").onclick=()=>$("btnPrevia").click();
 let jgTimer=null,jgGerado=null;
 async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)return;const c=j.config;
   $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
-  if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;
+  if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";
   if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
     $("jgImgs").innerHTML=j.imagens?Array.from({length:j.imagens},(_,i)=>`<a href="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" target="_blank"><img src="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" alt="jogos ${i+1}"></a>`).join(""):'<div class="waDica">sem imagem</div>';
-    $("jgMsg").textContent=`✔ ${j.total} jogos · ${j.canais_pesquisados} canais pesquisados · ${new Date(j.gerado*1000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`}}
+    $("jgMsg").textContent=`✔ ${j.total} jogos · ${j.canais_pesquisados} canais pesquisados · ${j.estilo==="arte"?"🎨 arte: "+(j.arte||"IA"):"banner simples"} · ${new Date(j.gerado*1000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`+((j.avisos||[]).length?" · ⚠️ "+j.avisos[0]:"")}}
 $("btnJg").onclick=()=>{$("jg").classList.add("aberto");jgCarregar();clearInterval(jgTimer);jgTimer=setInterval(jgCarregar,5000)};
 function jgFechar(){$("jg").classList.remove("aberto");clearInterval(jgTimer)}
 $("jgFechar").onclick=jgFechar;$("jg").onclick=e=>{if(e.target.id==="jg")jgFechar()};
+$("jgNovaArte").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_gerar",nova_arte:true});$("jgMsg").textContent="⏳ "+(r.msg||r.erro||"")};
 $("jgGerar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_gerar"});$("jgMsg").textContent="⏳ "+(r.msg||r.erro||"")};
 $("jgTg").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"jogos_telegram"});$("jgMsg").textContent=r.ok?"📨 enviando no Telegram…":"❌ "+(r.erro||"")};
 $("jgCopiar").onclick=async()=>{try{await navigator.clipboard.writeText($("jgTexto").value);$("jgMsg").textContent="📋 copiado!"}catch(e){$("jgTexto").select();document.execCommand("copy");$("jgMsg").textContent="📋 copiado"}};
 $("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
-  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked}});
+  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value}});
   $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;

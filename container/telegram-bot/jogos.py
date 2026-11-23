@@ -26,7 +26,8 @@ LIGAS = {  # código ESPN -> nome em português
     "bra.copa_do_brazil": "Copa do Brasil", "bra.camp.paulista": "Paulistão", "bra.camp.carioca": "Carioca",
     "bra.camp.mineiro": "Mineiro", "bra.camp.gaucho": "Gaúcho",
 }
-PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo! ⚽"}
+PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo! ⚽",
+          "estilo": "arte"}  # arte: fundo gerado por IA (cai para o simples se falhar) · simples: o de sempre
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
 
@@ -47,6 +48,8 @@ def salvar_config(novo):
             c[k] = str(novo[k])[:60]
     if "canais" in novo:
         c["canais"] = bool(novo["canais"])
+    if novo.get("estilo") in ("arte", "simples"):
+        c["estilo"] = novo["estilo"]
     os.makedirs(DIR, exist_ok=True)
     json.dump(c, open(CONFIG, "w", encoding="utf-8"), ensure_ascii=False)
     return c
@@ -72,6 +75,14 @@ def _canais_espn(comp):
         if n and mercado in ("", "national", "home", "away"):
             nomes.append(n)
     return list(dict.fromkeys(nomes))
+
+
+def _sigla(c):
+    t = c.get("team") or {}
+    s = (t.get("abbreviation") or "").upper()
+    if not s:
+        s = re.sub(r"[^A-ZÁÉÍÓÚÂÊÔÃÕÇ]", "", (t.get("shortDisplayName") or t.get("displayName") or "?").upper())[:3]
+    return s[:4]
 
 
 def agenda(dia=None, baixar=_baixar):
@@ -101,7 +112,11 @@ def agenda(dia=None, baixar=_baixar):
                           "casa": nome(casa), "fora": nome(fora), "estado": st.get("state", "pre"),
                           "placar": f"{casa.get('score', '')} x {fora.get('score', '')}" if st.get("state") in ("in", "post") else "",
                           "local": ((comp.get("venue") or {}).get("fullName") or ""), "canais": _canais_espn(comp),
-                          "canais_fonte": "ESPN" if _canais_espn(comp) else ""})
+                          "canais_fonte": "ESPN" if _canais_espn(comp) else "",
+                          # sigla e cores do clube (para os selos do banner; nada de escudo oficial)
+                          "sigla_casa": _sigla(casa), "sigla_fora": _sigla(fora),
+                          "cor_casa": (casa.get("team") or {}).get("color") or "", "cor2_casa": (casa.get("team") or {}).get("alternateColor") or "",
+                          "cor_fora": (fora.get("team") or {}).get("color") or "", "cor2_fora": (fora.get("team") or {}).get("alternateColor") or ""})
     ordem = {nome: i for i, nome in enumerate(LIGAS.values())}  # Série A primeiro; dentro de cada um, por horário
     jogos.sort(key=lambda j: (ordem.get(j["liga"], 99), j["ts"]))
     return jogos, erros
@@ -191,9 +206,13 @@ def gerar(forcar=False, canais=None, baixar=_baixar, rodar=None):
     if jogos and (config()["canais"] if canais is None else canais):
         pesquisados = pesquisar_canais(jogos, rodar)
     import jogos_imagem
-    imagens = jogos_imagem.desenhar(jogos, dia, config(), DIR)
+    info = {}
+    imagens = jogos_imagem.desenhar(jogos, dia, config(), DIR, info=info)
+    if info.get("aviso"):
+        erros.append(info["aviso"])
     d = {"dia": dia.isoformat(), "gerado": time.time(), "jogos": jogos, "texto": texto_grupos(jogos, dia),
-         "imagens": imagens, "avisos": erros, "canais_pesquisados": pesquisados}
+         "imagens": imagens, "avisos": erros, "canais_pesquisados": pesquisados, "estilo": info.get("estilo", "simples"),
+         "arte": info.get("arte", "")}
     json.dump(d, open(_arq(dia), "w", encoding="utf-8"), ensure_ascii=False)
     for f in os.listdir(DIR):  # guarda só os últimos 7 dias
         if re.match(r"\d{4}-\d{2}-\d{2}", f) and f[:10] < (dia - dt.timedelta(days=7)).isoformat():

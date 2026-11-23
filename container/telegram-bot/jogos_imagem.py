@@ -5,12 +5,14 @@ import re
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 L, A = 1080, 1920
-FONTES = ["/usr/share/fonts/truetype/dejavu/", "/usr/share/fonts/dejavu/", "/usr/share/fonts/TTF/"]
+FONTES = ["/usr/share/fonts/truetype/dejavu/", "/usr/share/fonts/dejavu/", "/usr/share/fonts/TTF/",
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), "fontes") + "/"]
 DIAS = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO", "DOMINGO"]
 CIANO, VERDE, BRANCO, CINZA, OURO = (56, 214, 255), (74, 222, 128), (236, 246, 255), (140, 168, 190), (255, 196, 90)
 
 
 RESERVA = {  # se a fonte pedida não existir, tenta estas (na ordem) antes da fonte mínima do Pillow
+    "BebasNeue-Regular.ttf": ["Anton-Regular.ttf", "DejaVuSansCondensed-Bold.ttf", "DejaVuSans-Bold.ttf"],
     "DejaVuSansCondensed-Bold.ttf": ["DejaVuSans-Bold.ttf", "LiberationSansNarrow-Bold.ttf", "LiberationSans-Bold.ttf"],
     "DejaVuSans-Bold.ttf": ["LiberationSans-Bold.ttf", "FreeSansBold.ttf"],
     "DejaVuSans.ttf": ["LiberationSans-Regular.ttf", "FreeSans.ttf"],
@@ -117,9 +119,154 @@ def _pagina(jogos, dia, cfg, pag, total):
     return img.convert("RGB")
 
 
-def desenhar(jogos, dia, cfg, pasta, por_pagina=None):
-    """Gera 1 ou mais PNGs. Devolve a lista de caminhos."""
+# ------------------------------------------------------------------ estilo "arte" (fundo gerado por IA)
+POR_PAGINA_ARTE = 5
+
+
+def _hex(c, padrao):
+    try:
+        h = str(c or "").lstrip("#")
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+    except (ValueError, IndexError):
+        return padrao
+
+
+def _contraste(cor):
+    r, g, b = cor
+    return (15, 15, 15) if (0.299 * r + 0.587 * g + 0.114 * b) > 160 else (255, 255, 255)
+
+
+def _selo(img, cx, cy, raio, cor, cor2, sigla):
+    """Selo redondo nas cores do clube com a sigla (sem escudo oficial)."""
+    sombra = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sombra).ellipse([cx - raio - 6, cy - raio + 4, cx + raio + 6, cy + raio + 16], fill=(0, 0, 0, 150))
+    img.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(10)))
+    d = ImageDraw.Draw(img)
+    anel = cor2 if sum(abs(a - b) for a, b in zip(cor, cor2)) > 90 else (255, 255, 255)
+    d.ellipse([cx - raio, cy - raio, cx + raio, cy + raio], fill=anel)
+    d.ellipse([cx - raio + 9, cy - raio + 9, cx + raio - 9, cy + raio - 9], fill=cor)
+    tam = 56 if len(sigla) <= 3 else 46
+    f = _fonte("BebasNeue-Regular.ttf", tam)
+    w = d.textlength(sigla, font=f)
+    caixa = d.textbbox((0, 0), sigla, font=f)
+    d.text((cx - w / 2, cy - (caixa[3] - caixa[1]) / 2 - caixa[1]), sigla, font=f, fill=_contraste(cor))
+
+
+def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
+    img = fundo.copy().convert("RGBA")
+    escuro = Image.new("RGBA", (L, A), (0, 0, 0, 0))
+    e = ImageDraw.Draw(escuro)
+    for y in range(A):  # escurece em cima (título) e embaixo (rodapé), suave, sem emendas
+        if y < 520:
+            alfa = 205 - (205 - 110) * y / 520
+        elif y > A - 380:
+            alfa = 110 + (215 - 110) * (y - (A - 380)) / 380
+        else:
+            alfa = 110
+        e.line([(0, y), (L, y)], fill=(4, 8, 16, int(alfa)))
+    img = Image.alpha_composite(img, escuro)
+    d = ImageDraw.Draw(img)
+    f_tag, f_tit = _fonte("DejaVuSans-Bold.ttf", 28), _fonte("BebasNeue-Regular.ttf", 168)
+    f_sub, f_data = _fonte("BebasNeue-Regular.ttf", 86), _fonte("DejaVuSans-Bold.ttf", 34)
+    # cabeçalho
+    tag = "FUTEBOL BRASILEIRO"
+    wt = d.textlength(tag, font=f_tag)
+    d.rounded_rectangle([(L - wt) / 2 - 26, 60, (L + wt) / 2 + 26, 112], 26, fill=VERDE)
+    d.text(((L - wt) / 2, 70), tag, font=f_tag, fill=(6, 20, 12))
+    for txt, f, y, cor in (("DESTAQUES", f_tit, 120, BRANCO), ("DO DIA", f_sub, 280, OURO)):
+        w = d.textlength(txt, font=f)
+        d.text(((L - w) / 2 + 4, y + 5), txt, font=f, fill=(0, 0, 0))
+        d.text(((L - w) / 2, y), txt, font=f, fill=cor)
+    data = f"{DIAS[dia.weekday()]} · {dia.strftime('%d/%m/%Y')}" + (f"  ·  {pag}/{total}" if total > 1 else "")
+    w = d.textlength(data, font=f_data)
+    d.text(((L - w) / 2, 372), data, font=f_data, fill=CIANO)
+    # cartões
+    y = 440
+    f_liga, f_time = _fonte("DejaVuSans-Bold.ttf", 24), _fonte("DejaVuSansCondensed-Bold.ttf", 30)
+    f_hora, f_tv, f_x = _fonte("BebasNeue-Regular.ttf", 96), _fonte("DejaVuSans-Bold.ttf", 25), _fonte("BebasNeue-Regular.ttf", 44)
+    for j in jogos:
+        h = 256
+        cartao = Image.new("RGBA", (L, A), (0, 0, 0, 0))
+        c = ImageDraw.Draw(cartao)
+        c.rounded_rectangle([50, y, L - 50, y + h], 30, fill=(6, 12, 24, 190), outline=(255, 255, 255, 40), width=2)
+        img = Image.alpha_composite(img, cartao)
+        d = ImageDraw.Draw(img)
+        cor_c, cor_f = _hex(j.get("cor_casa"), (200, 16, 46)), _hex(j.get("cor_fora"), (0, 70, 160))
+        visivel = lambda cor, cor2: cor if sum(cor) > 120 else (cor2 if sum(cor2) > 120 else (235, 235, 235))  # noqa: E731
+        d.rounded_rectangle([50, y + 30, 60, y + h - 30], 5,
+                            fill=visivel(cor_c, _hex(j.get("cor2_casa"), (255, 255, 255))))
+        d.rounded_rectangle([L - 60, y + 30, L - 50, y + h - 30], 5,
+                            fill=visivel(cor_f, _hex(j.get("cor2_fora"), (255, 255, 255))))
+        liga = j["liga"].upper()
+        w = d.textlength(liga, font=f_liga)
+        d.text(((L - w) / 2, y + 18), liga, font=f_liga, fill=CIANO)
+        _selo(img, 205, y + 112, 74, cor_c, _hex(j.get("cor2_casa"), (255, 255, 255)), j.get("sigla_casa") or j["casa"][:3].upper())
+        _selo(img, L - 205, y + 112, 74, cor_f, _hex(j.get("cor2_fora"), (255, 255, 255)), j.get("sigla_fora") or j["fora"][:3].upper())
+        d = ImageDraw.Draw(img)
+        for nome_t, cx in ((j["casa"], 205), (j["fora"], L - 205)):
+            t = _caber(d, nome_t.upper(), f_time, 270)
+            w = d.textlength(t, font=f_time)
+            d.text((cx - w / 2, y + 200), t, font=f_time, fill=BRANCO)
+        if j.get("placar"):
+            topo = "AO VIVO" if j.get("estado") == "in" else "ENCERRADO"
+            meio, cor_meio = j["placar"].upper(), OURO
+        else:
+            topo, meio, cor_meio = "X", j["hora"], BRANCO
+        w = d.textlength(topo, font=f_x)
+        d.text(((L - w) / 2, y + 48), topo, font=f_x, fill=OURO if j.get("placar") else (190, 200, 215))
+        w = d.textlength(meio, font=f_hora)
+        d.text(((L - w) / 2, y + 88), meio, font=f_hora, fill=cor_meio)
+        canais = " / ".join(j.get("canais") or []) or "A CONFIRMAR"
+        t = _caber(d, canais.upper(), f_tv, 330)
+        w = d.textlength(t, font=f_tv)
+        d.rounded_rectangle([(L - w) / 2 - 18, y + 196, (L + w) / 2 + 18, y + 236], 20,
+                            fill=VERDE if j.get("canais") else (70, 84, 100))
+        d.text(((L - w) / 2, y + 202), t, font=f_tv, fill=(6, 20, 12) if j.get("canais") else BRANCO)
+        y += h + 24
+    # rodapé
+    marca, rod = _sem_emoji(cfg.get("marca") or ""), _sem_emoji(cfg.get("rodape") or "")
+    if marca:
+        f = _fonte("BebasNeue-Regular.ttf", 64)
+        w = d.textlength(marca.upper(), font=f)
+        d.text(((L - w) / 2, A - 190), marca.upper(), font=f, fill=BRANCO)
+    f = _fonte("DejaVuSans.ttf", 30)
+    w = d.textlength(rod, font=f)
+    d.text(((L - w) / 2, A - (115 if marca else 160)), rod, font=f, fill=CINZA)
+    nota = "Horários de Brasília · canais sujeitos a alteração"
+    f = _fonte("DejaVuSans.ttf", 22)
+    w = d.textlength(nota, font=f)
+    d.text(((L - w) / 2, A - 62), nota, font=f, fill=CINZA)
+    return img.convert("RGB")
+
+
+def _desenhar_arte(jogos, dia, cfg, pasta, info):
+    import jogos_arte
+    fundo, origem = jogos_arte.fundo_ia(dia, jogos[0], pasta)
+    if fundo is None:
+        info["aviso"] = f"arte com IA indisponível ({origem[:200]}); saiu o banner simples"
+        return None
+    paginas = [jogos[i:i + POR_PAGINA_ARTE] for i in range(0, len(jogos), POR_PAGINA_ARTE)]
+    caminhos = []
+    for i, p in enumerate(paginas, 1):
+        cam = os.path.join(pasta, f"{dia.isoformat()}-jogos-{i}.png")
+        _pagina_arte(fundo, p, dia, cfg, i, len(paginas)).save(cam, optimize=True)
+        caminhos.append(cam)
+    info.update(estilo="arte", arte=origem)
+    return caminhos
+
+
+def desenhar(jogos, dia, cfg, pasta, por_pagina=None, info=None):
+    """Gera 1 ou mais PNGs. Devolve a lista de caminhos. Estilo "arte": fundo por IA; se falhar, o simples."""
     os.makedirs(pasta, exist_ok=True)
+    info = {} if info is None else info
+    if jogos and cfg.get("estilo", "arte") == "arte":
+        try:
+            feitos = _desenhar_arte(jogos, dia, cfg, pasta, info)
+            if feitos:
+                return feitos
+        except Exception as e:  # noqa: BLE001
+            info["aviso"] = f"arte com IA falhou ({type(e).__name__}: {str(e)[:120]}); saiu o banner simples"
+    info.setdefault("estilo", "simples")
     paginas, atual, altura = [], [], 350
     for j in jogos:  # quebra por altura (cabeçalhos de campeonato ocupam espaço)
         extra = 172 + (84 if not atual or atual[-1]["liga"] != j["liga"] else 0)

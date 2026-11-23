@@ -48,5 +48,8 @@ arquivo LICENSE original. O Jarvis só o executa pelo `jarvis-tendencias`, num a
 Copiada sem alterações em `skills/frontend-design` (commit e4bb5d9), com o texto da licença em `LICENSE.txt` e a origem em
 `ORIGEM.md`. Revisada: só instruções, sem scripts nem downloads.
 
+## Bebas Neue (https://github.com/google/fonts/tree/main/ofl/bebasneue), por Dharma Type, licença SIL OFL 1.1
+Fonte do título e dos números do banner dos jogos, em `container/telegram-bot/fontes/` com a licença `OFL-BebasNeue.txt`.
+
 ## WAHA Core (https://github.com/devlikeapro/waha), por devlikeapro, licença Apache 2.0
 Usado como serviço separado a partir da imagem oficial `devlikeapro/waha`; nenhum código copiado. O Jarvis só chama a API REST.
