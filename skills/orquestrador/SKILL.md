@@ -92,7 +92,7 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
 - Laboratório no n8n (`jarvis-n8n`): cria/atualiza/ativa/chama/apaga apenas fluxos "[LAB] …" (webhooks "lab-…");
   lê qualquer fluxo (listar/exportar). Nunca altere, ative ou dispare fluxos de produção, nem por curl.
   Dados falsos sempre. Ao terminar um experimento, desative o fluxo [LAB].
-- Ajudantes (`jarvis-ajudante "tarefa" < material`): outras IAs (Gemini, Grok, OpenRouter, Groq) para tarefas de
+- Ajudantes (`jarvis-ajudante "tarefa" < material`): outras IAs (Gemini, Groq, Mistral, OpenRouter) para tarefas de
   TEXTO volumosas e simples — textos e conteúdo provisório do site, traduções, title/description, alt de imagens,
   resumos, ideias, segunda opinião. A resposta é rascunho: revise. Nunca envie dados de clientes, .env, tokens ou
   banco (o comando apaga e-mails/telefones/tokens e recusa arquivos sensíveis, mas a responsabilidade é sua).

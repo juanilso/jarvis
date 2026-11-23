@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Pede uma tarefa de TEXTO a outra IA (Gemini, Grok, OpenRouter, Groq) para economizar o Claude.
+"""Pede uma tarefa de TEXTO a outra IA (Gemini, Groq, Mistral, OpenRouter) para economizar o Claude.
 
 Uso:
   jarvis-ajudante --status
+  jarvis-ajudante --liberar [ia]          (tira as pausas por chave inválida, cota ou lotação)
   jarvis-ajudante "escreva 5 títulos para a página de planos"
   jarvis-ajudante --ia grok "traduza para inglês" < texto.md      (material pela entrada padrão)
   jarvis-ajudante --arquivo docs/site/INVENTARIO.md "escreva a meta description de cada página"
@@ -28,6 +29,10 @@ def main(args):
     if not args or args[0] in ("-h", "--help"):
         print(__doc__.strip())
         return 0
+    if args[0] == "--liberar":
+        a.liberar(args[1] if len(args) > 1 else None)
+        print("Pausas removidas.")
+        return 0
     if args[0] == "--status":
         print(a.status())
         return 0
@@ -48,8 +53,14 @@ def main(args):
             print(f"Opção desconhecida: {op}", file=sys.stderr)
             return 2
     tarefa = " ".join(args).strip()
-    if not sys.stdin.isatty():
-        material += sys.stdin.read()[:100000]
+    if not sys.stdin.isatty():  # material pela entrada (< arquivo ou |); entrada parada não trava
+        import select
+        try:
+            pronto = select.select([sys.stdin], [], [], 0.3)[0]
+        except (OSError, ValueError):
+            pronto = []
+        if pronto:
+            material += sys.stdin.read()[:100000]
     if not tarefa:
         print("Diga a tarefa. Ex.: jarvis-ajudante \"resuma em 5 tópicos\" < arquivo.md", file=sys.stderr)
         return 2

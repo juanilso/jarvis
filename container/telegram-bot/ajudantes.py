@@ -10,8 +10,8 @@ Proteções:
 - Cota diária por ajudante (JARVIS_AJUDANTE_<NOME>_DIA) e troca automática quando um recusa (429/402/cota).
 
 Configuração (arquivo .env.ajudantes, criado pelo ./ajudantes-configurar.sh):
-  GEMINI_API_KEY=…  XAI_API_KEY=…  OPENROUTER_API_KEY=…  GROQ_API_KEY=…
-  JARVIS_AJUDANTES=gemini,grok,openrouter,groq   (ordem de preferência)
+  GEMINI_API_KEY=…  GROQ_API_KEY=…  MISTRAL_API_KEY=…  OPENROUTER_API_KEY=…  (XAI_API_KEY=… opcional)
+  JARVIS_AJUDANTES=gemini,groq,mistral,openrouter   (ordem de preferência)
   JARVIS_AJUDANTE_GEMINI_MODELO=…                 (opcional: senão escolhe sozinho pela lista do provedor)
 """
 import json
@@ -34,6 +34,9 @@ PROVEDORES = {
     "grok": ("XAI_API_KEY", "https://api.x.ai/v1",
              [r"grok-[\d.]+-fast(?!.*(image|vision))", r"grok-[\d.]+-mini", r"grok-[\d.]+(?!.*(image|vision))"],
              300, "créditos grátis/compartilhamento de dados conforme a sua conta xAI"),
+    "mistral": ("MISTRAL_API_KEY", "https://api.mistral.ai/v1",
+                [r"^mistral-small(?!.*(ocr|embed|moderation))", r"^mistral-medium(?!.*(ocr|embed|moderation))",
+                 r"^ministral-\d+b"], 300, "plano grátis Experiment: a Mistral pode usar o conteúdo para treinar"),
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1",
                    [r":free$"], 50, "modelos :free têm limite diário baixo e podem registrar o conteúdo"),
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1",
@@ -113,6 +116,17 @@ def _pausar(nome, segundos, motivo):
     json.dump(u, open(_arq_uso(), "w", encoding="utf-8"), indent=1)
 
 
+def liberar(nome=None):
+    """Tira as pausas (todas ou de um ajudante). O contador do dia continua."""
+    u = uso()
+    for n in ([nome] if nome else list(u)):
+        if n in u:
+            for k in ("pausado_ate", "motivo", "chave"):
+                u[n].pop(k, None)
+    os.makedirs(PASTA, exist_ok=True)
+    json.dump(u, open(_arq_uso(), "w", encoding="utf-8"), indent=1)
+
+
 def cota(nome):
     return int(os.environ.get(f"JARVIS_AJUDANTE_{nome.upper()}_DIA", PROVEDORES[nome][3]))
 
@@ -132,7 +146,7 @@ def disponivel(nome):
 
 
 def configurados():
-    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,grok,openrouter,groq").split(",") if n.strip()]
+    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,mistral,openrouter,grok").split(",") if n.strip()]
     return [n for n in ordem if n in PROVEDORES and os.environ.get(PROVEDORES[n][0])]
 
 
@@ -221,6 +235,8 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
     tentativas = []
     for nome in fila:
         ok, motivo = disponivel(nome)
+        if not ok and ia != "auto" and motivo not in ("sem chave", "desconhecido"):
+            ok = True  # você pediu esta IA pelo nome: tenta mesmo pausada (para ver o erro atual)
         if not ok:
             tentativas.append(f"{nome}: {motivo}")
             continue
@@ -326,5 +342,5 @@ def status():
         linhas.append(f"• {nome}: {'✅' if ok else '⏸ ' + motivo} · hoje {x.get('pedidos', 0)}/{cota(nome)}"
                       f" · falhas {x.get('falhas', 0)} · dados removidos {x.get('removidos', 0)} · modelo {mod}\n  ⚠️ {aviso}")
     if not configurados():
-        linhas.append("\nPara ligar: ./ajudantes-configurar.sh na VPS (chaves grátis: aistudio.google.com, console.x.ai, openrouter.ai, console.groq.com).")
+        linhas.append("\nPara ligar: ./ajudantes-configurar.sh na VPS (chaves grátis: aistudio.google.com, console.groq.com, console.mistral.ai, openrouter.ai).")
     return "\n".join(linhas)

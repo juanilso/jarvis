@@ -14,7 +14,7 @@ gravar() {
 }
 
 echo "== Ajudantes do Jarvis =="
-echo "Eles fazem tarefas de TEXTO (rascunhos, traduções, SEO, resumos, ideias) para economizar o Claude."
+echo "Gemini, Groq, Mistral e OpenRouter fazem tarefas de TEXTO (rascunhos, traduções, SEO, resumos, ideias) para economizar o Claude."
 echo "Antes de enviar, o Jarvis apaga e-mails, telefones, CPF, tokens e senhas. Mesmo assim:"
 echo "planos gratuitos costumam usar o conteúdo para treinar os modelos. Não use contas com dados sensíveis."
 echo
@@ -28,11 +28,16 @@ pedir() { # pedir VAR "Nome" "onde pegar"
   elif [ -n "$nova" ]; then gravar "$1" "$nova"; echo "  gravada"; fi
 }
 pedir GEMINI_API_KEY "Google Gemini (plano grátis)" "https://aistudio.google.com/apikey"
-pedir XAI_API_KEY "xAI Grok (créditos grátis da conta)" "https://console.x.ai"
-pedir OPENROUTER_API_KEY "OpenRouter (modelos :free)" "https://openrouter.ai/keys"
 pedir GROQ_API_KEY "Groq (plano grátis, muito rápido)" "https://console.groq.com/keys"
+pedir MISTRAL_API_KEY "Mistral (plano grátis Experiment, sem cartão)" "https://console.mistral.ai/api-keys"
+pedir OPENROUTER_API_KEY "OpenRouter (modelos :free)" "https://openrouter.ai/keys"
+if [ -n "$(atual XAI_API_KEY)" ]; then
+  read -r -p "• Grok: a conta precisa de crédito. Remover a chave do Grok? [S/n] " r
+  case "${r:-s}" in [sS]*) gravar XAI_API_KEY ""; echo "  removida";; esac
+fi
 
-ordem="$(atual JARVIS_AJUDANTES)"; ordem="${ordem:-gemini,grok,openrouter,groq}"
+ordem="$(atual JARVIS_AJUDANTES)"; ordem="${ordem:-gemini,groq,mistral,openrouter}"
+case ",$ordem," in *,mistral,*) ;; *) ordem="$(echo "$ordem" | sed 's/grok/mistral/')"; case ",$ordem," in *,mistral,*) ;; *) ordem="$ordem,mistral";; esac;; esac
 read -r -p "Ordem de preferência [$ordem]: " o; gravar JARVIS_AJUDANTES "${o:-$ordem}"
 
 echo; echo "→ Recriando os contêineres para lerem as chaves…"
@@ -42,6 +47,7 @@ echo "→ Testando cada ajudante (até 45 s cada; as chaves já estão gravadas,
 timeout 400 docker compose --profile telegram exec -T -e JARVIS_AJUDANTE_TIMEOUT=45 telegram python3 -u - <<'PY' || echo "  (teste interrompido ou demorou demais: confira depois com /ajudantes no Telegram)"
 import sys; sys.path.insert(0, "/opt/jarvis-bots")
 import ajudantes as a
+a.liberar()  # chaves podem ter mudado: começa sem pausas antigas
 if not a.configurados():
     print("  nenhuma chave configurada")
 for n in a.configurados():

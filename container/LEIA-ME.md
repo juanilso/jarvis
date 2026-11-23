@@ -111,6 +111,15 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.22.5: Mistral no lugar do Grok
+
+- O Grok exige crédito na conta da xAI; no lugar dele entra a **Mistral** (plano grátis Experiment, sem cartão,
+  só telefone verificado; a Mistral pode usar o conteúdo para treinar). Chave em https://console.mistral.ai/api-keys.
+- Ordem padrão: gemini, groq, mistral, openrouter. O `./ajudantes-configurar.sh` pergunta a chave da Mistral e
+  oferece remover a do Grok. O Grok continua suportado se um dia você colocar crédito (`XAI_API_KEY`).
+- `jarvis-ajudante --liberar [ia]` tira pausas; pedir uma IA pelo nome tenta mesmo pausada; o comando não trava
+  mais quando chamado sem material.
+
 ## Jarvis 1.22: planejar antes de desenvolver (com laboratório no n8n)
 
 - **`/planejar <ideia>`** no Telegram (ou `/jarvis:planejar` no Claude Code), skill `planejar-projeto`:
