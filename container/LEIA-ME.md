@@ -111,6 +111,22 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.29: vídeo dos jogos do dia
+
+- **Vídeo vertical (9:16)** para Status, Reels e grupos, enviado no seu Telegram e no grupo junto com a imagem e o texto.
+- Painel ⚽ → **Vídeo dos jogos**:
+  - **Animado (grátis):** a arte do dia com zoom lento, o título descendo e os jogos entrando um a um.
+  - **Com IA:** o fundo vira um vídeo de verdade (estádio, luzes, torcida, bola girando, **com som de torcida**), gerado
+    pelo **Gemini Omni Flash** com a sua chave do Gemini (conta paga). A arte do dia é o primeiro quadro, então vídeo
+    e banner combinam. Cerca de **US$ 1 por dia** (um clipe por dia; gerar de novo reaproveita). "Nova arte" refaz os dois.
+  - **Limite por mês** (padrão US$ 20): ao passar, sai o animado. O painel mostra o gasto do mês.
+- A IA faz **só o fundo**: times, horários e canais são colocados pelo Jarvis, então nunca saem errados. Sem pessoas
+  reais e sem texto inventado. Se a IA falhar, sai o animado e o aviso aparece no painel.
+- O Flow (labs.google) não tem API; o mesmo tipo de modelo é usado pela API do Gemini. Os Veo 3.1 "preview" da API
+  foram desligados pelo Google em 22/10/2026, por isso o Jarvis usa o Omni Flash (`JARVIS_VIDEO_MODELO` para trocar).
+- Banner com arte: agora 4 jogos por página (com 5, o último cartão encostava no rodapé).
+- Restauração: branch `versao-1.28.0`.
+
 ## Jarvis 1.28: alerta antes dos jogos (no seu Telegram e num grupo)
 
 - ⚽ → **⏰ Alerta antes do jogo**: X minutos antes (padrão 30) de cada jogo da lista, o Jarvis manda a imagem

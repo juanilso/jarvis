@@ -188,7 +188,11 @@ footer{position:relative}
     <label>Frase do rodapé<input id="jgRodape" placeholder="Bom jogo! ⚽"></label>
     <label><span><input type="checkbox" id="jgCanais"> Pesquisar onde passa cada jogo (leva alguns minutos)</span></label>
     <label>Estilo do banner<select id="jgEstilo"><option value="arte">🎨 Arte com IA (estádio, bola, jogadores genéricos nas cores dos times)</option><option value="simples">Simples (o de antes)</option></select></label>
+    <label>Vídeo dos jogos<select id="jgVideo"><option value="desligado">Desligado (só a imagem)</option><option value="animado">🎞 Animado (grátis: a arte com zoom e os jogos entrando)</option><option value="ia">🎬 Com IA (fundo em vídeo pelo Gemini, com som de torcida; conta paga)</option></select></label>
+    <label>Limite do vídeo com IA (US$ por mês)<input id="jgVideoLimite" type="number" min="0" max="500" step="1" placeholder="20"></label>
     <label><span><input type="checkbox" id="jgEscudos"> Mostrar os escudos dos times (imagem informada pela ESPN; uso informativo, sob sua responsabilidade)</span></label>
+    <div class="waDica">Vídeo com IA: cerca de US$ 1 por dia (um clipe por dia, reaproveitado se gerar de novo). A IA faz só o fundo;
+      os jogos, horários e canais são colocados pelo Jarvis, então nunca saem errados. Se falhar ou passar do limite, sai o animado.</div>
     <div class="waDica">A arte usa as chaves dos ajudantes (Gemini ou Cloudflare). Se não houver chave ou a IA falhar, sai o banner simples.
       Os jogadores são genéricos (sem pessoas reais) e, sem os escudos ligados, cada time aparece com um selo nas cores do clube e a sigla.</div>
   </div>
@@ -695,9 +699,10 @@ let jgTimer=null,jgGerado=null;
 async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)return;const c=j.config;
   if(!jgGerado||!$("jg").contains(document.activeElement))alMostrar(j.alertas);
   $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
-  if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";$("jgEscudos").checked=!!c.escudos;
+  if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";$("jgEscudos").checked=!!c.escudos;if(document.activeElement!==$("jgVideo"))$("jgVideo").value=c.video||"desligado";if(document.activeElement!==$("jgVideoLimite"))$("jgVideoLimite").value=c.video_limite??20;
   if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
     $("jgImgs").innerHTML=j.imagens?Array.from({length:j.imagens},(_,i)=>`<a href="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" target="_blank"><img src="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" alt="jogos ${i+1}"></a>`).join(""):'<div class="waDica">sem imagem</div>';
+    if(j.video)$("jgImgs").innerHTML+=`<div><video src="/api/jogos/video?t=${j.gerado}" controls playsinline style="width:280px;border-radius:10px;border:1px solid var(--ln)"></video><div class="waDica">🎬 ${j.video_fundo||""} · US$ ${(+j.video_gasto||0).toFixed(2)} no mês</div></div>`;
     $("jgMsg").textContent=`✔ ${j.total} jogos · ${j.canais_pesquisados} canais pesquisados · ${j.estilo==="arte"?"🎨 arte: "+(j.arte||"IA"):"banner simples"} · ${new Date(j.gerado*1000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`+((j.avisos||[]).length?" · ⚠️ "+j.avisos[0]:"")}}
 $("btnJg").onclick=()=>{$("jg").classList.add("aberto");jgCarregar();clearInterval(jgTimer);jgTimer=setInterval(jgCarregar,5000)};
 function jgFechar(){$("jg").classList.remove("aberto");clearInterval(jgTimer)}
@@ -726,7 +731,7 @@ $("alDetectar").onclick=async()=>{if($("alToken").value.trim()){const s=await al
 $("alTestar").onclick=async()=>{$("alMsg").textContent="⏳ enviando…";const r=await api("/api/whatsapp/acao",{acao:"alerta_testar"});
   $("alMsg").textContent=r.ok?r.resultados.map(x=>`${x[1]?"✅":"❌"} ${x[0]}${x[2]&&x[2]!=="ok"?": "+x[2]:""}`).join(" · "):"❌ "+(r.erro||"erro")};
 $("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
-  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked}});
+  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value}});
   $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;

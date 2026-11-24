@@ -375,7 +375,9 @@ class Handler(BaseHTTPRequestHandler):
                                "imagens": len(d.get("imagens") or []), "total": len(d.get("jogos") or []),
                                "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0),
                                "estilo": d.get("estilo", "simples"), "arte": d.get("arte", ""),
-                               "avisos": [a for a in d.get("avisos") or [] if "arte com IA" in a],
+                               "avisos": [a for a in d.get("avisos") or [] if "arte com IA" in a or "vídeo" in a],
+                               "video": bool(d.get("video") and os.path.exists(d["video"])), "video_fundo": d.get("video_fundo", ""),
+                               "video_gasto": __import__("jogos_video").gasto_mes(jogos.DIR),
                                "alertas": __import__("jogos_alertas").publico()})
         if url.path == "/api/site":
             import site_previa
@@ -402,6 +404,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(png)))
             self.end_headers()
             return self.wfile.write(png)
+        if url.path == "/api/jogos/video":
+            import jogos
+            cam = (jogos.do_dia() or {}).get("video") or ""
+            if not cam or not os.path.exists(cam):
+                return self._json({"erro": "sem vídeo"}, 404)
+            mp4 = open(cam, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Cache-Control", "private, max-age=3600")
+            self.send_header("Content-Length", str(len(mp4)))
+            self.end_headers()
+            return self.wfile.write(mp4)
         if url.path == "/api/jogos/imagem":
             import jogos
             d = jogos.do_dia() or {}
@@ -540,6 +554,10 @@ class Handler(BaseHTTPRequestHandler):
                 if d.get("nova_arte"):  # apaga a arte do dia: a IA desenha outra
                     try:
                         os.remove(os.path.join(jogos.DIR, f"{jogos.hoje().isoformat()}-arte.png"))
+                    except OSError:
+                        pass
+                    try:  # o vídeo com IA usa a arte como primeiro quadro: refaz junto (custa outro clipe)
+                        os.remove(os.path.join(jogos.DIR, f"{jogos.hoje().isoformat()}-fundo.mp4"))
                     except OSError:
                         pass
                 threading.Thread(target=jogos.gerar, kwargs={"forcar": True}, daemon=True).start()

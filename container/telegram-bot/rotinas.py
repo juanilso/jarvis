@@ -88,12 +88,17 @@ def avisar_telegram(texto):
     return ok
 
 
-def avisar_telegram_foto(caminho, legenda=""):
+def avisar_telegram_video(caminho, legenda=""):
+    """Manda um MP4 para o seu Telegram (até 50 MB)."""
+    return avisar_telegram_foto(caminho, legenda, tipo="video")
+
+
+def avisar_telegram_foto(caminho, legenda="", tipo="photo"):
     """Manda uma imagem (PNG/JPG) para o seu Telegram."""
     import uuid
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     chats = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
-    if not token or not chats or not os.path.isfile(caminho):
+    if not token or not chats or not os.path.isfile(caminho) or os.path.getsize(caminho) > 49 * 1024 * 1024:
         return False
     dados = open(caminho, "rb").read()
     ok = False
@@ -102,9 +107,9 @@ def avisar_telegram_foto(caminho, legenda=""):
         corpo = b"".join([
             f"--{b}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat}\r\n".encode(),
             f"--{b}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{legenda[:1000]}\r\n".encode(),
-            f"--{b}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"{os.path.basename(caminho)}\"\r\n"
-            f"Content-Type: image/png\r\n\r\n".encode(), dados, f"\r\n--{b}--\r\n".encode()])
-        req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendPhoto", data=corpo,
+            f"--{b}\r\nContent-Disposition: form-data; name=\"{tipo}\"; filename=\"{os.path.basename(caminho)}\"\r\n"
+            f"Content-Type: {'video/mp4' if tipo == 'video' else 'image/png'}\r\n\r\n".encode(), dados, f"\r\n--{b}--\r\n".encode()])
+        req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{'sendVideo' if tipo == 'video' else 'sendPhoto'}", data=corpo,
                                      headers={"Content-Type": f"multipart/form-data; boundary={b}"})
         try:
             urllib.request.urlopen(req, timeout=60)

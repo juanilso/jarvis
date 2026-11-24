@@ -113,7 +113,7 @@ def detectar_grupos():
     return list(vistos.values())
 
 
-def _foto_grupo(caminho, legenda):
+def _foto_grupo(caminho, legenda, tipo="photo"):
     c = config()
     if not (c["token"] and c["grupo"]):
         return False, "bot do grupo não configurado"
@@ -122,9 +122,10 @@ def _foto_grupo(caminho, legenda):
     corpo = b"".join([
         f"--{b}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{c['grupo']}\r\n".encode(),
         f"--{b}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{legenda[:1000]}\r\n".encode(),
-        f"--{b}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"jogo.png\"\r\nContent-Type: image/png\r\n\r\n".encode(),
+        f"--{b}\r\nContent-Disposition: form-data; name=\"{tipo}\"; filename=\"{'jogos.mp4' if tipo == 'video' else 'jogo.png'}\"\r\n"
+        f"Content-Type: {'video/mp4' if tipo == 'video' else 'image/png'}\r\n\r\n".encode(),
         dados, f"\r\n--{b}--\r\n".encode()])
-    req = urllib.request.Request(f"{API}/bot{c['token']}/sendPhoto", data=corpo,
+    req = urllib.request.Request(f"{API}/bot{c['token']}/{'sendVideo' if tipo == 'video' else 'sendPhoto'}", data=corpo,
                                  headers={"Content-Type": f"multipart/form-data; boundary={b}"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -270,6 +271,8 @@ def lista_no_grupo(d):
         return
     for i, img in enumerate(d.get("imagens") or []):
         _foto_grupo(img, "⚽ Jogos de hoje" + (f" ({i + 1}/{len(d['imagens'])})" if len(d["imagens"]) > 1 else ""))
+    if d.get("video") and os.path.exists(d["video"]) and os.path.getsize(d["video"]) < 49 * 1024 * 1024:
+        _foto_grupo(d["video"], "🎬 Jogos de hoje", tipo="video")
     _texto_grupo(re.sub(r"[*_]", "", d.get("texto") or ""))  # o Telegram sem formatação do WhatsApp
 
 

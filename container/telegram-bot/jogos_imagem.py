@@ -120,7 +120,7 @@ def _pagina(jogos, dia, cfg, pag, total):
 
 
 # ------------------------------------------------------------------ estilo "arte" (fundo gerado por IA)
-POR_PAGINA_ARTE = 5
+POR_PAGINA_ARTE = 4  # com 5, o último cartão encostava no rodapé/marca
 
 
 def _hex(c, padrao):
@@ -189,8 +189,8 @@ def _selo(img, cx, cy, raio, cor, cor2, sigla):
     d.text((cx - w / 2, cy - (caixa[3] - caixa[1]) / 2 - caixa[1]), sigla, font=f, fill=_contraste(cor))
 
 
-def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
-    img = fundo.copy().convert("RGBA")
+def escurecer():
+    """Camada que escurece o topo e o rodapé (para o texto aparecer sobre a arte)."""
     escuro = Image.new("RGBA", (L, A), (0, 0, 0, 0))
     e = ImageDraw.Draw(escuro)
     for y in range(A):  # escurece em cima (título) e embaixo (rodapé), suave, sem emendas
@@ -201,7 +201,18 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
         else:
             alfa = 110
         e.line([(0, y), (L, y)], fill=(4, 8, 16, int(alfa)))
-    img = Image.alpha_composite(img, escuro)
+    return escuro
+
+
+CARTAO_Y, CARTAO_H, CARTAO_PASSO = 440, 256, 280  # posição dos cartões (o vídeo anima cada faixa separadamente)
+
+
+def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
+    """fundo=None: devolve só o texto e os cartões numa camada transparente (RGBA), sem escurecer, para o vídeo."""
+    if fundo is None:
+        img = Image.new("RGBA", (L, A), (0, 0, 0, 0))
+    else:
+        img = Image.alpha_composite(fundo.copy().convert("RGBA"), escurecer())
     d = ImageDraw.Draw(img)
     f_tag, f_tit = _fonte("DejaVuSans-Bold.ttf", 28), _fonte("BebasNeue-Regular.ttf", 168)
     f_sub, f_data = _fonte("BebasNeue-Regular.ttf", 86), _fonte("DejaVuSans-Bold.ttf", 34)
@@ -219,11 +230,11 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
     w = d.textlength(data, font=f_data)
     d.text(((L - w) / 2, 372), data, font=f_data, fill=CIANO)
     # cartões
-    y = 440
+    y = CARTAO_Y
     f_liga, f_time = _fonte("DejaVuSans-Bold.ttf", 24), _fonte("DejaVuSansCondensed-Bold.ttf", 30)
     f_hora, f_tv, f_x = _fonte("BebasNeue-Regular.ttf", 96), _fonte("DejaVuSans-Bold.ttf", 25), _fonte("BebasNeue-Regular.ttf", 44)
     for j in jogos:
-        h = 256
+        h = CARTAO_H
         cartao = Image.new("RGBA", (L, A), (0, 0, 0, 0))
         c = ImageDraw.Draw(cartao)
         c.rounded_rectangle([50, y, L - 50, y + h], 30, fill=(6, 12, 24, 190), outline=(255, 255, 255, 40), width=2)
@@ -265,7 +276,7 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
         d.rounded_rectangle([(L - w) / 2 - 18, y + 196, (L + w) / 2 + 18, y + 236], 20,
                             fill=VERDE if j.get("canais") else (70, 84, 100))
         d.text(((L - w) / 2, y + 202), t, font=f_tv, fill=(6, 20, 12) if j.get("canais") else BRANCO)
-        y += h + 24
+        y += CARTAO_PASSO
     # rodapé
     marca, rod = _sem_emoji(cfg.get("marca") or ""), _sem_emoji(cfg.get("rodape") or "")
     if marca:
@@ -279,7 +290,7 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
     f = _fonte("DejaVuSans.ttf", 22)
     w = d.textlength(nota, font=f)
     d.text(((L - w) / 2, A - 62), nota, font=f, fill=CINZA)
-    return img.convert("RGB")
+    return img if fundo is None else img.convert("RGB")
 
 
 def _desenhar_arte(jogos, dia, cfg, pasta, info):

@@ -28,6 +28,8 @@ LIGAS = {  # código ESPN -> nome em português
 }
 PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo! ⚽",
           "estilo": "arte",
+          "video": "desligado",  # desligado · animado (grátis: arte com zoom + cartões animados) · ia (fundo em vídeo pelo Gemini Omni)
+          "video_limite": 20,  # US$ por mês para o vídeo com IA (ao passar, sai o animado)
           "escudos": False}  # mostra o escudo de cada time (imagem informada pela ESPN) no lugar do selo com a sigla  # arte: fundo gerado por IA (cai para o simples se falhar) · simples: o de sempre
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
@@ -51,6 +53,13 @@ def salvar_config(novo):
         c["canais"] = bool(novo["canais"])
     if "escudos" in novo:
         c["escudos"] = bool(novo["escudos"])
+    if novo.get("video") in ("desligado", "animado", "ia"):
+        c["video"] = novo["video"]
+    if "video_limite" in novo:
+        try:
+            c["video_limite"] = max(0, min(500, int(float(novo["video_limite"]))))
+        except (TypeError, ValueError):
+            pass
     if novo.get("estilo") in ("arte", "simples"):
         c["estilo"] = novo["estilo"]
     os.makedirs(DIR, exist_ok=True)
@@ -214,9 +223,18 @@ def gerar(forcar=False, canais=None, baixar=_baixar, rodar=None):
     imagens = jogos_imagem.desenhar(jogos, dia, config(), DIR, info=info)
     if info.get("aviso"):
         erros.append(info["aviso"])
+    video, vinfo = "", {}
+    if jogos and config().get("video") in ("animado", "ia"):
+        try:
+            import jogos_video
+            video = jogos_video.montar(jogos, dia, config(), DIR, vinfo) or ""
+        except Exception as e:  # noqa: BLE001
+            vinfo["aviso_video"] = f"vídeo não saiu ({type(e).__name__}: {str(e)[:150]})"
+        if vinfo.get("aviso_video"):
+            erros.append(vinfo["aviso_video"])
     d = {"dia": dia.isoformat(), "gerado": time.time(), "jogos": jogos, "texto": texto_grupos(jogos, dia),
          "imagens": imagens, "avisos": erros, "canais_pesquisados": pesquisados, "estilo": info.get("estilo", "simples"),
-         "arte": info.get("arte", "")}
+         "arte": info.get("arte", ""), "video": video, "video_fundo": vinfo.get("video_fundo", "")}
     json.dump(d, open(_arq(dia), "w", encoding="utf-8"), ensure_ascii=False)
     for f in os.listdir(DIR):  # guarda só os últimos 7 dias
         if re.match(r"\d{4}-\d{2}-\d{2}", f) and f[:10] < (dia - dt.timedelta(days=7)).isoformat():
@@ -240,5 +258,7 @@ def enviar_telegram(d):
     import rotinas
     for i, img in enumerate(d.get("imagens") or []):
         rotinas.avisar_telegram_foto(img, "⚽ Jogos de hoje" + (f" ({i + 1}/{len(d['imagens'])})" if len(d["imagens"]) > 1 else ""))
+    if d.get("video") and os.path.exists(d["video"]):
+        rotinas.avisar_telegram_video(d["video"], "🎬 Vídeo dos jogos de hoje (Status / Reels / grupos)")
     rotinas.avisar_telegram("📋 Texto pronto para os grupos do WhatsApp (copie a próxima mensagem inteira):")
     rotinas.avisar_telegram(d["texto"])  # com *negrito* e _itálico_ no formato do WhatsApp
