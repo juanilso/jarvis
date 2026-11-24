@@ -31,7 +31,8 @@ PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo
           "video": "desligado",  # desligado · animado (grátis: arte com zoom + cartões animados) · ia (fundo em vídeo pelo Gemini Omni)
           "video_limite": 20,
           "video_formatos": ["vertical"],  # vertical (Status/Reels) e/ou horizontal (TV)
-          "musica_volume": 70,  # volume da música de fundo (0 a 100), se você enviou uma no painel  # US$ por mês para o vídeo com IA (ao passar, sai o animado)
+          "musica_volume": 70,
+          "telegram_ao_gerar": True,  # ao gerar pelo painel, manda banner + vídeos + imagem da TV no seu Telegram  # volume da música de fundo (0 a 100), se você enviou uma no painel  # US$ por mês para o vídeo com IA (ao passar, sai o animado)
           "escudos": False}  # mostra o escudo de cada time (imagem informada pela ESPN) no lugar do selo com a sigla  # arte: fundo gerado por IA (cai para o simples se falhar) · simples: o de sempre
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
@@ -53,6 +54,8 @@ def salvar_config(novo):
             c[k] = str(novo[k])[:60]
     if "canais" in novo:
         c["canais"] = bool(novo["canais"])
+    if "telegram_ao_gerar" in novo:
+        c["telegram_ao_gerar"] = bool(novo["telegram_ao_gerar"])
     if "escudos" in novo:
         c["escudos"] = bool(novo["escudos"])
     if novo.get("video") in ("desligado", "animado", "ia"):
@@ -273,11 +276,17 @@ def do_dia():
 def enviar_telegram(d):
     """Manda as imagens e o texto pronto no seu Telegram."""
     import rotinas
-    for i, img in enumerate(d.get("imagens") or []):
-        rotinas.avisar_telegram_foto(img, "⚽ Jogos de hoje" + (f" ({i + 1}/{len(d['imagens'])})" if len(d["imagens"]) > 1 else ""))
+    itens = []  # tudo num álbum só: banner, vídeo vertical, vídeo da TV e imagem da TV
+    imgs = d.get("imagens") or []
+    for i, img in enumerate(imgs):
+        itens.append((img, "photo", "⚽ Jogos de hoje" + (f" ({i + 1}/{len(imgs)})" if len(imgs) > 1 else "")))
     if d.get("video") and os.path.exists(d["video"]):
-        rotinas.avisar_telegram_video(d["video"], "🎬 Vídeo dos jogos de hoje (Status / Reels / grupos)")
+        itens.append((d["video"], "video", "🎬 Vídeo (Status / Reels / grupos)"))
     if d.get("video_tv") and os.path.exists(d["video_tv"]):
-        rotinas.avisar_telegram_video(d["video_tv"], "📺 Versão para TV (horizontal)")
+        itens.append((d["video_tv"], "video", "📺 Vídeo para TV"))
+    tv = d.get("imagens_tv") or []
+    for i, img in enumerate(tv):
+        itens.append((img, "photo", "📺 Imagem para TV" + (f" ({i + 1}/{len(tv)})" if len(tv) > 1 else "")))
+    rotinas.avisar_telegram_album(itens)
     rotinas.avisar_telegram("📋 Texto pronto para os grupos do WhatsApp (copie a próxima mensagem inteira):")
     rotinas.avisar_telegram(d["texto"])  # com *negrito* e _itálico_ no formato do WhatsApp

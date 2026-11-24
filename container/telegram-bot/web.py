@@ -574,8 +574,13 @@ class Handler(BaseHTTPRequestHandler):
                         os.remove(os.path.join(jogos.DIR, f"{jogos.hoje().isoformat()}-fundo.mp4"))
                     except OSError:
                         pass
-                threading.Thread(target=jogos.gerar, kwargs={"forcar": True}, daemon=True).start()
-                return self._json({"ok": True, "msg": "gerando (alguns minutos por causa da pesquisa de canais)"})
+                def _gerar_e_mandar():
+                    jd = jogos.gerar(forcar=True)
+                    if jogos.config().get("telegram_ao_gerar", True) and (jd.get("jogos") or jd.get("imagens")):
+                        jogos.enviar_telegram(jd)
+                threading.Thread(target=_gerar_e_mandar, daemon=True).start()
+                envia = " · quando ficar pronto, chega no seu Telegram" if jogos.config().get("telegram_ao_gerar", True) else ""
+                return self._json({"ok": True, "msg": "gerando (alguns minutos por causa da pesquisa de canais)" + envia})
             if a == "diagnostico":
                 return self._json(atendimento.diagnostico())
             if a in ("reiniciar", "reconectar", "vigia_testar", "vigia_ligar"):

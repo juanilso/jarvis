@@ -88,6 +88,45 @@ def avisar_telegram(texto):
     return ok
 
 
+def avisar_telegram_album(itens):
+    """Manda fotos e vídeos juntos, num álbum só (até 10 por álbum). itens = [(caminho, "photo"|"video", legenda)].
+    Se o álbum falhar, manda um por um."""
+    import uuid
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    chats = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
+    itens = [i for i in itens if os.path.isfile(i[0]) and os.path.getsize(i[0]) < 49 * 1024 * 1024]
+    if not token or not chats or not itens:
+        return False
+    if len(itens) == 1:
+        return avisar_telegram_foto(itens[0][0], itens[0][2], tipo=itens[0][1])
+    ok = True
+    for ini in range(0, len(itens), 10):
+        lote = itens[ini:ini + 10]
+        if len(lote) == 1:
+            ok = avisar_telegram_foto(lote[0][0], lote[0][2], tipo=lote[0][1]) and ok
+            continue
+        midia = [{"type": t, "media": f"attach://f{n}", **({"caption": leg[:1000]} if leg else {}),
+                  **({"supports_streaming": True} if t == "video" else {})} for n, (_, t, leg) in enumerate(lote)]
+        for chat in chats:
+            b = uuid.uuid4().hex
+            partes = [f"--{b}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat}\r\n".encode(),
+                      f"--{b}\r\nContent-Disposition: form-data; name=\"media\"\r\n\r\n{json.dumps(midia)}\r\n".encode()]
+            for n, (cam, t, _) in enumerate(lote):
+                partes += [f"--{b}\r\nContent-Disposition: form-data; name=\"f{n}\"; filename=\"{os.path.basename(cam)}\"\r\n"
+                           f"Content-Type: {'video/mp4' if t == 'video' else 'image/png'}\r\n\r\n".encode(),
+                           open(cam, "rb").read(), b"\r\n"]
+            partes.append(f"--{b}--\r\n".encode())
+            req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMediaGroup", data=b"".join(partes),
+                                         headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+            try:
+                urllib.request.urlopen(req, timeout=180)
+            except Exception as e:  # noqa: BLE001
+                print("álbum no Telegram falhou, mandando um por um:", e, flush=True)
+                for cam, t, leg in lote:
+                    ok = avisar_telegram_foto(cam, leg, tipo=t) and ok
+    return ok
+
+
 def avisar_telegram_video(caminho, legenda=""):
     """Manda um MP4 para o seu Telegram (até 50 MB)."""
     return avisar_telegram_foto(caminho, legenda, tipo="video")

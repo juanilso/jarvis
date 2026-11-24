@@ -111,6 +111,13 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.30.1: tudo no Telegram ao gerar
+
+- O Telegram recebe **um álbum só** com o banner, o vídeo vertical, o vídeo da TV e a imagem da TV, e depois o texto
+  pronto para o WhatsApp. Se o álbum falhar, vão um por um.
+- Agora também ao clicar **Gerar agora** ou **Nova arte** no painel (não só na rotina das manhãs). Para desligar:
+  painel ⚽ → "Ao gerar, mandar no meu Telegram". O grupo continua recebendo só na rotina diária.
+
 ## Jarvis 1.30: vídeo dos jogos para TV (horizontal) e música de fundo
 
 - Painel ⚽ → **Formatos**: 📱 vertical (Status/Reels) e/ou 📺 **horizontal 16:9 (TV)**. Na TV, os jogos aparecem
