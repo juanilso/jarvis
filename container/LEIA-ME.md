@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.30: vídeo dos jogos para TV (horizontal) e música de fundo
+
+- Painel ⚽ → **Formatos**: 📱 vertical (Status/Reels) e/ou 📺 **horizontal 16:9 (TV)**. Na TV, os jogos aparecem
+  em 2 colunas (até 6 por tela) e também sai uma **imagem parada** por tela, para TVs que só mostram fotos.
+- O vídeo de TV vai para o seu Telegram (o grupo recebe só o vertical) e pode ser baixado no painel (pendrive/TV).
+- Com IA e os dois formatos ligados, são 2 clipes por dia (~US$ 2); o limite do mês vale para os dois.
+- **Música de fundo:** envie um mp3/m4a/wav/ogg no painel (até 25 MB; guarda até 5 min) e ajuste o volume. Ela repete
+  se o vídeo for maior, entra e sai suave e, no vídeo com IA, toca junto com a torcida. Use música sem direitos
+  autorais (Biblioteca de áudio do YouTube, por exemplo), senão Instagram/YouTube podem bloquear ou tirar o som.
+- Restauração: branch `versao-1.29.0`.
+
 ## Jarvis 1.29: vídeo dos jogos do dia
 
 - **Vídeo vertical (9:16)** para Status, Reels e grupos, enviado no seu Telegram e no grupo junto com a imagem e o texto.

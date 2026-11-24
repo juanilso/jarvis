@@ -190,6 +190,13 @@ footer{position:relative}
     <label>Estilo do banner<select id="jgEstilo"><option value="arte">🎨 Arte com IA (estádio, bola, jogadores genéricos nas cores dos times)</option><option value="simples">Simples (o de antes)</option></select></label>
     <label>Vídeo dos jogos<select id="jgVideo"><option value="desligado">Desligado (só a imagem)</option><option value="animado">🎞 Animado (grátis: a arte com zoom e os jogos entrando)</option><option value="ia">🎬 Com IA (fundo em vídeo pelo Gemini, com som de torcida; conta paga)</option></select></label>
     <label>Limite do vídeo com IA (US$ por mês)<input id="jgVideoLimite" type="number" min="0" max="500" step="1" placeholder="20"></label>
+    <label><span>Formatos: <input type="checkbox" id="jgFmtV"> 📱 Vertical (Status/Reels) &nbsp; <input type="checkbox" id="jgFmtH"> 📺 Horizontal (TV)</span></label>
+    <label>Música de fundo (mp3, m4a, wav ou ogg, até 25 MB)<input type="file" id="jgMusica" accept="audio/*,.mp3,.m4a,.wav,.ogg"></label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="waDica" id="jgMusicaInfo">sem música</span>
+      <button id="jgMusicaApagar" style="display:none">🗑 Tirar música</button></div>
+    <label>Volume da música <span id="jgVolTxt">70</span>%<input type="range" id="jgVolume" min="0" max="100" step="5" value="70" oninput="jgVolTxt.textContent=this.value"></label>
+    <div class="waDica">Use música sem direitos autorais (ex.: Biblioteca de áudio do YouTube), senão Instagram/YouTube podem bloquear ou tirar o som do vídeo.
+      Com o vídeo de IA, a música toca junto com o som da torcida.</div>
     <label><span><input type="checkbox" id="jgEscudos"> Mostrar os escudos dos times (imagem informada pela ESPN; uso informativo, sob sua responsabilidade)</span></label>
     <div class="waDica">Vídeo com IA: cerca de US$ 1 por dia (um clipe por dia, reaproveitado se gerar de novo). A IA faz só o fundo;
       os jogos, horários e canais são colocados pelo Jarvis, então nunca saem errados. Se falhar ou passar do limite, sai o animado.</div>
@@ -700,9 +707,12 @@ async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)ret
   if(!jgGerado||!$("jg").contains(document.activeElement))alMostrar(j.alertas);
   $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
   if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";$("jgEscudos").checked=!!c.escudos;if(document.activeElement!==$("jgVideo"))$("jgVideo").value=c.video||"desligado";if(document.activeElement!==$("jgVideoLimite"))$("jgVideoLimite").value=c.video_limite??20;
+  if(!$("jg").contains(document.activeElement)){const fm=c.video_formatos||["vertical"];$("jgFmtV").checked=fm.includes("vertical");$("jgFmtH").checked=fm.includes("horizontal");$("jgVolume").value=c.musica_volume??70;$("jgVolTxt").textContent=$("jgVolume").value;}
+  $("jgMusicaInfo").innerHTML=j.musica?'🎵 música enviada · <a href="/api/jogos/video?f=musica" target="_blank">ouvir</a>':"sem música (o animado sai mudo; o de IA sai com a torcida)";$("jgMusicaApagar").style.display=j.musica?"":"none";
   if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
     $("jgImgs").innerHTML=j.imagens?Array.from({length:j.imagens},(_,i)=>`<a href="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" target="_blank"><img src="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" alt="jogos ${i+1}"></a>`).join(""):'<div class="waDica">sem imagem</div>';
-    if(j.video)$("jgImgs").innerHTML+=`<div><video src="/api/jogos/video?t=${j.gerado}" controls playsinline style="width:280px;border-radius:10px;border:1px solid var(--ln)"></video><div class="waDica">🎬 ${j.video_fundo||""} · US$ ${(+j.video_gasto||0).toFixed(2)} no mês</div></div>`;
+    if(j.video)$("jgImgs").innerHTML+=`<div><video src="/api/jogos/video?t=${j.gerado}" controls playsinline style="width:280px;border-radius:10px;border:1px solid var(--ln)"></video><div class="waDica">🎬 ${j.video_fundo||""}${j.video_som?" · 🔊 "+j.video_som:""} · US$ ${(+j.video_gasto||0).toFixed(2)} no mês · <a href="/api/jogos/video?baixar=1">baixar</a></div></div>`;
+    if(j.video_tv)$("jgImgs").innerHTML+=`<div><video src="/api/jogos/video?f=tv&t=${j.gerado}" controls playsinline style="width:420px;border-radius:10px;border:1px solid var(--ln)"></video><div class="waDica">📺 TV · <a href="/api/jogos/video?f=tv&baixar=1">baixar vídeo</a>${Array.from({length:j.imagens_tv||0},(_,i)=>` · <a href="/api/jogos/video?f=tvimg&n=${i+1}&baixar=1">imagem ${i+1}</a>`).join("")}</div></div>`;
     $("jgMsg").textContent=`✔ ${j.total} jogos · ${j.canais_pesquisados} canais pesquisados · ${j.estilo==="arte"?"🎨 arte: "+(j.arte||"IA"):"banner simples"} · ${new Date(j.gerado*1000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`+((j.avisos||[]).length?" · ⚠️ "+j.avisos[0]:"")}}
 $("btnJg").onclick=()=>{$("jg").classList.add("aberto");jgCarregar();clearInterval(jgTimer);jgTimer=setInterval(jgCarregar,5000)};
 function jgFechar(){$("jg").classList.remove("aberto");clearInterval(jgTimer)}
@@ -730,8 +740,13 @@ $("alDetectar").onclick=async()=>{if($("alToken").value.trim()){const s=await al
     await alSalvar({grupo:b.dataset.g,grupo_nome:b.dataset.n,para_grupo:true});$("alGrupos").innerHTML=""})};
 $("alTestar").onclick=async()=>{$("alMsg").textContent="⏳ enviando…";const r=await api("/api/whatsapp/acao",{acao:"alerta_testar"});
   $("alMsg").textContent=r.ok?r.resultados.map(x=>`${x[1]?"✅":"❌"} ${x[0]}${x[2]&&x[2]!=="ok"?": "+x[2]:""}`).join(" · "):"❌ "+(r.erro||"erro")};
+$("jgMusica").onchange=async()=>{const f=$("jgMusica").files[0];if(!f)return;$("jgMusicaInfo").textContent="⏳ enviando "+f.name+"…";
+  try{const r=await fetch("/api/jogos/musica",{method:"POST",body:f});const j=await r.json();
+    $("jgMusicaInfo").textContent=j.ok?`🎵 música salva (${Math.round(j.segundos)} s; repete se o vídeo for maior). Gere os jogos de novo para usar.`:"⚠️ "+(j.erro||"não deu certo");}
+  catch(e){$("jgMusicaInfo").textContent="⚠️ falha ao enviar";}$("jgMusica").value="";};
+$("jgMusicaApagar").onclick=async()=>{if(!confirm("Tirar a música de fundo?"))return;await fetch("/api/jogos/musica?apagar=1",{method:"POST"});jgCarregar();};
 $("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
-  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value}});
+  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value,video_formatos:[$("jgFmtV").checked&&"vertical",$("jgFmtH").checked&&"horizontal"].filter(Boolean),musica_volume:$("jgVolume").value}});
   $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;

@@ -29,7 +29,9 @@ LIGAS = {  # código ESPN -> nome em português
 PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo! ⚽",
           "estilo": "arte",
           "video": "desligado",  # desligado · animado (grátis: arte com zoom + cartões animados) · ia (fundo em vídeo pelo Gemini Omni)
-          "video_limite": 20,  # US$ por mês para o vídeo com IA (ao passar, sai o animado)
+          "video_limite": 20,
+          "video_formatos": ["vertical"],  # vertical (Status/Reels) e/ou horizontal (TV)
+          "musica_volume": 70,  # volume da música de fundo (0 a 100), se você enviou uma no painel  # US$ por mês para o vídeo com IA (ao passar, sai o animado)
           "escudos": False}  # mostra o escudo de cada time (imagem informada pela ESPN) no lugar do selo com a sigla  # arte: fundo gerado por IA (cai para o simples se falhar) · simples: o de sempre
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
@@ -58,6 +60,13 @@ def salvar_config(novo):
     if "video_limite" in novo:
         try:
             c["video_limite"] = max(0, min(500, int(float(novo["video_limite"]))))
+        except (TypeError, ValueError):
+            pass
+    if isinstance(novo.get("video_formatos"), list):
+        c["video_formatos"] = [f for f in ("vertical", "horizontal") if f in novo["video_formatos"]] or ["vertical"]
+    if "musica_volume" in novo:
+        try:
+            c["musica_volume"] = max(0, min(100, int(float(novo["musica_volume"]))))
         except (TypeError, ValueError):
             pass
     if novo.get("estilo") in ("arte", "simples"):
@@ -223,18 +232,26 @@ def gerar(forcar=False, canais=None, baixar=_baixar, rodar=None):
     imagens = jogos_imagem.desenhar(jogos, dia, config(), DIR, info=info)
     if info.get("aviso"):
         erros.append(info["aviso"])
-    video, vinfo = "", {}
-    if jogos and config().get("video") in ("animado", "ia"):
-        try:
-            import jogos_video
-            video = jogos_video.montar(jogos, dia, config(), DIR, vinfo) or ""
-        except Exception as e:  # noqa: BLE001
-            vinfo["aviso_video"] = f"vídeo não saiu ({type(e).__name__}: {str(e)[:150]})"
+    video, video_tv, vinfo = "", "", {}
+    cfg = config()
+    if jogos and cfg.get("video") in ("animado", "ia"):
+        import jogos_video
+        for formato in cfg.get("video_formatos") or ["vertical"]:
+            try:
+                feito = jogos_video.montar(jogos, dia, cfg, DIR, vinfo, formato) or ""
+                if formato == "vertical":
+                    video = feito
+                else:
+                    video_tv = feito
+            except Exception as e:  # noqa: BLE001
+                vinfo["aviso_video"] = f"vídeo {formato} não saiu ({type(e).__name__}: {str(e)[:150]})"
         if vinfo.get("aviso_video"):
             erros.append(vinfo["aviso_video"])
     d = {"dia": dia.isoformat(), "gerado": time.time(), "jogos": jogos, "texto": texto_grupos(jogos, dia),
          "imagens": imagens, "avisos": erros, "canais_pesquisados": pesquisados, "estilo": info.get("estilo", "simples"),
-         "arte": info.get("arte", ""), "video": video, "video_fundo": vinfo.get("video_fundo", "")}
+         "arte": info.get("arte", ""), "video": video, "video_tv": video_tv,
+         "imagens_tv": vinfo.get("imagens_tv") or [], "video_fundo": vinfo.get("video_fundo", ""),
+         "video_som": vinfo.get("video_som", "")}
     json.dump(d, open(_arq(dia), "w", encoding="utf-8"), ensure_ascii=False)
     for f in os.listdir(DIR):  # guarda só os últimos 7 dias
         if re.match(r"\d{4}-\d{2}-\d{2}", f) and f[:10] < (dia - dt.timedelta(days=7)).isoformat():
@@ -260,5 +277,7 @@ def enviar_telegram(d):
         rotinas.avisar_telegram_foto(img, "⚽ Jogos de hoje" + (f" ({i + 1}/{len(d['imagens'])})" if len(d["imagens"]) > 1 else ""))
     if d.get("video") and os.path.exists(d["video"]):
         rotinas.avisar_telegram_video(d["video"], "🎬 Vídeo dos jogos de hoje (Status / Reels / grupos)")
+    if d.get("video_tv") and os.path.exists(d["video_tv"]):
+        rotinas.avisar_telegram_video(d["video_tv"], "📺 Versão para TV (horizontal)")
     rotinas.avisar_telegram("📋 Texto pronto para os grupos do WhatsApp (copie a próxima mensagem inteira):")
     rotinas.avisar_telegram(d["texto"])  # com *negrito* e _itálico_ no formato do WhatsApp

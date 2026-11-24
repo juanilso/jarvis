@@ -378,6 +378,9 @@ class Handler(BaseHTTPRequestHandler):
                                "avisos": [a for a in d.get("avisos") or [] if "arte com IA" in a or "vídeo" in a],
                                "video": bool(d.get("video") and os.path.exists(d["video"])), "video_fundo": d.get("video_fundo", ""),
                                "video_gasto": __import__("jogos_video").gasto_mes(jogos.DIR),
+                               "video_tv": bool(d.get("video_tv") and os.path.exists(d["video_tv"])),
+                               "imagens_tv": len(d.get("imagens_tv") or []), "video_som": d.get("video_som", ""),
+                               "musica": bool(__import__("jogos_video").musica(jogos.DIR)),
                                "alertas": __import__("jogos_alertas").publico()})
         if url.path == "/api/site":
             import site_previa
@@ -406,12 +409,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.wfile.write(png)
         if url.path == "/api/jogos/video":
             import jogos
-            cam = (jogos.do_dia() or {}).get("video") or ""
+            q = urllib.parse.parse_qs(url.query)
+            dd = jogos.do_dia() or {}
+            cam = dd.get("video_tv" if q.get("f", [""])[0] == "tv" else "video") or ""
+            if q.get("f", [""])[0] == "musica":
+                cam = __import__("jogos_video").musica(jogos.DIR) or ""
+            if q.get("f", [""])[0] == "tvimg":
+                try:
+                    cam = (dd.get("imagens_tv") or [])[int(q.get("n", ["1"])[0]) - 1]
+                except (ValueError, IndexError):
+                    cam = ""
             if not cam or not os.path.exists(cam):
                 return self._json({"erro": "sem vídeo"}, 404)
             mp4 = open(cam, "rb").read()
             self.send_response(200)
-            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Type", "image/png" if cam.endswith(".png") else ("audio/mp4" if cam.endswith(".m4a") else "video/mp4"))
+            if "baixar" in q:
+                self.send_header("Content-Disposition", f'attachment; filename="{os.path.basename(cam)}"')
             self.send_header("Cache-Control", "private, max-age=3600")
             self.send_header("Content-Length", str(len(mp4)))
             self.end_headers()
@@ -589,6 +603,17 @@ class Handler(BaseHTTPRequestHandler):
                         return self._json({"ok": False, "erro": str(e)}, 400)
                 return self._json(painel_api.testar())
             return self._json({"erro": "ação inválida"}, 400)
+        if url.path == "/api/jogos/musica":  # música de fundo do vídeo dos jogos (o arquivo vem no corpo)
+            import jogos
+            import jogos_video
+            if urllib.parse.parse_qs(url.query).get("apagar"):
+                jogos_video.apagar_musica(jogos.DIR)
+                return self._json({"ok": True})
+            try:
+                seg = jogos_video.salvar_musica(jogos.DIR, self._corpo())
+            except ValueError as e:
+                return self._json({"ok": False, "erro": str(e)}, 400)
+            return self._json({"ok": True, "segundos": seg})
         if url.path == "/api/upload":
             q = urllib.parse.parse_qs(url.query)
             try:
