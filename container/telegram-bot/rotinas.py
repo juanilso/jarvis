@@ -30,7 +30,7 @@ import jarvis_core as core
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
-         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "treinar_atendimento", "jogos",
+         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "treinar_atendimento", "filme", "jogos",
          "previa", "site_testar"}
 _lock = threading.Lock()
 
@@ -243,6 +243,27 @@ def executar(dados, publicar, pool, estado):
                          "relatorio": d.get("relatorio_texto", "")[:8000]}
         threading.Thread(target=_testar, daemon=True).start()
         return 202, {"ok": True, "status": f"testando {url or projeto}; o resultado chega no Telegram"}
+    if acao == "filme":  # /filme <nome> no Telegram: vídeo do filme/série com dados do TMDB
+        import filmes
+        q = str(dados.get("q") or "").strip()
+        if not q:
+            return 400, {"erro": "diga o nome do filme ou da série"}
+        try:
+            escolhido, outros = filmes.melhor(q)
+        except RuntimeError as e:
+            return 200, {"ok": False, "texto": f"🎬 {e}"}
+        if not escolhido:
+            return 200, {"ok": False, "texto": f"🎬 Não achei “{q}” no TMDB. Tente o nome em português ou em inglês, com o ano."}
+        try:
+            filmes.gerar_fundo(escolhido["tipo"], escolhido["id"])
+        except RuntimeError as e:
+            return 200, {"ok": False, "texto": f"🎬 {e}"}
+        t = (f"🎬 Gerando o vídeo de {escolhido['titulo']} ({escolhido['ano']})"
+             + (" com os cortes do trailer que você enviou" if filmes.trailer_de(escolhido["tipo"], escolhido["id"]) else "")
+             + ". Chega aqui em 1 a 3 minutos.")
+        if outros:
+            t += "\nNão é esse? " + " · ".join(f"/filme {o['titulo']} {o['ano']}" for o in outros)
+        return 200, {"ok": True, "texto": t}
     if acao == "treinar_atendimento":  # treinador: toda semana pelo n8n ou /treinar no Telegram
         import linhas
         import treinador

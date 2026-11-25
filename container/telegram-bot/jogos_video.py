@@ -115,6 +115,82 @@ def omni(texto, imagem_png=None, pasta_tmp="/tmp", proporcao="9:16"):
     return _http(uri, chave=chave, tempo=300, bruto=True)
 
 
+# ------------------------------------------------------------------ gateway (padrão OpenAI de vídeos) e roteiro pelo Claude
+def _gateway():
+    base = (os.environ.get("JARVIS_VIDEO_GATEWAY_URL") or os.environ.get("ANTHROPIC_BASE_URL") or "").rstrip("/")
+    if base.endswith("/v1"):
+        base = base[:-3]
+    chave = (os.environ.get("JARVIS_VIDEO_GATEWAY_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
+             or os.environ.get("ANTHROPIC_API_KEY") or "")
+    if not base or not chave:
+        raise RuntimeError("gateway não configurado (ANTHROPIC_BASE_URL e a chave no .env.claude)")
+    return base, {"Authorization": f"Bearer {chave}", "x-api-key": chave, "User-Agent": UA}
+
+
+def gateway_video(texto, proporcao, modelo, segundos=8):
+    """POST /v1/videos → espera → GET /v1/videos/{id}/content (o padrão que gateways como o LiteLLM seguem)."""
+    if not modelo:
+        raise RuntimeError("escolha o modelo de vídeo do gateway no painel (⚽ → Vídeo)")
+    base, cab = _gateway()
+    campos = {"model": modelo, "prompt": texto, "seconds": str(segundos),
+              "size": "1280x720" if proporcao == "16:9" else "720x1280"}
+
+    def pedir(url, corpo=None, tipo="application/json", tempo=120, bruto=False):
+        req = urllib.request.Request(url, data=corpo, headers={**cab, **({"Content-Type": tipo} if corpo else {})})
+        with urllib.request.urlopen(req, timeout=tempo) as r:
+            dados = r.read()
+        return dados if bruto else json.loads(dados.decode() or "{}")
+    try:
+        job = pedir(f"{base}/v1/videos", json.dumps(campos).encode())
+    except urllib.error.HTTPError as e:
+        msg = e.read().decode(errors="replace")[:300]
+        if e.code in (400, 415, 422) and re.search(r"multipart|form", msg, re.I):  # alguns pedem formulário
+            b = "jarvis" + str(int(time.time()))
+            corpo = "".join(f"--{b}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n"
+                            for k, v in campos.items()) + f"--{b}--\r\n"
+            job = pedir(f"{base}/v1/videos", corpo.encode(), f"multipart/form-data; boundary={b}")
+        else:
+            raise RuntimeError(f"gateway recusou o vídeo (HTTP {e.code}): {msg}") from None
+    vid = job.get("id")
+    if not vid:
+        raise RuntimeError("o gateway não devolveu o id do vídeo: " + json.dumps(job)[:200])
+    fim = time.time() + 900
+    while job.get("status") not in ("completed", "succeeded") and time.time() < fim:
+        if job.get("status") in ("failed", "cancelled", "error"):
+            raise RuntimeError(f"o gateway não gerou o vídeo: {str(job.get('error') or job)[:200]}")
+        time.sleep(8)
+        job = pedir(f"{base}/v1/videos/{vid}", tempo=60)
+    if job.get("status") not in ("completed", "succeeded"):
+        raise RuntimeError("o vídeo do gateway demorou mais de 15 minutos")
+    return pedir(f"{base}/v1/videos/{vid}/content", tempo=300, bruto=True)
+
+
+def claude_texto(sistema, pedido, modelo=None, max_tokens=400):
+    """Texto curto pelo Claude no seu gateway (o mesmo do Jarvis)."""
+    base, cab = _gateway()
+    corpo = {"model": modelo or os.environ.get("ANTHROPIC_DEFAULT_HAIKU_MODEL") or "claude-haiku-5-5",
+             "max_tokens": max_tokens, "system": sistema, "messages": [{"role": "user", "content": pedido}]}
+    req = urllib.request.Request(f"{base}/v1/messages", data=json.dumps(corpo).encode(),
+                                 headers={**cab, "Content-Type": "application/json", "anthropic-version": "2023-06-01"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        j = json.loads(r.read().decode())
+    return "".join(b.get("text", "") for b in j.get("content", []) if b.get("type") == "text").strip()
+
+
+def roteiro_claude(jogos, formato):
+    """O Claude escreve a direção de cena do vídeo do dia (em inglês, que os modelos de vídeo entendem melhor)."""
+    resumo = "; ".join(f"{j.get('casa')} x {j.get('fora')} ({j.get('liga', '')}, {j.get('hora', '')})" for j in jogos[:6])
+    sistema = ("You are a sports promo video director. Write ONE prompt (max 90 words, English) for an AI video model: "
+               "an 8-second cinematic soccer-stadium shot that matches today's mood. Use team colors as lights/flags "
+               "only. NO text, letters, numbers, logos, crests, jerseys of real clubs or real/recognizable people. "
+               "Describe camera motion, lighting, atmosphere and crowd sound. Output only the prompt.")
+    forma = "vertical 9:16" if formato == "vertical" else "horizontal 16:9"
+    t = claude_texto(sistema, f"Format: {forma}. Today's matches: {resumo}")
+    if len(t) < 40:
+        raise RuntimeError("roteiro vazio")
+    return t + " No text, no logos, no real people."
+
+
 def pedido_video():
     return ("Animate this image into a seamless vertical 9:16 video of about 8 seconds. Slow cinematic camera push-in. "
             "Stadium floodlights flicker and sweep, light haze drifts, the crowd in the stands waves and jumps, the "
@@ -160,23 +236,35 @@ def fundo_video(dia, destaque, pasta, cfg, info, formato="vertical"):
     if limite and gasto_mes(pasta) + custo > limite:
         info["aviso_video"] = f"limite de US$ {limite:.0f}/mês do vídeo com IA atingido; saiu o vídeo animado"
         return None
-    imagem = _quadro_inicial(dia, cfg, pasta, formato)
+    provedor = cfg.get("video_provedor") or "gemini"
+    imagem = _quadro_inicial(dia, cfg, pasta, formato) if provedor == "gemini" else None
     texto = pedido_video()
+    if cfg.get("roteiro_claude"):
+        try:
+            texto = roteiro_claude(cfg.get("_jogos") or [destaque or {}], formato)
+            info["video_roteiro"] = "Claude"
+        except Exception as e:  # noqa: BLE001
+            info["video_roteiro"] = f"padrão (Claude indisponível: {type(e).__name__})"
     if formato == "horizontal":
         texto = texto.replace("vertical 9:16", "horizontal 16:9 widescreen")
-    if not imagem:
+    if not imagem and not info.get("video_roteiro") == "Claude":
         import jogos_arte
         texto = jogos_arte.pedido(destaque or {}) + " " + texto.replace("Animate this image into", "Create")
         if formato == "horizontal":
             texto = texto.replace("Vertical 9:16", "Horizontal 16:9")
+    prop = "16:9" if formato == "horizontal" else "9:16"
     try:
-        mp4 = omni(texto, imagem, pasta, "16:9" if formato == "horizontal" else "9:16")
+        if provedor == "gateway":
+            mp4 = gateway_video(texto, prop, cfg.get("video_modelo_gateway") or os.environ.get("JARVIS_VIDEO_GATEWAY_MODELO", ""))
+        else:
+            mp4 = omni(texto, imagem, pasta, prop)
     except Exception as e:  # noqa: BLE001
         info["aviso_video"] = f"vídeo com IA indisponível ({type(e).__name__}: {str(e)[:200]}); saiu o vídeo animado"
         return None
     _somar_gasto(pasta, custo)
     open(cache, "wb").write(mp4)
-    info["video_fundo"] = f"Gemini ({MODELO})"
+    info["video_fundo"] = (f"gateway ({cfg.get('video_modelo_gateway')})" if provedor == "gateway" else f"Gemini ({MODELO})") \
+        + (" · roteiro do Claude" if info.get("video_roteiro") == "Claude" else "")
     return cache
 
 
@@ -374,7 +462,7 @@ def montar(jogos, dia, cfg, pasta, info=None, formato="vertical"):
         return None
     os.makedirs(pasta, exist_ok=True)
     W, H = FORMATOS[formato]
-    fundo = fundo_video(dia, jogos[0], pasta, cfg, info, formato) if cfg.get("video") == "ia" else None
+    fundo = fundo_video(dia, jogos[0], pasta, {**cfg, "_jogos": jogos}, info, formato) if cfg.get("video") == "ia" else None
     still = None
     if not fundo:
         still, origem = _fundo_parado(dia, cfg, pasta, formato)

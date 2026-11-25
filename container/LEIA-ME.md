@@ -111,6 +111,28 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.37: vídeo pelo gateway, roteiro pelo Claude e vídeos de filmes/séries (TMDB)
+
+**Vídeo dos jogos**
+- Painel ⚽ → "Quem gera o fundo com IA": **Gemini** (Omni Flash) ou **Meu gateway**. No gateway, escolha o modelo de
+  vídeo da lista dele (o painel mostra os que parecem de vídeo). O Jarvis usa o padrão `/v1/videos` (o mesmo do
+  LiteLLM/OpenAI) e, se o gateway pedir formulário, tenta assim. Modelos Claude não geram vídeo: quem gera é um
+  modelo de vídeo que o gateway ofereça.
+- **🎬 O Claude escreve o roteiro da cena** de cada dia (com qualquer provedor), a partir dos jogos do dia.
+
+**Filmes e séries (🎬 no painel · `/filme <nome>` no Telegram)**
+- Cole o token do TMDB (themoviedb.org → Configurações → API → "Token de leitura da API"). Fica em
+  `/segredos/tmdb.json` (600) e o painel mostra mascarado.
+- Busque, escolha e gere: vídeo vertical e/ou horizontal com as imagens do título em movimento, logo/título, nota,
+  ano, gêneros, duração/temporadas, chamada e resumo **sem spoiler** escritos pelo Claude, elenco, "onde assistir"
+  (opcional), botão com a sua chamada ("Disponível agora") e cartão final com o cartaz. Vai para o Telegram com legenda
+  e o link do trailer oficial.
+- **Cortes do trailer:** envie o arquivo do trailer no painel (é seu; o Jarvis não baixa do YouTube) e o vídeo passa a
+  usar os melhores cortes nas trocas de cena, com o áudio do trailer. Sem trailer, usa a música dos jogos (se houver).
+- `/filme Duna 2021` escolhe pelo ano; se houver outros parecidos, o Jarvis lista para você escolher.
+- Crédito do TMDB no rodapé dos vídeos (exigência dos termos da API).
+- Restauração: branch `versao-1.36.0`.
+
 ## Jarvis 1.36: cérebro (modelo e esforço por demanda, agentes por nível, conselho de IAs, escalada para o Fable)
 
 - **Painel → 🧠 Cérebro** (ou `/cerebro` no Telegram): modelo do Jarvis (padrão **Opus**), **esforço** (automático:

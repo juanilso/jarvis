@@ -30,6 +30,9 @@ PADRAO = {"ligas": list(LIGAS), "marca": "", "canais": True, "rodape": "Bom jogo
           "estilo": "arte",
           "video": "desligado",  # desligado · animado (grátis: arte com zoom + cartões animados) · ia (fundo em vídeo pelo Gemini Omni)
           "video_limite": 20,
+          "video_provedor": "gemini",  # quem gera o fundo com IA: gemini (Omni Flash) ou gateway (/v1/videos do seu gateway)
+          "video_modelo_gateway": "",  # ID do modelo de vídeo na lista do gateway (/modelos)
+          "roteiro_claude": False,  # o Claude escreve a direção de cena do vídeo do dia
           "video_formatos": ["vertical"],  # vertical (Status/Reels) e/ou horizontal (TV)
           "musica_volume": 70,
           "telegram_ao_gerar": True,  # ao gerar pelo painel, manda banner + vídeos + imagem da TV no seu Telegram  # volume da música de fundo (0 a 100), se você enviou uma no painel  # US$ por mês para o vídeo com IA (ao passar, sai o animado)
@@ -60,6 +63,15 @@ def salvar_config(novo):
         c["escudos"] = bool(novo["escudos"])
     if novo.get("video") in ("desligado", "animado", "ia"):
         c["video"] = novo["video"]
+    if novo.get("video_provedor") in ("gemini", "gateway"):
+        c["video_provedor"] = novo["video_provedor"]
+    if "video_modelo_gateway" in novo:
+        m = str(novo["video_modelo_gateway"] or "").strip()
+        if m and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/@-]{1,100}", m):
+            raise ValueError("modelo de vídeo inválido")
+        c["video_modelo_gateway"] = m
+    if "roteiro_claude" in novo:
+        c["roteiro_claude"] = bool(novo["roteiro_claude"])
     if "video_limite" in novo:
         try:
             c["video_limite"] = max(0, min(500, int(float(novo["video_limite"]))))

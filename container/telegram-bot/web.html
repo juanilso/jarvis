@@ -111,8 +111,14 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #cerebro .caixa{width:min(640px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;display:flex;flex-direction:column;gap:10px}
 #cerebro h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0}#cerebro label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}
 #cerebro select{min-height:40px}#cerebro .fechar{position:absolute;right:12px;top:10px}#cerebro table{border-collapse:collapse;font-size:12.5px}#cerebro td,#cerebro th{border-bottom:1px dashed var(--ln);padding:4px 6px;text-align:left}
-#gestao,#kb,#guia,#cerebro{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto{display:flex}
+#gestao,#filmes .caixa{width:min(880px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;display:flex;flex-direction:column;gap:10px}
+#filmes h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0}#filmes .fechar{position:absolute;right:12px;top:10px}#filmes .lin{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#filmes label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}#filmes input:not([type=checkbox]):not([type=file]){min-height:40px;background:#0a1624;border:1px solid var(--ln2);color:var(--t);border-radius:8px;padding:0 12px;font:inherit}
+.fmGrade{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.fmGrade button{display:flex;flex-direction:column;gap:4px;padding:6px;text-align:left;font-size:12px;background:#0a1624}
+.fmGrade button.on{border-color:var(--c2);box-shadow:0 0 0 2px #38bdf855}.fmGrade img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:#0b1a28}
+#fmVideos video{max-height:360px;border-radius:10px;border:1px solid var(--ln)}
+#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
 #kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
@@ -245,6 +251,10 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <label><span><input type="checkbox" id="jgCanais"> Pesquisar onde passa cada jogo (leva alguns minutos)</span></label>
     <label>Estilo do banner<select id="jgEstilo"><option value="arte">🎨 Arte com IA (estádio, bola, jogadores genéricos nas cores dos times)</option><option value="simples">Simples (o de antes)</option></select></label>
     <label>Vídeo dos jogos<select id="jgVideo"><option value="desligado">Desligado (só a imagem)</option><option value="animado">🎞 Animado (grátis: a arte com zoom e os jogos entrando)</option><option value="ia">🎬 Com IA (fundo em vídeo pelo Gemini, com som de torcida; conta paga)</option></select></label>
+    <label>Quem gera o fundo com IA<select id="jgProv"><option value="gemini">Gemini (Omni Flash, sua chave do Gemini)</option><option value="gateway">Meu gateway (modelo de vídeo da lista dele)</option></select></label>
+    <label id="jgModGwL">Modelo de vídeo do gateway<input id="jgModGw" list="jgModGwLista" placeholder="ex.: veo-3, kling… (clique para ver a lista)"><datalist id="jgModGwLista"></datalist></label>
+    <label><span><input type="checkbox" id="jgRoteiro"> 🎬 O Claude escreve o roteiro da cena de cada dia (com qualquer provedor)</span></label>
+    <div class="waDica">Os modelos Claude não geram vídeo: no gateway, quem gera é um modelo de vídeo que ele ofereça (a lista vem do próprio gateway). O Claude entra como diretor: escreve a cena do dia.</div>
     <label>Limite do vídeo com IA (US$ por mês)<input id="jgVideoLimite" type="number" min="0" max="500" step="1" placeholder="20"></label>
     <label><span><input type="checkbox" id="jgTgAuto"> Ao gerar, mandar no meu Telegram (banner + vídeos + imagem da TV)</span></label>
     <label><span>Formatos: <input type="checkbox" id="jgFmtV"> 📱 Vertical (Status/Reels) &nbsp; <input type="checkbox" id="jgFmtH"> 📺 Horizontal (TV)</span></label>
@@ -396,6 +406,24 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="lin" style="margin-top:6px"><button class="prim" id="kbSalvar">💡 Guardar ideia</button></div>
   <h3>Pesquisar na internet</h3>
   <div class="lin"><input type="text" id="kbTema" placeholder="tema da pesquisa (o resultado é salvo com as fontes)"><button class="prim" id="kbPesquisar">🔎 Pesquisar</button></div>
+</div></div>
+<div id="filmes"><div class="caixa">
+  <button class="fechar" id="fmFechar" title="Fechar">✕</button>
+  <h2>🎬 FILMES E SÉRIES</h2>
+  <p class="waDica">Vídeo de divulgação (vertical e TV) com imagens, nota, gêneros, chamada e resumo sem spoiler. Dados do TMDB.</p>
+  <div class="lin"><input id="fmToken" type="password" placeholder="Token do TMDB (themoviedb.org → Configurações → API: “Token de leitura”)" style="flex:1"><button id="fmTokenSalvar">Salvar token</button><span class="waDica" id="fmTokenInfo"></span></div>
+  <div class="lin"><input id="fmBusca" placeholder="Nome do filme ou da série (ex.: Duna Parte Dois, The Last of Us)" style="flex:1"><button id="fmBuscar" class="prim">Buscar</button></div>
+  <div id="fmRes" class="fmGrade"></div>
+  <div id="fmSel" hidden>
+    <div class="waDica" id="fmSelTit"></div>
+    <label>Trailer para os cortes (opcional: o arquivo é seu; o Jarvis não baixa do YouTube)<input type="file" id="fmTrailer" accept="video/*,.mp4,.mov,.mkv"></label>
+    <div class="waDica" id="fmTrailerInfo"></div>
+    <div class="lin"><label style="flex:1">Chamada do botão<input id="fmChamada" placeholder="Disponível agora"></label><label style="flex:1">Sua marca<input id="fmMarca" placeholder="ex.: IT Suport"></label></div>
+    <label><span><input type="checkbox" id="fmFmtV"> 📱 Vertical &nbsp; <input type="checkbox" id="fmFmtH"> 📺 Horizontal (TV) &nbsp; <input type="checkbox" id="fmClaude"> ✍️ Chamada e resumo pelo Claude &nbsp; <input type="checkbox" id="fmOnde"> Onde assistir</span></label>
+    <div class="lin"><button id="fmGerar" class="prim">🎬 Gerar vídeo</button><label><span><input type="checkbox" id="fmTg" checked> mandar no Telegram</span></label></div>
+  </div>
+  <div class="waDica" id="fmStatus"></div>
+  <div id="fmVideos" class="lin"></div>
 </div></div>
 <div id="cerebro"><div class="caixa">
   <button class="fechar" id="cbFechar" title="Fechar">✕</button>
@@ -590,6 +618,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <button id="btnKb" title="Base de conhecimento">🧠<span class="rot rot2">Base</span></button>
     <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺<span class="rot rot2">Mapa</span></button>
     <button onclick="location.href='/escritorio'" title="Escritório virtual: agentes e rotinas">🏢<span class="rot rot2">Escritório</span></button>
+    <button id="btnFilmes" title="Vídeo de filme ou série (TMDB)">🎬<span class="rot rot2">Filmes</span></button>
     <button id="btnCerebro" title="Cérebro: modelo e esforço do Jarvis, nível dos agentes, conselho de IAs">🧠<span class="rot">Cérebro</span></button>
     <button id="btnGuia" title="Guia de uso do Jarvis">❔<span class="rot rot2">Guia</span></button>
     <button id="novo" title="Conversa nova neste projeto">🆕<span class="rot rot2">Nova conversa</span></button>
@@ -772,6 +801,31 @@ async function cbAbrir(){const c=await api("/api/cerebro");if(!c||c.erro)return;
   const m=["opus","sonnet","haiku","fable"].includes(c.modelo)?c.modelo:null;if(!m){const o=document.createElement("option");o.value=c.modelo;o.textContent=c.modelo;$("cbModelo").appendChild(o)}
   $("cbModelo").value=c.modelo;$("cbEsforco").value=c.esforco;$("cbAgentes").value=c.agentes;$("cbConselho").value=c.conselho;$("cbEscalar").value=c.escalar;
   $("cbMsg").textContent=c.falhas?`${c.falhas} tentativa(s) sem resolver neste projeto`:"";$("cerebro").classList.add("aberto")}
+let fmEsc=null,fmTimer=null;
+async function fmCarregar(){const j=await api("/api/filmes");if(!j||j.erro)return;const c=j.config;
+  $("fmTokenInfo").textContent=j.token?"✅ token: "+j.token:"sem token";if(document.activeElement!==$("fmChamada"))$("fmChamada").value=c.chamada||"";
+  if(document.activeElement!==$("fmMarca"))$("fmMarca").value=c.marca||"";$("fmFmtV").checked=(c.formatos||[]).includes("vertical");$("fmFmtH").checked=(c.formatos||[]).includes("horizontal");
+  $("fmClaude").checked=!!c.frase_claude;$("fmOnde").checked=!!c.onde_assistir;const t=j.trabalho;
+  $("fmStatus").textContent=t.rodando?`⏳ ${t.titulo||""} · ${t.etapa}…`:t.erro?"⚠️ "+t.erro:j.resultado?`✅ Último: ${j.resultado.titulo} (${j.resultado.ano})${j.resultado.com_trailer?" · com cortes do trailer":""}`:"";
+  if(!t.rodando&&j.resultado){const k=j.resultado.titulo+j.resultado.formatos.join();if($("fmVideos").dataset.k!==k){$("fmVideos").dataset.k=k;const v=Date.now();
+    $("fmVideos").innerHTML=j.resultado.formatos.map(f=>`<div><video src="/api/filmes/arquivo?f=${f}&t=${v}" controls playsinline></video><div class="waDica"><a href="/api/filmes/arquivo?f=${f}&baixar=1">baixar ${f}</a> · <a href="/api/filmes/arquivo?f=${f}&img=1&baixar=1">imagem</a></div></div>`).join("")
+      +`<div class="lin"><button id="fmTgAgora">📨 Mandar no Telegram</button>${j.resultado.trailer_link?`<a href="${esc(j.resultado.trailer_link)}" target="_blank">trailer oficial ↗</a>`:""}</div>`;
+    $("fmTgAgora").onclick=async()=>{const r=await api("/api/filmes/telegram",{});$("fmStatus").textContent=r.ok?"📨 enviado ao Telegram":"⚠️ "+(r.erro||"")}}}
+  if(!t.rodando&&fmTimer){clearInterval(fmTimer);fmTimer=null}}
+async function fmSalvarCfg(){return api("/api/filmes/config",{chamada:$("fmChamada").value,marca:$("fmMarca").value,frase_claude:$("fmClaude").checked,onde_assistir:$("fmOnde").checked,formatos:[$("fmFmtV").checked&&"vertical",$("fmFmtH").checked&&"horizontal"].filter(Boolean)})}
+$("btnFilmes").onclick=()=>{$("filmes").classList.add("aberto");fmCarregar()};$("fmFechar").onclick=()=>$("filmes").classList.remove("aberto");
+$("fmTokenSalvar").onclick=async()=>{const r=await api("/api/filmes/token",{token:$("fmToken").value.trim()});$("fmToken").value="";$("fmTokenInfo").textContent=r.ok?"✅ token: "+r.token:"⚠️ "+(r.erro||"")};
+$("fmBuscar").onclick=async()=>{const q=$("fmBusca").value.trim();if(!q)return;$("fmRes").innerHTML='<span class="waDica">buscando…</span>';const r=await api("/api/filmes/buscar",{q});
+  if(!r.ok){$("fmRes").innerHTML=`<span class="waDica">⚠️ ${esc(r.erro||"")}</span>`;return}
+  $("fmRes").innerHTML=r.resultados.length?r.resultados.map((x,i)=>`<button data-i="${i}">${x.poster?`<img src="${esc(x.poster)}" alt="">`:'<img alt="">'}<b>${esc(x.titulo)}</b><span>${x.tipo==="tv"?"Série":"Filme"} · ${x.ano||"?"} · ★ ${x.nota}${x.trailer?" · 🎞":""}</span></button>`).join(""):'<span class="waDica">nada encontrado</span>';
+  $("fmRes").querySelectorAll("button").forEach(b=>b.onclick=()=>{fmEsc=r.resultados[+b.dataset.i];$("fmRes").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    $("fmSel").hidden=false;$("fmSelTit").textContent=`Escolhido: ${fmEsc.titulo} (${fmEsc.ano})`;$("fmTrailerInfo").textContent=fmEsc.trailer?"🎞 trailer já enviado: o vídeo usa os cortes":"sem trailer: o vídeo usa as imagens do TMDB"})};
+$("fmBusca").onkeydown=e=>{if(e.key==="Enter")$("fmBuscar").click()};
+$("fmTrailer").onchange=async()=>{const f=$("fmTrailer").files[0];if(!f||!fmEsc)return;$("fmTrailerInfo").textContent=`⏳ enviando ${f.name}…`;
+  try{const r=await fetch(`/api/filmes/trailer?tipo=${fmEsc.tipo}&id=${fmEsc.id}`,{method:"POST",body:f});const j=await r.json();
+    $("fmTrailerInfo").textContent=j.ok?"🎞 trailer salvo: o vídeo vai usar os melhores cortes":"⚠️ "+(j.erro||"");if(j.ok)fmEsc.trailer=true}catch(e){$("fmTrailerInfo").textContent="⚠️ falha ao enviar"}$("fmTrailer").value=""};
+$("fmGerar").onclick=async()=>{if(!fmEsc)return;await fmSalvarCfg();const r=await api("/api/filmes/gerar",{tipo:fmEsc.tipo,id:fmEsc.id,trailer:true,telegram:$("fmTg").checked});
+  if(!r.ok){$("fmStatus").textContent="⚠️ "+(r.erro||"");return}$("fmStatus").textContent="⏳ começando…";clearInterval(fmTimer);fmTimer=setInterval(fmCarregar,2500)};
 $("btnCerebro").onclick=cbAbrir;$("cbFechar").onclick=()=>$("cerebro").classList.remove("aberto");
 $("cbSalvar").onclick=async()=>{const r=await api("/api/cerebro",{modelo:$("cbModelo").value,esforco:$("cbEsforco").value,agentes:$("cbAgentes").value,conselho:$("cbConselho").value,escalar:$("cbEscalar").value});
   $("cbMsg").textContent=r.ok?"✅ salvo: vale a partir da próxima mensagem (painel e Telegram)":"⚠️ "+(r.erro||"não salvou")};
@@ -831,6 +885,8 @@ async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)ret
   if(!jgGerado||!$("jg").contains(document.activeElement))alMostrar(j.alertas);
   $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
   if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";$("jgEscudos").checked=!!c.escudos;if(document.activeElement!==$("jgVideo"))$("jgVideo").value=c.video||"desligado";if(document.activeElement!==$("jgVideoLimite"))$("jgVideoLimite").value=c.video_limite??20;
+  if(document.activeElement!==$("jgProv"))$("jgProv").value=c.video_provedor||"gemini";if(document.activeElement!==$("jgModGw"))$("jgModGw").value=c.video_modelo_gateway||"";
+  $("jgRoteiro").checked=!!c.roteiro_claude;$("jgModGwL").style.display=$("jgProv").value==="gateway"?"":"none";
   if(!$("jg").contains(document.activeElement)){const fm=c.video_formatos||["vertical"];$("jgFmtV").checked=fm.includes("vertical");$("jgTgAuto").checked=c.telegram_ao_gerar!==false;$("jgFmtH").checked=fm.includes("horizontal");$("jgVolume").value=c.musica_volume??70;$("jgVolTxt").textContent=$("jgVolume").value;}
   $("jgMusicaInfo").innerHTML=j.musica?'🎵 música enviada · <a href="/api/jogos/video?f=musica" target="_blank">ouvir</a>':"sem música (o animado sai mudo; o de IA sai com a torcida)";$("jgMusicaApagar").style.display=j.musica?"":"none";
   if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
@@ -869,8 +925,12 @@ $("jgMusica").onchange=async()=>{const f=$("jgMusica").files[0];if(!f)return;$("
     $("jgMusicaInfo").textContent=j.ok?`🎵 música salva (${Math.round(j.segundos)} s; repete se o vídeo for maior). Gere os jogos de novo para usar.`:"⚠️ "+(j.erro||"não deu certo");}
   catch(e){$("jgMusicaInfo").textContent="⚠️ falha ao enviar";}$("jgMusica").value="";};
 $("jgMusicaApagar").onclick=async()=>{if(!confirm("Tirar a música de fundo?"))return;await fetch("/api/jogos/musica?apagar=1",{method:"POST"});jgCarregar();};
+$("jgProv").onchange=()=>{$("jgModGwL").style.display=$("jgProv").value==="gateway"?"":"none"};
+$("jgModGw").onfocus=async()=>{if($("jgModGwLista").childElementCount)return;const r=await api("/api/modelos/video");
+  const l=(r.video&&r.video.length?r.video:r.todos)||[];$("jgModGwLista").innerHTML=l.map(i=>`<option value="${esc(i)}">`).join("");
+  if(!r.ok)$("jgModGw").placeholder="não consegui ler a lista do gateway: digite o ID"};
 $("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
-  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value,video_formatos:[$("jgFmtV").checked&&"vertical",$("jgFmtH").checked&&"horizontal"].filter(Boolean),musica_volume:$("jgVolume").value,telegram_ao_gerar:$("jgTgAuto").checked}});
+  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value,video_formatos:[$("jgFmtV").checked&&"vertical",$("jgFmtH").checked&&"horizontal"].filter(Boolean),musica_volume:$("jgVolume").value,telegram_ao_gerar:$("jgTgAuto").checked,video_provedor:$("jgProv").value,video_modelo_gateway:$("jgModGw").value.trim(),roteiro_claude:$("jgRoteiro").checked}});
   $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;

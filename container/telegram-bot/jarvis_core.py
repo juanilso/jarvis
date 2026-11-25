@@ -591,6 +591,7 @@ COMANDOS = [
     ("/fable", "A próxima mensagem usa o Fable (o modelo mais forte); /fable <pedido> já manda junto"),
     ("/ollama", "Pede direto ao Ollama (modelos abertos grandes na nuvem); sem texto: status"),
     ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq) · número 2: /atendimento 2"),
+    ("/filme", "Vídeo de divulgação de um filme ou série (dados do TMDB; cortes do trailer se você enviar no painel)"),
     ("/treinar", "Treinador do atendimento: analisa as conversas e sugere a base · /treinar aplicar · /treinar 2"),
     ("/whatsapp", "WhatsApp: vigia (testar), reiniciar sem QR ou reconectar com QR novo"),
     ("/assumir", "WhatsApp: você assume a conversa de um número"),
@@ -644,6 +645,7 @@ Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao ga
 
 Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
+• /filme Duna Parte Dois → vídeo vertical e horizontal com imagens, nota, gêneros e chamada (token do TMDB no painel)
 • /cerebro: modelo e esforço do Jarvis, nível dos agentes, conselho de IAs · /esforco alto · /equipe economico
 • /fable resolve o erro do login que continua → só esta mensagem usa o Fable (o Jarvis sugere sozinho na 3ª tentativa)
 • /ollama compare estas duas abordagens… · /ollama revise este trecho… (modelos abertos grandes na nuvem do Ollama)
@@ -780,6 +782,22 @@ def comando(estado, pool, texto):
             return "⚽ Montando os jogos de hoje (pesquisando os canais). Em alguns minutos chegam aqui a imagem e o texto.", None
         except Exception as e:  # noqa: BLE001
             return f"⚠️ não consegui pedir os jogos ao painel ({type(e).__name__})", None
+    if cmd == "/filme":
+        import urllib.request as _u
+        token = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+        if not token:
+            return "🎬 Para usar, ligue as automações: ./automacoes-configurar.sh", None
+        if not arg:
+            return ("🎬 Use: /filme <nome> (ex.: /filme Duna Parte Dois · /filme The Last of Us · /filme Duna 2021). "
+                    "Cadastre o token do TMDB no painel (🎬 Filmes); lá também dá para enviar o trailer para os cortes."), None
+        req = _u.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
+                         data=json.dumps({"acao": "filme", "q": arg}).encode(),
+                         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+        try:
+            with _u.urlopen(req, timeout=60) as r:
+                return json.loads(r.read().decode()).get("texto") or "🎬 ok", None
+        except Exception as e:  # noqa: BLE001
+            return f"⚠️ não consegui pedir ao painel ({type(e).__name__})", None
     if cmd == "/treinar":
         import urllib.request as _u
         token = os.environ.get("JARVIS_GATILHO_TOKEN", "")

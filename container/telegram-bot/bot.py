@@ -465,7 +465,7 @@ def tratar(msg):
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
-                                                  "/modelos", "/hermes", "/ollama", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/tendencias",
+                                                  "/modelos", "/hermes", "/ollama", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/filme", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp", "/treinar",
                                                   "/print", "/testar", "/previa", "/piloto",
                                                   "/ajudantes", "/ajudante") \

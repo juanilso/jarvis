@@ -341,6 +341,30 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/cerebro":
             import cerebro
             return self._json({**cerebro.ler(), "falhas": cerebro.falhas(estado.ler()["projeto"])})
+        if url.path == "/api/filmes":
+            import filmes
+            res = filmes.TRABALHO.get("resultado") or filmes.ultimo()
+            return self._json({"config": filmes.config(), "token": filmes.mascarado(),
+                               "trabalho": {k: filmes.TRABALHO[k] for k in ("rodando", "etapa", "erro", "titulo")},
+                               "resultado": {"titulo": res["titulo"], "ano": res["ano"], "formatos": list(res["videos"]),
+                                             "trailer_link": res.get("trailer_link", ""), "com_trailer": res.get("com_trailer")}
+                               if res else None})
+        if url.path == "/api/filmes/arquivo":
+            import filmes
+            q = urllib.parse.parse_qs(url.query)
+            res = filmes.TRABALHO.get("resultado") or filmes.ultimo() or {}
+            f = q.get("f", ["vertical"])[0]
+            cam = (res.get("imagens") if q.get("img") else res.get("videos") or {}).get(f, "") if res else ""
+            if not cam or not os.path.exists(cam) or not os.path.realpath(cam).startswith(os.path.realpath(filmes.DIR)):
+                return self._json({"erro": "sem arquivo"}, 404)
+            dados_arq = open(cam, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png" if cam.endswith(".png") else "video/mp4")
+            if "baixar" in q:
+                self.send_header("Content-Disposition", f'attachment; filename="{os.path.basename(cam)}"')
+            self.send_header("Content-Length", str(len(dados_arq)))
+            self.end_headers()
+            return self.wfile.write(dados_arq)
         if url.path == "/api/estado":
             est = estado.ler()
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
@@ -368,6 +392,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"texto": kb.ler(q.get("c", [""])[0])})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/modelos/video":  # modelos do gateway que parecem gerar vídeo (sugestões no painel)
+            g = core.modelos_gateway()
+            ids = [m["id"] for m in g.get("modelos", [])]
+            video = [i for i in ids if re.search(r"video|veo|sora|omni|kling|runway|gen-?4|wan|hailuo|seedance|luma|ray|pika|hunyuan", i, re.I)]
+            return self._json({"ok": g.get("ok"), "erro": g.get("erro", ""), "video": video, "todos": ids[:300]})
         if url.path == "/api/modelos":
             forcar = urllib.parse.parse_qs(url.query).get("atualizar", [""])[0] == "1"
             return self._json({"texto": core.texto_modelos_gateway(forcar)})
@@ -597,7 +626,10 @@ class Handler(BaseHTTPRequestHandler):
             if a in ("jogos_gerar", "jogos_config", "jogos_telegram"):
                 import jogos
                 if a == "jogos_config":
-                    return self._json({"ok": True, "config": jogos.salvar_config(d.get("config") or {})})
+                    try:
+                        return self._json({"ok": True, "config": jogos.salvar_config(d.get("config") or {})})
+                    except ValueError as e:
+                        return self._json({"ok": False, "erro": str(e)}, 400)
                 if a == "jogos_telegram":
                     jd = jogos.do_dia()
                     if not jd:
@@ -691,6 +723,36 @@ class Handler(BaseHTTPRequestHandler):
             erro = iniciar(texto, veio_de_audio=True)
             return self._json({"texto": texto, "erro": erro})
 
+        if url.path.startswith("/api/filmes/"):
+            import filmes
+            acao = url.path.rsplit("/", 1)[1]
+            q = urllib.parse.parse_qs(url.query)
+            try:
+                if acao == "trailer":  # o arquivo vem no corpo
+                    filmes.salvar_trailer(q.get("tipo", ["movie"])[0], int(q.get("id", ["0"])[0]), self._corpo())
+                    return self._json({"ok": True})
+                d = json.loads(self._corpo() or b"{}")
+                if acao == "token":
+                    filmes.salvar_token(d.get("token", ""))
+                    return self._json({"ok": True, "token": filmes.mascarado()})
+                if acao == "config":
+                    return self._json({"ok": True, "config": filmes.salvar_config(d)})
+                if acao == "buscar":
+                    return self._json({"ok": True, "resultados": [
+                        {**r, "trailer": bool(filmes.trailer_de(r["tipo"], r["id"]))} for r in filmes.buscar(str(d.get("q", ""))[:100])]})
+                if acao == "gerar":
+                    filmes.gerar_fundo(d.get("tipo", "movie"), int(d["id"]), bool(d.get("trailer", True)),
+                                       avisar=bool(d.get("telegram", True)))
+                    return self._json({"ok": True})
+                if acao == "telegram":
+                    res = filmes.TRABALHO.get("resultado") or filmes.ultimo()
+                    if not res:
+                        return self._json({"ok": False, "erro": "nenhum vídeo gerado ainda"})
+                    threading.Thread(target=filmes.mandar_telegram, args=(res,), daemon=True).start()
+                    return self._json({"ok": True})
+            except (ValueError, RuntimeError, KeyError) as e:
+                return self._json({"ok": False, "erro": str(e)}, 400)
+            return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
         if url.path == "/api/mensagem":
             texto = (dados.get("texto") or "").strip()
