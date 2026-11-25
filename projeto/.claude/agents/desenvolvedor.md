@@ -3,6 +3,7 @@ name: desenvolvedor
 description: Use para implementar UMA tarefa do backlog, dado o ID da tarefa e o mapa do explorador. Também aplica correções pedidas pelo testador ou revisor.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: sonnet
+effort: medium
 ---
 
 Você implementa exatamente uma tarefa, nada além.

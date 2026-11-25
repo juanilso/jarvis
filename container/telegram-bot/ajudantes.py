@@ -225,9 +225,16 @@ def candidatos(nome, quantos=4):
     return lista
 
 
+_trava_cache = __import__("threading").Lock()
+
+
 def _gravar_cache(c):
-    os.makedirs(PASTA, exist_ok=True)
-    json.dump(c, open(os.path.join(PASTA, "modelos.json"), "w", encoding="utf-8"), indent=1)
+    """Grava inteiro e troca de uma vez (o conselho consulta várias IAs ao mesmo tempo)."""
+    with _trava_cache:
+        os.makedirs(PASTA, exist_ok=True)
+        tmp = os.path.join(PASTA, f"modelos.json.{os.getpid()}.tmp")
+        json.dump(c, open(tmp, "w", encoding="utf-8"), indent=1)
+        os.replace(tmp, os.path.join(PASTA, "modelos.json"))
 
 
 def _preferir(nome, mod):
@@ -335,6 +342,40 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
             if tentativas and all(("429" in t or "lotado" in t) for t in tentativas if t.startswith(nome)):
                 _pausar(nome, 1800, "todos os modelos lotados (tenta de novo em 30 min)")
     return {"ok": False, "texto": "Nenhum ajudante conseguiu responder.", "tentativas": tentativas, "removidos": removidos}
+
+
+PAPEL_CONSELHO = ("Você faz parte de um conselho de IAs que ajuda o Jarvis (orquestrador de projetos de software) a "
+                  "decidir. Responda em português do Brasil: 1) sua recomendação em 1 frase; 2) por quê (até 5 itens); "
+                  "3) riscos e o que testar; 4) uma alternativa. Seja específico e honesto sobre incertezas.")
+
+
+def conselho(pergunta, material="", maximo=1500, limite=6, tempo=120):
+    """Pergunta a TODAS as IAs ligadas e disponíveis ao mesmo tempo. Devolve [{ia, modelo, ok, texto}]."""
+    import concurrent.futures as cf
+    redigir(pergunta + "\n" + material)  # recusa logo se houver chave privada
+    nomes = [n for n in configurados() if disponivel(n)[0]][:limite]
+    if not nomes:
+        return []
+    respostas = []
+    with cf.ThreadPoolExecutor(max_workers=len(nomes)) as ex:
+        futuros = {ex.submit(perguntar, pergunta, (PAPEL_CONSELHO + ("\n\n" + material if material else "")),
+                             n, maximo): n for n in nomes}
+        try:
+            for f in cf.as_completed(futuros, timeout=tempo):
+                n = futuros[f]
+                try:
+                    r = f.result()
+                    texto = r.get("texto") if r.get("ok") else "; ".join(r.get("tentativas", [])) or r.get("texto", "")
+                    respostas.append({"ia": n, "modelo": r.get("modelo", ""), "ok": r.get("ok", False),
+                                      "texto": (texto or "")[:6000]})
+                except Exception as e:  # noqa: BLE001
+                    respostas.append({"ia": n, "modelo": "", "ok": False, "texto": f"{type(e).__name__}: {str(e)[:150]}"})
+        except cf.TimeoutError:
+            for f, n in futuros.items():
+                if not f.done():
+                    respostas.append({"ia": n, "modelo": "", "ok": False, "texto": f"não respondeu em {tempo}s"})
+    ordem = {n: i for i, n in enumerate(nomes)}
+    return sorted(respostas, key=lambda r: ordem.get(r["ia"], 99))
 
 
 def _sem_credito(code, msg):

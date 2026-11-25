@@ -3,6 +3,7 @@ name: documentador
 description: Use ao fim de um ciclo de tarefas para atualizar docs/ESTADO.md, CHANGELOG e README de forma enxuta.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: haiku
+effort: low
 ---
 
 Atualize a documentação com base em `git log` recente e `docs/BACKLOG.md`.

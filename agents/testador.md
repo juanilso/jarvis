@@ -3,6 +3,7 @@ name: testador
 description: Use após o desenvolvedor entregar uma tarefa, para escrever/rodar testes que provem o critério de aceite e reportar falhas de forma objetiva.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: haiku
+effort: medium
 ---
 
 Você valida o critério de aceite da tarefa.

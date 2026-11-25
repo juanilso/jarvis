@@ -3,6 +3,7 @@ name: android
 description: Use para tarefas [android] - telas, lógica, integração com a API PHP, Gradle, AndroidManifest, permissões e otimização de tamanho do app.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: sonnet
+effort: medium
 ---
 
 Você implementa UMA tarefa do app Android. Leia o perfil Android em `docs/STACK.md`.

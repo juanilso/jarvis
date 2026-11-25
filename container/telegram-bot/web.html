@@ -108,8 +108,11 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #waFaq{width:100%;min-height:300px;resize:vertical;padding:10px;font:13px/1.5 var(--mono);color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
 .waAg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--ln);font-size:13px}.waAg button{margin-left:auto}
 .waDica{font-size:12px;color:var(--m);margin-top:6px}
-#gestao,#kb,#guia{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#gestao.aberto,#kb.aberto,#guia.aberto{display:flex}
+#cerebro .caixa{width:min(640px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;display:flex;flex-direction:column;gap:10px}
+#cerebro h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0}#cerebro label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}
+#cerebro select{min-height:40px}#cerebro .fechar{position:absolute;right:12px;top:10px}#cerebro table{border-collapse:collapse;font-size:12.5px}#cerebro td,#cerebro th{border-bottom:1px dashed var(--ln);padding:4px 6px;text-align:left}
+#gestao,#kb,#guia,#cerebro{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
 #kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
@@ -394,6 +397,22 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <h3>Pesquisar na internet</h3>
   <div class="lin"><input type="text" id="kbTema" placeholder="tema da pesquisa (o resultado é salvo com as fontes)"><button class="prim" id="kbPesquisar">🔎 Pesquisar</button></div>
 </div></div>
+<div id="cerebro"><div class="caixa">
+  <button class="fechar" id="cbFechar" title="Fechar">✕</button>
+  <h2>🧠 CÉREBRO DO JARVIS</h2>
+  <p class="waDica">O Jarvis planeja cada demanda e escolhe o modelo e o esforço de cada agente. Aqui você define os limites.</p>
+  <label>Modelo do Jarvis (orquestrador)<select id="cbModelo"><option value="opus">Opus 5.5 (recomendado)</option><option value="sonnet">Sonnet 5.5 (mais barato)</option><option value="haiku">Haiku 5.5 (só para testes)</option><option value="fable">Fable 5.2 (o mais forte, sempre)</option></select></label>
+  <label>Esforço do Jarvis<select id="cbEsforco"><option value="auto">Automático (alto para planejar e começar; médio para continuar e validar)</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option><option value="xhigh">Extra-alto</option><option value="max">Máximo</option></select></label>
+  <label>Nível dos agentes<select id="cbAgentes"><option value="economico">Econômico (o menor modelo que resolve)</option><option value="equilibrado">Equilibrado (modelo conforme a dificuldade da tarefa)</option><option value="caprichado">Caprichado (qualidade acima do custo)</option></select></label>
+  <label>Conselho de IAs (Gemini, Groq, Ollama, Grok e as outras ligadas)<select id="cbConselho"><option value="desligado">Desligado</option><option value="decisoes">Nas decisões e nos problemas difíceis</option><option value="sempre">Em todas as etapas</option></select></label>
+  <label>Quando travar no mesmo problema (3 tentativas)<select id="cbEscalar"><option value="sugerir">Sugerir o Fable</option><option value="automatico">Usar o Fable automaticamente</option><option value="nunca">Nunca escalar</option></select></label>
+  <table><tr><th>Agente</th><th>Equilibrado (padrão)</th></tr>
+    <tr><td>explorador · documentador · deploy</td><td>Haiku · esforço baixo</td></tr><tr><td>testador</td><td>Haiku · médio</td></tr>
+    <tr><td>designer · desenvolvedor · android</td><td>Sonnet · baixo a médio (alto em lógica de negócio)</td></tr>
+    <tr><td>dba · revisor</td><td>Sonnet · alto</td></tr><tr><td>arquiteto, pagamentos, segurança, bugs que falharam</td><td>Opus · alto</td></tr></table>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button id="cbSalvar" class="prim">💾 Salvar</button><span class="waDica" id="cbMsg"></span></div>
+  <p class="waDica">No Telegram: /cerebro · /esforco alto · /equipe economico · /conselho sempre · /fable &lt;pedido&gt;</p>
+</div></div>
 <div id="guia"><div class="caixa">
   <button class="fechar" id="guiaFechar" title="Fechar">✕</button>
   <h2>GUIA E PERGUNTAS FREQUENTES</h2>
@@ -571,6 +590,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <button id="btnKb" title="Base de conhecimento">🧠<span class="rot rot2">Base</span></button>
     <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺<span class="rot rot2">Mapa</span></button>
     <button onclick="location.href='/escritorio'" title="Escritório virtual: agentes e rotinas">🏢<span class="rot rot2">Escritório</span></button>
+    <button id="btnCerebro" title="Cérebro: modelo e esforço do Jarvis, nível dos agentes, conselho de IAs">🧠<span class="rot">Cérebro</span></button>
     <button id="btnGuia" title="Guia de uso do Jarvis">❔<span class="rot rot2">Guia</span></button>
     <button id="novo" title="Conversa nova neste projeto">🆕<span class="rot rot2">Nova conversa</span></button>
     </nav>
@@ -748,6 +768,13 @@ $("texto").addEventListener("keydown",e=>{
 $("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.value});ver++;ultimo=0;runDet=null;inicioRun=0;ocupado=false;
   $("log").innerHTML="";$("feed").innerHTML="";for(const k in agEstado)delete agEstado[k];desenharAgentes();estado()};
 $("btnMapa").onclick=()=>window.open("/api/mapa","_blank");
+async function cbAbrir(){const c=await api("/api/cerebro");if(!c||c.erro)return;
+  const m=["opus","sonnet","haiku","fable"].includes(c.modelo)?c.modelo:null;if(!m){const o=document.createElement("option");o.value=c.modelo;o.textContent=c.modelo;$("cbModelo").appendChild(o)}
+  $("cbModelo").value=c.modelo;$("cbEsforco").value=c.esforco;$("cbAgentes").value=c.agentes;$("cbConselho").value=c.conselho;$("cbEscalar").value=c.escalar;
+  $("cbMsg").textContent=c.falhas?`${c.falhas} tentativa(s) sem resolver neste projeto`:"";$("cerebro").classList.add("aberto")}
+$("btnCerebro").onclick=cbAbrir;$("cbFechar").onclick=()=>$("cerebro").classList.remove("aberto");
+$("cbSalvar").onclick=async()=>{const r=await api("/api/cerebro",{modelo:$("cbModelo").value,esforco:$("cbEsforco").value,agentes:$("cbAgentes").value,conselho:$("cbConselho").value,escalar:$("cbEscalar").value});
+  $("cbMsg").textContent=r.ok?"✅ salvo: vale a partir da próxima mensagem (painel e Telegram)":"⚠️ "+(r.erro||"não salvou")};
 $("btnGuia").onclick=()=>$("guia").classList.add("aberto");$("guiaFechar").onclick=()=>$("guia").classList.remove("aberto");
 $("guia").onclick=e=>{if(e.target.id==="guia")$("guia").classList.remove("aberto")};
 $("audio").onchange=e=>api("/api/config",{audio:e.target.value});

@@ -455,13 +455,17 @@ def tratar(msg):
         return
     if texto.startswith("/jarvis_"):
         texto = "/jarvis:" + texto[len("/jarvis_"):].split("@")[0]
+    if texto.split()[0].split("@")[0].lower() == "/fable" and len(texto.split()) > 1:  # /fable <pedido>: este pedido usa o Fable
+        import cerebro
+        cerebro.marcar_fable(estado.ler()["projeto"])
+        texto = texto.partition(" ")[2].strip()
     if texto.split()[0].split("@")[0].lower() == "/pagina":  # atalho: criar uma página (skill criar-pagina)
         texto = "/jarvis:pagina" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() == "/planejar":  # atalho para o planejamento (skill planejar-projeto)
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
-                                                  "/modelos", "/hermes", "/ollama", "/tendencias",
+                                                  "/modelos", "/hermes", "/ollama", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp", "/treinar",
                                                   "/print", "/testar", "/previa", "/piloto",
                                                   "/ajudantes", "/ajudante") \

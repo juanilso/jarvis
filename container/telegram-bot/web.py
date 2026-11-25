@@ -201,6 +201,10 @@ def site_no_painel(modo, arg="", paginas=None):
 
 
 def iniciar(texto, veio_de_audio):
+    if texto.split() and texto.split()[0].lower() == "/fable" and len(texto.split()) > 1:  # /fable <pedido>: este pedido usa o Fable
+        import cerebro
+        cerebro.marcar_fable(estado.ler()["projeto"])
+        texto = texto.partition(" ")[2].strip()
     if texto.split() and texto.split()[0].lower() == "/pagina":  # atalho: criar uma página (skill criar-pagina)
         texto = "/jarvis:pagina" + texto[len(texto.split()[0]):]
     if texto.split() and texto.split()[0].lower() == "/planejar":  # atalho para o planejamento
@@ -334,6 +338,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.wfile.write(dados)
         if not self._logado():
             return self._json({"erro": "login"}, 401)
+        if url.path == "/api/cerebro":
+            import cerebro
+            return self._json({**cerebro.ler(), "falhas": cerebro.falhas(estado.ler()["projeto"])})
         if url.path == "/api/estado":
             est = estado.ler()
             return self._json({"projeto": est["projeto"], "projetos": core.listar_projetos(),
@@ -690,6 +697,12 @@ class Handler(BaseHTTPRequestHandler):
             if not texto:
                 return self._json({"erro": "Escreva uma mensagem."}, 400)
             return self._json({"erro": iniciar(texto, veio_de_audio=False)})
+        if url.path == "/api/cerebro":
+            import cerebro
+            try:
+                return self._json({"ok": True, **cerebro.salvar(dados)})
+            except ValueError as e:
+                return self._json({"ok": False, "erro": str(e)}, 400)
         if url.path == "/api/config":
             est = estado.ler()
             if dados.get("projeto") in core.listar_projetos():

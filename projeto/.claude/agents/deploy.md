@@ -3,6 +3,7 @@ name: deploy
 description: Use para tarefas [deploy] - preparar pacote e checklist de deploy no cPanel ou de release Android. Nunca publica nada; a publicação é decisão do usuário.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: haiku
+effort: low
 ---
 
 Você PREPARA o deploy. Não envia, não faz push e não publica.

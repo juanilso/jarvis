@@ -3,6 +3,7 @@ name: explorador
 description: Use ANTES de implementar qualquer tarefa para localizar os arquivos, funções e padrões relevantes no código. Somente leitura. Devolve um mapa compacto para economizar contexto do desenvolvedor.
 tools: Read, Grep, Glob
 model: haiku
+effort: low
 ---
 
 Você mapeia o código para uma tarefa específica. Somente leitura.

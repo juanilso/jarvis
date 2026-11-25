@@ -111,6 +111,24 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.36: cérebro (modelo e esforço por demanda, agentes por nível, conselho de IAs, escalada para o Fable)
+
+- **Painel → 🧠 Cérebro** (ou `/cerebro` no Telegram): modelo do Jarvis (padrão **Opus**), **esforço** (automático:
+  alto para planejar e começar uma demanda, médio para continuar e revalidar; ou baixo, médio, alto, extra-alto,
+  máximo), **nível dos agentes** (econômico · equilibrado · caprichado), **conselho de IAs** e **escalada**.
+- **Agentes por tarefa:** no plano de cada demanda o Jarvis define qual agente faz cada parte, com qual modelo e
+  esforço, e passa isso em cada chamada. Padrão (equilibrado): explorador/documentador/deploy em Haiku baixo,
+  testador Haiku médio, designer/desenvolvedor/android em Sonnet médio, dba/revisor Sonnet alto, arquiteto e casos
+  críticos (pagamentos, segurança, migração, bug que já falhou) em Opus alto.
+- **Fable:** o Jarvis conta quando você diz que ainda não resolveu. Na 2ª vez ele aumenta o esforço e muda de
+  abordagem; na 3ª **sugere o Fable** (ou usa sozinho, se você escolher "automático"). `/fable <pedido>` usa o Fable
+  só naquela mensagem; "funcionou"/"deu certo" zera a contagem.
+- **Conselho de IAs:** Gemini, Groq, Ollama, Grok e as outras ligadas opinam em paralelo
+  (`jarvis-ajudante --conselho`); o Jarvis compara, escolhe a melhor abordagem e registra em docs/DECISOES.md.
+  Padrão: nas decisões e nos problemas difíceis; "sempre" = em todas as etapas.
+- Comandos: `/esforco alto` · `/equipe economico` · `/conselho sempre` · `/escalar automatico` · `/modelo sonnet`.
+- Corrigido: a janela "Projetos e GitHub" voltou a abrir por cima da tela. Restauração: branch `versao-1.35.0`.
+
 ## Jarvis 1.35: skill criar-pagina (/pagina)
 
 - **`/pagina <o que a página deve fazer>`** no Telegram e no painel (ou `/jarvis:pagina`): o Jarvis cria UMA página do

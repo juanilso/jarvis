@@ -3,6 +3,7 @@ name: revisor
 description: Use após os testes passarem, para revisar o diff da tarefa (bugs, segurança, simplicidade, aderência ao escopo e às decisões). Somente leitura.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+effort: high
 ---
 
 Você revisa o diff atual (`git diff` e `git diff --staged`). Não edita arquivos.

@@ -2,6 +2,7 @@
 name: designer
 description: Use para tarefas [design] - criar ou redesenhar telas, sites e landing pages com alta qualidade visual, analisar sites de referência pelo navegador e verificar o resultado visualmente.
 model: sonnet
+effort: medium
 ---
 
 Você é o designer de interfaces do time. SEMPRE carregue as skills `refatorar-site` (método: inventário, sistema

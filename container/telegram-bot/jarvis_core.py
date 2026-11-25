@@ -222,8 +222,16 @@ class Execucao:
             elif resumo_usado:
                 prompt = f"[Contexto resumido da conversa anterior]\n{resumo_usado}\n\n[Nova mensagem]\n{prompt}"
         cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"]
-        if est.get("modelo"):
-            cmd += ["--model", est["modelo"]]
+        import cerebro  # modelo e esforço por demanda, nível dos agentes, conselho de IAs, escalada para o Fable
+        if usar_sessao and not sistema and not compactar:
+            cerebro.registrar(projeto, texto)
+        dec = cerebro.para_execucao(projeto, "" if compactar else texto, bool(est["sessoes"].get(projeto)),
+                                    est.get("modelo"))
+        cmd += ["--model", dec["modelo"], "--effort", "low" if compactar else dec["esforco"]]
+        if dec["aviso"]:
+            ao_evento({"tipo": "info", "texto": dec["aviso"]})
+        if usar_sessao and not compactar:
+            sistema = (sistema + "\n\n" if sistema else "") + dec["sistema"]
         if usar_sessao and not compactar:
             cmd += ["--append-system-prompt", ORQUESTRADOR]
         if sistema:  # regras extras (ex.: rotinas automáticas, só leitura)
@@ -575,6 +583,12 @@ COMANDOS = [
     ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable, padrao ou um ID do gateway"),
     ("/modelos", "Pergunta ao seu gateway quais modelos ele oferece"),
     ("/hermes", "Pede ajuda ao Hermes Agent (pesquisa, análise, automações); sem texto: status"),
+    ("/cerebro", "Modelo e esforço do Jarvis, nível dos agentes, conselho de IAs e escalada para o Fable"),
+    ("/esforco", "Esforço do Jarvis: auto, baixo, medio, alto, extra, maximo"),
+    ("/equipe", "Nível dos agentes: economico, equilibrado, caprichado"),
+    ("/conselho", "Outras IAs opinando: desligado, decisoes, sempre"),
+    ("/escalar", "Quando travar no mesmo problema: sugerir (Fable), automatico, nunca"),
+    ("/fable", "A próxima mensagem usa o Fable (o modelo mais forte); /fable <pedido> já manda junto"),
     ("/ollama", "Pede direto ao Ollama (modelos abertos grandes na nuvem); sem texto: status"),
     ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq) · número 2: /atendimento 2"),
     ("/treinar", "Treinador do atendimento: analisa as conversas e sugere a base · /treinar aplicar · /treinar 2"),
@@ -630,6 +644,8 @@ Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao ga
 
 Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
+• /cerebro: modelo e esforço do Jarvis, nível dos agentes, conselho de IAs · /esforco alto · /equipe economico
+• /fable resolve o erro do login que continua → só esta mensagem usa o Fable (o Jarvis sugere sozinho na 3ª tentativa)
 • /ollama compare estas duas abordagens… · /ollama revise este trecho… (modelos abertos grandes na nuvem do Ollama)
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
@@ -855,8 +871,9 @@ def comando(estado, pool, texto):
         return "🗜️ Compactando a conversa…", "compactar"
     if cmd == "/modelo":
         a = arg.lower()
+        import cerebro
         if not a:
-            return f"Modelo atual: {est.get('modelo') or 'padrão'}\n\n{TABELA_MODELOS}", None
+            return f"Modelo do Jarvis: {cerebro.ler()['modelo']}\n\n{TABELA_MODELOS}", None
         aviso = ""
         if a in MODELOS:
             escolhido = None if a == "padrao" else APELIDOS_MODELO.get(a, a)
@@ -869,10 +886,36 @@ def comando(estado, pool, texto):
                          + (f" Parecidos: {', '.join(parecidos)}" if parecidos else ""))
         else:
             return f"Não conheço “{arg}”.\n\n{TABELA_MODELOS}", None
-        est["modelo"] = escolhido
+        cerebro.salvar({"modelo": "opus" if escolhido is None else escolhido})
+        est["modelo"] = None  # o modelo agora fica no cérebro (vale no painel e no Telegram)
         estado.salvar(est)
-        return (f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)"
-                + aviso), None
+        return (f"🧠 Modelo do Jarvis: {cerebro.ler()['modelo']} · os agentes recebem o modelo de cada tarefa "
+                "(veja /cerebro)" + aviso), None
+    if cmd in ("/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable"):
+        import cerebro
+        a = arg.lower().strip()
+        traduz = {"baixo": "low", "medio": "medium", "médio": "medium", "alto": "high", "extra": "xhigh",
+                  "extra-alto": "xhigh", "ultra": "xhigh", "maximo": "max", "máximo": "max", "econômico": "economico",
+                  "decisões": "decisoes", "automático": "automatico", "automatica": "automatico", "automática": "automatico"}
+        a = traduz.get(a, a)
+        campo = {"/esforco": "esforco", "/equipe": "agentes", "/conselho": "conselho", "/escalar": "escalar"}.get(cmd)
+        if campo == "esforco" and a == "automatico":
+            a = "auto"
+        if cmd == "/fable":
+            proj = est["projeto"]
+            if not proj:
+                return "Escolha um projeto primeiro (/projeto).", None
+            cerebro.marcar_fable(proj)
+            return ("🧠 Combinado: a próxima mensagem deste projeto usa o Fable (o modelo mais forte), com esforço alto. "
+                    "Depois volta ao normal. Dica: /fable <pedido> já manda junto."), None
+        if campo and a:
+            try:
+                cerebro.salvar({campo: a})
+            except ValueError:
+                return f"Opções: {', '.join(cerebro.OPCOES[campo])}", None
+        if cmd != "/cerebro" and not a:
+            return f"Opções: {', '.join(cerebro.OPCOES[campo])}\n\n" + cerebro.texto_status(est["projeto"]), None
+        return cerebro.texto_status(est["projeto"]), None
     if cmd == "/ollama":
         import ajudantes
         if not os.environ.get("OLLAMA_API_KEY"):

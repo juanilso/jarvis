@@ -8,6 +8,8 @@ Uso:
   jarvis-ajudante --ia grok "traduza para inglês" < texto.md      (material pela entrada padrão)
   jarvis-ajudante --arquivo docs/site/INVENTARIO.md "escreva a meta description de cada página"
   jarvis-ajudante --max 8000 "..."                                  (tamanho máximo da resposta)
+  jarvis-ajudante --conselho "qual a melhor forma de X? contexto…"    (TODAS as IAs ligadas respondem em paralelo)
+  jarvis-ajudante --conselho --arquivo src/x.php "revise: bugs, segurança"
 
 Bom para: rascunhos de textos do site, traduções, títulos/descrições de SEO, textos alternativos de imagem,
 resumos, listas de ideias, conteúdo provisório, segunda opinião sobre um texto ou trecho de código.
@@ -36,10 +38,12 @@ def main(args):
     if args[0] == "--status":
         print(a.status())
         return 0
-    ia, maximo, material = "auto", 4000, ""
+    ia, maximo, material, modo_conselho = "auto", 4000, "", False
     while args and args[0].startswith("--"):
         op = args.pop(0)
-        if op == "--ia" and args:
+        if op == "--conselho":
+            modo_conselho = True
+        elif op == "--ia" and args:
             ia = args.pop(0)
         elif op == "--max" and args:
             maximo = max(200, min(16000, int(args.pop(0))))
@@ -64,6 +68,22 @@ def main(args):
     if not tarefa:
         print("Diga a tarefa. Ex.: jarvis-ajudante \"resuma em 5 tópicos\" < arquivo.md", file=sys.stderr)
         return 2
+    if modo_conselho:  # todas as IAs ligadas respondem em paralelo; o Jarvis compara e escolhe
+        try:
+            respostas = a.conselho(tarefa, material, maximo=min(maximo, 2500))
+        except a.Recusado as e:
+            print(f"Recusado: {e}", file=sys.stderr)
+            return 2
+        if not respostas:
+            print("Nenhuma IA disponível para o conselho (veja jarvis-ajudante --status).", file=sys.stderr)
+            return 1
+        boas = [r for r in respostas if r["ok"]]
+        for r in respostas:
+            print(f"### {r['ia']}" + (f" ({r['modelo']})" if r["modelo"] else "") + ("" if r["ok"] else " — sem resposta"))
+            print(r["texto"].strip() + "\n")
+        print(f"--- {len(boas)} de {len(respostas)} IAs responderam. Compare com a sua análise, faça o nivelamento "
+              "e registre a decisão em docs/DECISOES.md.")
+        return 0 if boas else 1
     try:
         r = a.perguntar(tarefa, material, ia=ia, maximo=maximo)
     except a.Recusado as e:

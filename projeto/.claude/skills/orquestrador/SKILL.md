@@ -113,3 +113,13 @@ Se `jarvis-hermes --status` disser "ligado", o Hermes (Nous Research) está disp
 
 ## Estilo de resposta ao usuário
 Português, direto, no máximo 15 linhas por relatório. Termine com a próxima ação sugerida.
+
+## Modelo e esforço por demanda (cérebro)
+- O painel/Telegram define o modelo e o esforço do Jarvis (padrão: Opus; esforço automático: alto para planejar e
+  começar uma demanda, médio para continuar e revalidar) e manda, a cada mensagem, o NÍVEL DOS AGENTES escolhido.
+- No plano de cada demanda, escreva qual agente faz cada parte com qual `model` (haiku|sonnet|opus) e `effort`
+  (low|medium|high) e passe esses campos em cada chamada da ferramenta Agent/Task. Tarefa simples, modelo menor.
+- Fable (`model: fable`) só quando o usuário pedir (/fable). Se o mesmo problema falhar 2 vezes, investigue com o
+  arquiteto (opus, high), prove a correção antes de dizer que resolveu e, se não resolver, sugira o /fable.
+- Conselho de IAs: `jarvis-ajudante --conselho "pergunta + contexto público"` (todas as IAs ligadas respondem em
+  paralelo). Compare, faça o nivelamento, escolha e registre em docs/DECISOES.md. Nada de segredos ou dados de clientes.
