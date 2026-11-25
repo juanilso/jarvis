@@ -201,6 +201,8 @@ def site_no_painel(modo, arg="", paginas=None):
 
 
 def iniciar(texto, veio_de_audio):
+    if texto.split() and texto.split()[0].lower() == "/pagina":  # atalho: criar uma página (skill criar-pagina)
+        texto = "/jarvis:pagina" + texto[len(texto.split()[0]):]
     if texto.split() and texto.split()[0].lower() == "/planejar":  # atalho para o planejamento
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.startswith("/"):

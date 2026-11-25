@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.35: skill criar-pagina (/pagina)
+
+- **`/pagina <o que a página deve fazer>`** no Telegram e no painel (ou `/jarvis:pagina`): o Jarvis cria UMA página do
+  zero pronta para converter: landing, vendas, captura de contatos, serviço/local, institucional, evento, link da bio.
+- Método: briefing de até 5 perguntas (ou deduz e anota as premissas), estrutura certa para o tipo de página, texto
+  persuasivo, formulário em PHP que funciona no cPanel (anti-robô, LGPD, página de obrigado) e/ou botão de WhatsApp,
+  SEO e compartilhamento, desempenho, testes com `jarvis-site` e nota visual ≥ 8, prints e link da prévia.
+- Nunca inventa depoimentos, números, logos de clientes ou IDs de rastreamento: o que faltar vira `[MARCADOR]` e
+  vem listado na entrega. Publicar continua sendo decisão sua.
+- Para um site inteiro ou refatoração continua a skill `refatorar-site`. Restauração: branch `versao-1.34.0`.
+
 ## Jarvis 1.34: Ollama Cloud como ajudante (igual ao Hermes)
 
 - **/ollama <pedido>** no Telegram e no painel: pergunta direto ao Ollama (modelos abertos grandes na nuvem:

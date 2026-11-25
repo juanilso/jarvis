@@ -80,6 +80,7 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
 ## Design, navegador e segurança de extensões
 - Tarefas `[design]` (telas, sites, landing pages, redesign) vão para o agente `designer`, que usa a skill
   `frontend-design` e verifica o resultado no navegador (prints desktop e celular).
+- Criar UMA página (landing, vendas, captura, serviço, evento, link da bio): skill `criar-pagina` (comando `/pagina`).
 - Navegador: use o MCP `playwright` (analisar sites, prints, testes visuais). NUNCA use `browser_run_code_unsafe`.
 - Redesign a partir de uma URL: fluxo `/redesenhar` (análise → 3 variantes → verificação → prévia).
 - Canva: para peças gráficas (posts, banners, apresentações) use as ferramentas/skills do plugin `canva`, se instalado.

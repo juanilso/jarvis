@@ -79,6 +79,7 @@ Pastas: `ideias/`, `pesquisas/`, `decisoes/`, `aprendizados/`, `projetos/`.
 
 ## Design, navegador e segurança de extensões
 - Refatorar/construir site: siga a skill `refatorar-site` (home completa primeiro, página por página, nota visual).
+- Criar UMA página (landing, vendas, captura, serviço, evento, link da bio): skill `criar-pagina` (`/jarvis:pagina`).
 - Tarefas `[design]` (telas, sites, landing pages, redesign) vão para o agente `designer`, que usa a skill
   `frontend-design` e verifica o resultado no navegador (prints desktop e celular).
 - Prévia e teste do site (sem precisar ligar nada): `jarvis-site print [pasta|url] [--paginas /,/x.html]` tira prints

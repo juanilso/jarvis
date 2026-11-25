@@ -67,6 +67,7 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
   (rascunhos de textos do site, conteúdo provisório, traduções, title/description, alt de imagens, resumos, listas
   de ideias, segunda opinião). Revise sempre o que voltar. Nunca mande dados de clientes, .env, tokens ou banco.
   Sem ajudante configurado (`jarvis-ajudante --status`), faça você mesmo.
+- Página nova (landing, vendas, captura, serviço, evento): designer com a skill `criar-pagina` (+ `frontend-design`).
 - Tela, site, layout ou visual: designer, com as skills `refatorar-site` e `frontend-design`. Refatorar site = mostrar a
   home pronta e bonita (prints) logo na primeira entrega; nada de horas de documentação antes da primeira tela.
 - Sempre que criar ou alterar um site/tela, ANTES de responder: rode `jarvis-site testar` na pasta do projeto, corrija
@@ -556,6 +557,7 @@ COMANDOS = [
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/pagina", "Cria uma página web do zero (landing, vendas, captura, serviço, evento…) com formulário, SEO e prints"),
     ("/planejar", "Planeja um projeto antes de desenvolver: perguntas, fluxos, regras, protótipo e testes (n8n)"),
     ("/ajudantes", "Outras IAs (Gemini, Groq, NVIDIA, Cloudflare…) como mão de obra do Jarvis: situação e cota do dia"),
     ("/ajudante", "Pede uma tarefa de texto a outra IA: /ajudante <tarefa> ou /ajudante nvidia <tarefa>"),
@@ -591,6 +593,7 @@ COMANDOS = [
     ("/jarvis:skill", "Jarvis: verifica e instala uma skill/plugin com segurança"),
     ("/jarvis:qa", "Jarvis: testa como usuário no navegador e corrige bugs"),
     ("/jarvis:novo", "Jarvis: inicia um projeto novo"),
+    ("/jarvis:pagina", "Jarvis: cria uma página web pronta para converter (skill criar-pagina)"),
     ("/jarvis:planejar", "Jarvis: planeja antes de desenvolver (fluxos, regras, protótipo, testes no n8n)"),
     ("/jarvis:entregar", "Jarvis: uma rodada do piloto (constrói, testa e homologa)"),
     ("/jarvis:modelos", "Jarvis: perfil de modelos dos agentes"),
@@ -639,6 +642,7 @@ WhatsApp: vigia
   escreveu e ficou sem resposta
 
 Planejar antes de desenvolver
+• /pagina landing de internet fibra para empresas em Niterói, ação: chamar no WhatsApp → página pronta, com prints
 • /planejar sistema de rede credenciada com app do membro e painel do credenciado: o Jarvis faz as perguntas
   certas, desenha fluxos, regras e dados (docs/plano), monta um protótipo para você clicar e testa as partes
   arriscadas (inclusive fluxos [LAB] no n8n). Só vira desenvolvimento depois que você aprovar o plano.
