@@ -46,6 +46,9 @@ PROVEDORES = {
                    [], 60, "cota grátis diária pequena (10.000 neurons); a Cloudflare não treina com o conteúdo"),
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1",
                    [r":free$"], 50, "modelos :free têm limite diário baixo e podem registrar o conteúdo"),
+    "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com",
+                 [r"^deepseek-flash$", r"^deepseek-v4-pro", r"^deepseek"],
+                 500, "DeepSeek: pago por uso e bem barato (o Flash custa centavos por milhão de tokens)"),
     "ollama": ("OLLAMA_API_KEY", "https://ollama.com/v1",
                [r"^gpt-oss:120b", r"^(qwen3|deepseek|kimi|glm)", r"^gpt-oss", r"^gemma"],
                300, "Ollama Cloud: limites conforme o plano da sua conta em ollama.com"),
@@ -54,7 +57,7 @@ PROVEDORES = {
 }
 
 # se a lista de modelos do provedor falhar ou vier vazia
-MODELOS_RESERVA = {"ollama": ["gpt-oss:120b", "qwen3-coder:480b", "deepseek-v3.1:671b", "gpt-oss:20b"]}
+MODELOS_RESERVA = {"deepseek": ["deepseek-flash", "deepseek-v4-pro"], "ollama": ["gpt-oss:120b", "qwen3-coder:480b", "deepseek-v3.1:671b", "gpt-oss:20b"]}
 
 # provedores sem lista de modelos no formato OpenAI: candidatos fixos (o primeiro que funcionar fica guardado)
 MODELOS_FIXOS = {
@@ -167,7 +170,7 @@ def disponivel(nome):
 
 
 def configurados():
-    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,nvidia,cloudflare,ollama,openrouter,mistral,grok").split(",") if n.strip()]
+    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,nvidia,cloudflare,deepseek,ollama,openrouter,mistral,grok").split(",") if n.strip()]
     return [n for n in ordem if n in PROVEDORES and os.environ.get(PROVEDORES[n][0])]
 
 
@@ -303,12 +306,18 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
                 if nome == "gemini":  # modelos que "pensam": pensar pouco e dar folga para o texto final
                     corpo["max_tokens"] = max(maximo, 2048)
                     corpo["reasoning_effort"] = "low"
+                if nome == "deepseek":  # sem "pensar" por padrão (mais rápido e barato); DEEPSEEK_PENSAR=1 liga
+                    if os.environ.get("DEEPSEEK_PENSAR", "").lower() in ("1", "sim", "true"):
+                        corpo.update(max_tokens=max(maximo, 4096), thinking={"type": "enabled"}, reasoning_effort="high")
+                    else:
+                        corpo["thinking"] = {"type": "disabled"}
                 try:
                     r = _http(nome, "/chat/completions", corpo)
                 except urllib.error.HTTPError as e1:
-                    if e1.code != 400 or "reasoning_effort" not in corpo:
+                    if e1.code != 400 or not ({"reasoning_effort", "thinking"} & set(corpo)):
                         raise
-                    corpo.pop("reasoning_effort")  # modelo que não aceita o ajuste: tenta sem
+                    corpo.pop("reasoning_effort", None)  # modelo que não aceita o ajuste: tenta sem
+                    corpo.pop("thinking", None)
                     r = _http(nome, "/chat/completions", corpo)
                 texto = ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
                 if isinstance(texto, list):

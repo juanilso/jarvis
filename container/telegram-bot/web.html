@@ -175,6 +175,8 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
 .agc.ok .st{color:var(--ok)}.agc.erro .st{color:var(--er)}
 .agc.hermes{border-color:rgba(255,196,90,.6)}.agc.hermes b,.agc.hermes .st{color:#ffc45a}
 .agc.ollama{border-color:rgba(163,230,53,.6)}.agc.ollama b,.agc.ollama .st{color:#bef264}
+.agc.deepseek{border-color:rgba(96,140,255,.65)}.agc.deepseek b,.agc.deepseek .st{color:#9db8ff}
+.msg.deepseek{border-color:#608cff66;background:linear-gradient(90deg,#608cff14,transparent)}.msg.deepseek .quem{color:#9db8ff;font-size:11px;letter-spacing:2px;margin-bottom:4px}
 .msg.ollama{border-color:#a3e63566;background:linear-gradient(90deg,#a3e63512,transparent)}.msg.ollama .quem{color:#bef264;font-size:11px;letter-spacing:2px;margin-bottom:4px}
 .agMais{width:100%;margin-top:6px;border-style:dashed;color:var(--m);background:none;min-height:38px}
 .logo{margin-right:0}
@@ -652,7 +654,8 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
 </div>
 <script>
 const $=id=>document.getElementById(id);
-const AGENTES=[["hermes","☤"],["ollama","🦙"],["arquiteto","🏛️"],["explorador","🔎"],["desenvolvedor","💻"],["dba","🗄️"],["android","🤖"],["testador","🧪"],["revisor","🧐"],["designer","🎨"],["deploy","🚀"],["documentador","📝"]];
+const IAS_DIRETAS=["ollama","deepseek"];
+const AGENTES=[["hermes","☤"],["ollama","🦙"],["deepseek","🐋"],["arquiteto","🏛️"],["explorador","🔎"],["desenvolvedor","💻"],["dba","🗄️"],["android","🤖"],["testador","🧪"],["revisor","🧐"],["designer","🎨"],["deploy","🚀"],["documentador","📝"]];
 let ultimo=0,agentesOn=true,ocupado=false,gravador=null,pedacos=[],t0=0,timerG=null,modo="espera",nivel=0,ctx=null,analyser=null,carregado=false;
 const agEstado={};
 
@@ -670,12 +673,12 @@ const ROBO=`<svg class="robo" viewBox="0 0 40 40" aria-hidden="true"><line class
 let agVerOciosos=false;
 function tempo(ms){const s=Math.max(0,Math.round((Date.now()-ms)/1000));return s<60?s+"s":s<3600?Math.floor(s/60)+"m"+String(s%60).padStart(2,"0")+"s":Math.floor(s/3600)+"h"}
 function desenharAgentes(){
-  const lista=AGENTES.filter(([n])=>(n!=="hermes"||hermesAtivo||agEstado.hermes)&&(n!=="ollama"||ollamaAtivo||agEstado.ollama)).map(([n])=>{
+  const lista=AGENTES.filter(([n])=>(n!=="hermes"||hermesAtivo||agEstado.hermes)&&(!IAS_DIRETAS.includes(n)||iasAtivas.has(n)||agEstado[n])).map(([n])=>{
     const s=n==="hermes"&&hermesAtivo?{c:"ativo hermes",d:"ajudante (Hermes Agent)",ini:(agEstado.hermes||{}).ini}
-      :n==="ollama"&&ollamaAtivo?{c:"ativo ollama",d:"ajudante (Ollama Cloud)",ini:(agEstado.ollama||{}).ini||ollamaDesde}:(agEstado[n]||{c:""});return{n,...s}});
+      :IAS_DIRETAS.includes(n)&&iasAtivas.has(n)?{c:"ativo "+n,d:n==="ollama"?"ajudante (Ollama Cloud)":"ajudante (DeepSeek)",ini:iasDesde[n]}:(agEstado[n]||{c:""});return{n,...s}});
   const ativos=lista.filter(a=>(a.c||"").startsWith("ativo")),feitos=lista.filter(a=>a.c==="ok"||a.c==="erro").sort((a,b)=>(b.fim||0)-(a.fim||0)),
     ociosos=lista.filter(a=>!a.c);
-  let h=ativos.map(a=>`<div class="agc ativo${a.c.includes("hermes")?" hermes":a.c.includes("ollama")?" ollama":""}"><div class="l1"><b>${a.n}</b><span class="st">ativo${a.ini?" · "+tempo(a.ini):""}</span></div><span class="ds">${esc(a.d||"")}</span><i class="ind"></i></div>`).join("");
+  let h=ativos.map(a=>`<div class="agc ativo${a.c.includes("hermes")?" hermes":a.c.includes("ollama")?" ollama":a.c.includes("deepseek")?" deepseek":""}"><div class="l1"><b>${a.n}</b><span class="st">ativo${a.ini?" · "+tempo(a.ini):""}</span></div><span class="ds">${esc(a.d||"")}</span><i class="ind"></i></div>`).join("");
   h+=feitos.map(a=>`<div class="agc ${a.c}"><div class="l1"><span>${a.n}</span><span class="st">${a.c==="erro"?"erro":"✓ há "+tempo(a.fim||Date.now())}</span></div></div>`).join("");
   if(agVerOciosos||!ativos.length&&!feitos.length)h+=ociosos.map(a=>`<div class="agc"><div class="l1"><span>${a.n}</span><span class="st">ocioso</span></div></div>`).join("");
   else if(ociosos.length)h+=`<button class="agMais" onclick="agVerOciosos=true;desenharAgentes()">+ ${ociosos.length} agentes ociosos</button>`;
@@ -733,6 +736,7 @@ function mostrar(ev){
   else if(ev.tipo==="sistema")add("ev",esc(ev.texto));
   else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+miniPrints(ev)+h);if(carregado)painel()}
   else if(ev.tipo==="ollama"){add("msg jv ollama",'<div class="quem">🦙 OLLAMA</div>'+fmt(ev.texto)+h)}
+  else if(ev.tipo==="deepseek"){add("msg jv deepseek",'<div class="quem">🐋 DEEPSEEK</div>'+fmt(ev.texto)+h)}
   else if(ev.tipo==="hermes"){const d=add("msg jv hermes",'<div class="quem">☤ HERMES</div>'+fmt(ev.texto)+h);if(ev.voz)tocar(ev.voz,d,"hermes")}
   else if(ev.tipo==="resposta"){
     const custo=ev.custo?`<div class="hora">custo US$ ${Number(ev.custo).toFixed(4)}</div>`:"";
@@ -741,7 +745,7 @@ function mostrar(ev){
     if(carregado)painel();
   }
 }
-let ocupadoEm=null,rodandoSet=new Set(),hermesAtivo=false,ollamaAtivo=false,ollamaDesde=0;
+let ocupadoEm=null,rodandoSet=new Set(),hermesAtivo=false,ollamaAtivo=false,ollamaDesde=0,iasAtivas=new Set(),iasDesde={};
 async function poll(){
   const v=ver;
   try{const r=await api("/api/eventos?desde="+ultimo+"&projeto="+encodeURIComponent($("projetoSel").value||""));
@@ -751,8 +755,10 @@ async function poll(){
       rodandoSet=new Set((r.rodando||[]).map(x=>x.projeto));
       if(!!r.hermes!==hermesAtivo){hermesAtivo=!!r.hermes;desenharAgentes();if(!hermesAtivo&&!ocupado&&modo==="pensando")setModo("espera")}
       if(hermesAtivo&&modo==="espera")setModo("pensando","Hermes trabalhando");
-      if(!!r.ollama!==ollamaAtivo){ollamaAtivo=!!r.ollama;ollamaDesde=Date.now();desenharAgentes();
-        if(ollamaAtivo&&modo==="espera")setModo("pensando","Ollama trabalhando");else if(!ollamaAtivo&&!ocupado&&!hermesAtivo&&modo==="pensando")setModo("espera")}
+      const novas=new Set(r.ias||[]);if([...novas].join()!==[...iasAtivas].join()){novas.forEach(n=>{if(!iasAtivas.has(n))iasDesde[n]=Date.now()});
+        iasAtivas=novas;ollamaAtivo=iasAtivas.has("ollama");desenharAgentes();
+        if(iasAtivas.size&&modo==="espera")setModo("pensando",[...iasAtivas].map(n=>n==="ollama"?"Ollama":"DeepSeek").join(" e ")+" trabalhando");
+        else if(!iasAtivas.size&&!ocupado&&!hermesAtivo&&modo==="pensando")setModo("espera")}
       [...$("projetoSel").options].forEach(o=>{if(o.value)o.textContent=(rodandoSet.has(o.value)?"⏳ ":"")+o.value});
       if(meu&&!inicioRun)inicioRun=Date.now()-(r.desde_inicio||0)*1000;
       if(meu!==ocupado){ocupado=meu;if(!ocupado){inicioRun=0;fecharRun()}if(modo!=="falando"&&modo!=="ouvindo")setModo(ocupado?"pensando":"espera")}}}catch(e){}
@@ -1139,7 +1145,7 @@ function novoPensamento(de){ /* uma linha de pensamento: região de origem → (
     for(let t=0;t<1;t+=.05){const u=1-t;pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0],u*u*a[1]+2*u*t*cy+t*t*b[1]])}}
   pts.push(nos[nos.length-1]);pens.push({pts,p:0,v:.006+Math.random()*.01,c:REG[de].c,fim:para})}
 function regioesAtivas(){const r=new Set();Object.entries(agEstado).forEach(([n,s])=>{if(s.c&&s.c.startsWith("ativo")&&REG_AG[n])r.add(REG_AG[n])});
-  if(hermesAtivo)r.add("parietal");if(ollamaAtivo)r.add("temporal");if(modo==="pensando")r.add("centro");return[...r]}
+  if(hermesAtivo)r.add("parietal");if(iasAtivas.size)r.add("temporal");if(modo==="pensando")r.add("centro");return[...r]}
 let morph=0,hm=0,ultimoT=0,acumulo=0,pulsos=[],brilhos=[],sobe=[];
 function novoPulso(o){if(o.pts.length<2)return;const a=o.pts[Math.floor(Math.random()*o.pts.length)];
   let b=null;for(let k=0;k<25;k++){const c=o.pts[Math.floor(Math.random()*o.pts.length)];const dd=Math.hypot(c[0]-a[0],c[1]-a[1]);if(dd>15&&dd<70){b=c;break}}

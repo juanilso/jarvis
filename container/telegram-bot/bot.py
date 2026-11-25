@@ -465,7 +465,7 @@ def tratar(msg):
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
-                                                  "/modelos", "/hermes", "/ollama", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/filme", "/tendencias",
+                                                  "/modelos", "/hermes", "/ollama", "/deepseek", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/filme", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp", "/treinar", "/bloquear", "/desbloquear", "/bloqueados",
                                                   "/print", "/testar", "/previa", "/piloto",
                                                   "/ajudantes", "/ajudante") \
@@ -494,9 +494,10 @@ def tratar(msg):
         elif acao == "site_corrigir":
             import site_previa
             iniciar_pedido(chat_id, site_previa.PROMPT_CORRIGIR, veio_de_audio=False)
-        elif acao == "ollama":
-            threading.Thread(target=core.rodar_ollama, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
-                             lambda tipo, t: enviar(chat_id, ("🦙 Ollama:\n\n" if tipo == "ollama" else "") + t)),
+        elif acao in core.IAS_DIRETAS:
+            rot = core.IAS_DIRETAS[acao]["rotulo"]
+            threading.Thread(target=core.rodar_ia, args=(acao, texto.partition(" ")[2].strip(), estado.ler()["projeto"],
+                             lambda tipo, t, rot=rot: enviar(chat_id, (f"{rot}:\n\n" if tipo != "erro" else "") + t)),
                              daemon=True).start()
         elif acao == "hermes":
             threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],

@@ -430,6 +430,13 @@ TABELA_MODELOS = """🧠 Modelos disponíveis (preço por milhão de tokens: ent
 Todos têm contexto de 1 milhão de tokens. No gateway, a disponibilidade e os nomes podem variar.
 Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)
 Seu gateway tem outros? /modelos lista o que ele oferece."""
+IAS_DIRETAS = {  # IAs que você pode chamar direto (/ollama, /deepseek) e que aparecem na equipe do painel
+    "ollama": {"rotulo": "🦙 Ollama", "chave": "OLLAMA_API_KEY", "onde": "ollama.com/settings/keys",
+               "papel": "rodando modelos abertos na nuvem do Ollama"},
+    "deepseek": {"rotulo": "🐋 DeepSeek", "chave": "DEEPSEEK_API_KEY", "onde": "platform.deepseek.com/api_keys",
+                 "papel": "o modelo da DeepSeek"},
+}
+IAS_OCUPADAS = {}
 OLLAMA = {"ocupado": 0}
 PAPEL_OLLAMA = ("Você é o Ollama, um ajudante do Jarvis (orquestrador de projetos de software), rodando modelos abertos "
                 "na nuvem do Ollama. Responda em português do Brasil, direto e bem organizado. Você não tem acesso aos "
@@ -437,20 +444,32 @@ PAPEL_OLLAMA = ("Você é o Ollama, um ajudante do Jarvis (orquestrador de proje
 
 
 def rodar_ollama(pedido, projeto, avisar):
-    """Executa /ollama em segundo plano e entrega com avisar("ollama", texto)."""
+    """Compatibilidade: /ollama agora passa por rodar_ia."""
+    rodar_ia("ollama", pedido, projeto, avisar)
+
+def rodar_ia(nome, pedido, projeto, avisar):
+    """/ollama, /deepseek…: pergunta direto a uma IA ajudante e entrega com avisar(nome, texto)."""
     import ajudantes
-    OLLAMA["ocupado"] += 1
+    info = IAS_DIRETAS[nome]
+    IAS_OCUPADAS[nome] = IAS_OCUPADAS.get(nome, 0) + 1
+    if nome == "ollama":
+        OLLAMA["ocupado"] += 1
+    papel = (f"Você é o {info['rotulo'].split(' ', 1)[1]}, um ajudante do Jarvis (orquestrador de projetos de software), "
+             f"{info['papel']}. Responda em português do Brasil, direto e bem organizado. Você não tem acesso aos arquivos "
+             "do projeto nem à internet: trabalhe com o que veio na mensagem e diga o que falta.")
     try:
-        r = ajudantes.perguntar(pedido, contexto=PAPEL_OLLAMA + (f" Projeto atual: {projeto}." if projeto else ""),
-                                ia="ollama", maximo=6000)
+        r = ajudantes.perguntar(pedido, contexto=papel + (f" Projeto atual: {projeto}." if projeto else ""),
+                                ia=nome, maximo=6000)
         if r.get("ok"):
-            avisar("ollama", r["texto"].strip() + f"\n\n— {r.get('modelo', 'Ollama')}")
+            avisar(nome, r["texto"].strip() + f"\n\n— {r.get('modelo', info['rotulo'])}")
         else:
-            avisar("erro", "Ollama: " + ("; ".join(r.get("tentativas", [])) or r.get("erro", "não respondeu"))[:400])
+            avisar("erro", f"{info['rotulo']}: " + ("; ".join(r.get("tentativas", [])) or r.get("erro", "não respondeu"))[:400])
     except Exception as e:  # noqa: BLE001
-        avisar("erro", f"Ollama: {type(e).__name__}: {str(e)[:200]}")
+        avisar("erro", f"{info['rotulo']}: {type(e).__name__}: {str(e)[:200]}")
     finally:
-        OLLAMA["ocupado"] -= 1
+        IAS_OCUPADAS[nome] -= 1
+        if nome == "ollama":
+            OLLAMA["ocupado"] -= 1
 
 
 def rodar_hermes(pedido, projeto, avisar):
@@ -589,6 +608,7 @@ COMANDOS = [
     ("/conselho", "Outras IAs opinando: desligado, decisoes, sempre"),
     ("/escalar", "Quando travar no mesmo problema: sugerir (Fable), automatico, nunca"),
     ("/fable", "A próxima mensagem usa o Fable (o modelo mais forte); /fable <pedido> já manda junto"),
+    ("/deepseek", "Pede direto ao DeepSeek (deepseek-flash / v4-pro); sem texto: status"),
     ("/ollama", "Pede direto ao Ollama (modelos abertos grandes na nuvem); sem texto: status"),
     ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq) · número 2: /atendimento 2"),
     ("/filme", "Vídeo de divulgação de um filme ou série (dados do TMDB; cortes do trailer se você enviar no painel)"),
@@ -651,7 +671,7 @@ Hermes (ajudante, se ligado)
 • /filme Duna Parte Dois → vídeo vertical e horizontal com imagens, nota, gêneros e chamada (token do TMDB no painel)
 • /cerebro: modelo e esforço do Jarvis, nível dos agentes, conselho de IAs · /esforco alto · /equipe economico
 • /fable resolve o erro do login que continua → só esta mensagem usa o Fable (o Jarvis sugere sozinho na 3ª tentativa)
-• /ollama compare estas duas abordagens… · /ollama revise este trecho… (modelos abertos grandes na nuvem do Ollama)
+• /deepseek explique este erro… · /ollama compare estas duas abordagens… · /ollama revise este trecho… (modelos abertos grandes na nuvem do Ollama)
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
 Jogos do dia: alerta antes do jogo
@@ -939,19 +959,21 @@ def comando(estado, pool, texto):
         if cmd != "/cerebro" and not a:
             return f"Opções: {', '.join(cerebro.OPCOES[campo])}\n\n" + cerebro.texto_status(est["projeto"]), None
         return cerebro.texto_status(est["projeto"]), None
-    if cmd == "/ollama":
+    if cmd in ("/ollama", "/deepseek"):
         import ajudantes
-        if not os.environ.get("OLLAMA_API_KEY"):
-            return ("🦙 O Ollama não está ligado. Na VPS: ./ajudantes-configurar.sh e cole a chave do Ollama "
-                    "(ollama.com/settings/keys)."), None
+        nome = cmd[1:]
+        info = IAS_DIRETAS[nome]
+        if not os.environ.get(info["chave"]):
+            return (f"{info['rotulo']} não está ligado. Na VPS: ./ajudantes-configurar.sh e cole a chave "
+                    f"({info['onde']})."), None
         if not arg:
             try:
-                mod = ajudantes.modelo("ollama")
+                mod = ajudantes.modelo(nome)
             except Exception as e:  # noqa: BLE001
                 mod = f"não consegui listar os modelos ({type(e).__name__})"
-            return (f"🦙 Ollama ligado · modelo: {mod}\nUse: /ollama <pedido>. Os agentes do Jarvis também podem "
-                    "chamá-lo como ajudante. Dados sensíveis são apagados antes de enviar."), None
-        return "🦙 Pedi ao Ollama… aviso quando ele responder.", "ollama"
+            return (f"{info['rotulo']} ligado · modelo: {mod}\nUse: {cmd} <pedido>. Os agentes do Jarvis também podem "
+                    "chamá-lo como ajudante e ele participa do conselho de IAs. Dados sensíveis são apagados antes."), None
+        return f"{info['rotulo']}: pedi… aviso quando responder.", nome
     if cmd == "/hermes":
         import hermes_cliente as hermes
         if not arg:

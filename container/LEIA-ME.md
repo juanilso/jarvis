@@ -111,6 +111,16 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.39: DeepSeek como ajudante
+
+- **/deepseek <pedido>** no Telegram e no painel (resposta com o rótulo 🐋 DEEPSEEK; aparece na equipe enquanto
+  trabalha). `/deepseek` sozinho mostra o modelo em uso.
+- Entra na fila automática dos ajudantes e no **conselho de IAs**; os agentes podem chamá-lo com
+  `jarvis-ajudante --ia deepseek`. Modelo: `deepseek-flash` (o mais rápido e barato); `deepseek-v4-pro` como reserva.
+  Para fixar: `JARVIS_AJUDANTE_DEEPSEEK_MODELO=deepseek-v4-pro` no `.env.ajudantes`.
+- Responde sem o modo "pensar" (mais rápido e barato); `DEEPSEEK_PENSAR=1` liga o raciocínio.
+- Ligar: `./ajudantes-configurar.sh` → cole a chave (platform.deepseek.com/api_keys). Restauração: `versao-1.38.0`.
+
 ## Jarvis 1.38: números bloqueados no atendimento do WhatsApp
 
 - O robô **ignora** os números bloqueados: não responde, não chama você e o vigia não avisa "mensagem sem resposta".
