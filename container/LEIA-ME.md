@@ -111,6 +111,13 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.37.1: trailer por link direto
+
+- Painel 🎬 Filmes → "cole o link direto do arquivo do trailer" (Google Drive, Dropbox, área de imprensa da
+  distribuidora…) e o Jarvis baixa (até 400 MB), corta e monta. No Telegram:
+  `/filme Duna Parte Dois https://link-do-arquivo.mp4`. Links de compartilhamento do Drive/Dropbox são convertidos.
+- Links do YouTube são recusados: os termos do YouTube proíbem baixar os vídeos de lá.
+
 ## Jarvis 1.37: vídeo pelo gateway, roteiro pelo Claude e vídeos de filmes/séries (TMDB)
 
 **Vídeo dos jogos**

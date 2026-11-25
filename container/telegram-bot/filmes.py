@@ -330,6 +330,46 @@ def salvar_trailer(tipo, id_, dados):
     return destino
 
 
+BLOQUEADOS = re.compile(r"(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|googlevideo\.com|ytimg\.com)$", re.I)
+
+
+def link_direto(url):
+    """Ajusta links de compartilhamento (Drive, Dropbox) para o download do arquivo. Recusa o YouTube."""
+    p = urllib.parse.urlparse((url or "").strip())
+    if p.scheme not in ("http", "https") or not p.hostname:
+        raise ValueError("cole um link http(s) do arquivo de vídeo")
+    if BLOQUEADOS.search(p.hostname):
+        raise ValueError("links do YouTube não: os termos do YouTube proíbem baixar os vídeos de lá. Use o arquivo do "
+                         "trailer (área de imprensa da distribuidora, Drive, Dropbox) ou envie o arquivo no painel.")
+    m = re.search(r"drive\.google\.com/(?:file/d/|open\?id=)([\w-]+)", url)
+    if m:
+        return f"https://drive.google.com/uc?export=download&confirm=t&id={m.group(1)}"
+    if "dropbox.com" in p.hostname:
+        return re.sub(r"([?&])dl=0", r"\1dl=1", url) if "dl=" in url else url + ("&" if "?" in url else "?") + "dl=1"
+    return url
+
+
+def baixar_trailer(tipo, id_, url, limite=400 * 1024 * 1024):
+    """Baixa o arquivo do link (até 400 MB), confere se é vídeo e guarda como o trailer do título."""
+    direto = link_direto(url)
+    req = urllib.request.Request(direto, headers={"User-Agent": "Mozilla/5.0 (Jarvis)"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        tipo_c = r.headers.get("Content-Type", "")
+        if "text/html" in tipo_c:
+            raise ValueError("o link abre uma página, não o arquivo. Use o link de download do arquivo "
+                             "(no Drive: compartilhar → qualquer pessoa com o link).")
+        partes, total = [], 0
+        while True:
+            bloco = r.read(1024 * 1024)
+            if not bloco:
+                break
+            total += len(bloco)
+            if total > limite:
+                raise ValueError("arquivo grande demais (máximo 400 MB)")
+            partes.append(bloco)
+    return salvar_trailer(tipo, id_, b"".join(partes))
+
+
 def trailer_de(tipo, id_):
     p = os.path.join(DIR, "trailers", f"{tipo}-{int(id_)}.mp4")
     return p if os.path.exists(p) else None
@@ -632,12 +672,21 @@ def mandar_telegram(res):
     rotinas.avisar_telegram_album(itens)
 
 
-def gerar_fundo(tipo, id_, usar_trailer=True, avisar=True):
+def gerar_fundo(tipo, id_, usar_trailer=True, avisar=True, link=None):
     if TRABALHO["rodando"]:
         raise RuntimeError("já estou gerando um vídeo de filme; aguarde")
 
     def rodar():
         try:
+            if link:
+                TRABALHO["etapa"] = "baixando o trailer do link"
+                try:
+                    baixar_trailer(tipo, id_, link)
+                except (ValueError, OSError) as e:
+                    if avisar:
+                        import rotinas
+                        rotinas.avisar_telegram(f"🎬 Não consegui usar o trailer do link ({str(e)[:200]}). "
+                                                "Vou gerar com as imagens.")
             res = gerar(tipo, id_, usar_trailer)
             if avisar:
                 mandar_telegram(res)

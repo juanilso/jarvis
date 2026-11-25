@@ -417,6 +417,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div id="fmSel" hidden>
     <div class="waDica" id="fmSelTit"></div>
     <label>Trailer para os cortes (opcional: o arquivo é seu; o Jarvis não baixa do YouTube)<input type="file" id="fmTrailer" accept="video/*,.mp4,.mov,.mkv"></label>
+    <div class="lin"><input id="fmLink" placeholder="…ou cole o link direto do arquivo do trailer (Drive, Dropbox, área de imprensa)" style="flex:1"><button id="fmLinkBaixar">Baixar trailer</button></div>
     <div class="waDica" id="fmTrailerInfo"></div>
     <div class="lin"><label style="flex:1">Chamada do botão<input id="fmChamada" placeholder="Disponível agora"></label><label style="flex:1">Sua marca<input id="fmMarca" placeholder="ex.: IT Suport"></label></div>
     <label><span><input type="checkbox" id="fmFmtV"> 📱 Vertical &nbsp; <input type="checkbox" id="fmFmtH"> 📺 Horizontal (TV) &nbsp; <input type="checkbox" id="fmClaude"> ✍️ Chamada e resumo pelo Claude &nbsp; <input type="checkbox" id="fmOnde"> Onde assistir</span></label>
@@ -824,6 +825,9 @@ $("fmBusca").onkeydown=e=>{if(e.key==="Enter")$("fmBuscar").click()};
 $("fmTrailer").onchange=async()=>{const f=$("fmTrailer").files[0];if(!f||!fmEsc)return;$("fmTrailerInfo").textContent=`⏳ enviando ${f.name}…`;
   try{const r=await fetch(`/api/filmes/trailer?tipo=${fmEsc.tipo}&id=${fmEsc.id}`,{method:"POST",body:f});const j=await r.json();
     $("fmTrailerInfo").textContent=j.ok?"🎞 trailer salvo: o vídeo vai usar os melhores cortes":"⚠️ "+(j.erro||"");if(j.ok)fmEsc.trailer=true}catch(e){$("fmTrailerInfo").textContent="⚠️ falha ao enviar"}$("fmTrailer").value=""};
+$("fmLinkBaixar").onclick=async()=>{const u=$("fmLink").value.trim();if(!u||!fmEsc)return;$("fmTrailerInfo").textContent="⏳ baixando o trailer…";
+  const r=await api("/api/filmes/trailer_link",{tipo:fmEsc.tipo,id:fmEsc.id,url:u});
+  $("fmTrailerInfo").textContent=r.ok?"🎞 trailer baixado: o vídeo vai usar os melhores cortes":"⚠️ "+(r.erro||"não consegui baixar");if(r.ok){fmEsc.trailer=true;$("fmLink").value=""}};
 $("fmGerar").onclick=async()=>{if(!fmEsc)return;await fmSalvarCfg();const r=await api("/api/filmes/gerar",{tipo:fmEsc.tipo,id:fmEsc.id,trailer:true,telegram:$("fmTg").checked});
   if(!r.ok){$("fmStatus").textContent="⚠️ "+(r.erro||"");return}$("fmStatus").textContent="⏳ começando…";clearInterval(fmTimer);fmTimer=setInterval(fmCarregar,2500)};
 $("btnCerebro").onclick=cbAbrir;$("cbFechar").onclick=()=>$("cerebro").classList.remove("aberto");

@@ -788,8 +788,9 @@ def comando(estado, pool, texto):
         if not token:
             return "🎬 Para usar, ligue as automações: ./automacoes-configurar.sh", None
         if not arg:
-            return ("🎬 Use: /filme <nome> (ex.: /filme Duna Parte Dois · /filme The Last of Us · /filme Duna 2021). "
-                    "Cadastre o token do TMDB no painel (🎬 Filmes); lá também dá para enviar o trailer para os cortes."), None
+            return ("🎬 Use: /filme <nome> (ex.: /filme Duna Parte Dois · /filme The Last of Us · /filme Duna 2021).\n"
+                    "Com cortes do trailer: /filme Duna Parte Dois https://link-direto-do-arquivo.mp4 (Drive, Dropbox, "
+                    "área de imprensa; YouTube não). Token do TMDB e envio de arquivo: painel → 🎬 Filmes."), None
         req = _u.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
                          data=json.dumps({"acao": "filme", "q": arg}).encode(),
                          headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})

@@ -246,6 +246,10 @@ def executar(dados, publicar, pool, estado):
     if acao == "filme":  # /filme <nome> no Telegram: vídeo do filme/série com dados do TMDB
         import filmes
         q = str(dados.get("q") or "").strip()
+        link = ""
+        m_link = re.search(r"https?://\S+", q)
+        if m_link:  # /filme Nome https://link-do-arquivo-do-trailer
+            link, q = m_link.group(0), (q[:m_link.start()] + q[m_link.end():]).replace("|", " ").strip()
         if not q:
             return 400, {"erro": "diga o nome do filme ou da série"}
         try:
@@ -254,12 +258,18 @@ def executar(dados, publicar, pool, estado):
             return 200, {"ok": False, "texto": f"🎬 {e}"}
         if not escolhido:
             return 200, {"ok": False, "texto": f"🎬 Não achei “{q}” no TMDB. Tente o nome em português ou em inglês, com o ano."}
+        if link:
+            try:
+                filmes.link_direto(link)  # recusa YouTube e links inválidos na hora
+            except ValueError as e:
+                return 200, {"ok": False, "texto": f"🎬 {e}"}
         try:
-            filmes.gerar_fundo(escolhido["tipo"], escolhido["id"])
+            filmes.gerar_fundo(escolhido["tipo"], escolhido["id"], link=link or None)
         except RuntimeError as e:
             return 200, {"ok": False, "texto": f"🎬 {e}"}
         t = (f"🎬 Gerando o vídeo de {escolhido['titulo']} ({escolhido['ano']})"
-             + (" com os cortes do trailer que você enviou" if filmes.trailer_de(escolhido["tipo"], escolhido["id"]) else "")
+             + (" com os cortes do trailer do seu link" if link else
+                " com os cortes do trailer que você enviou" if filmes.trailer_de(escolhido["tipo"], escolhido["id"]) else "")
              + ". Chega aqui em 1 a 3 minutos.")
         if outros:
             t += "\nNão é esse? " + " · ".join(f"/filme {o['titulo']} {o['ano']}" for o in outros)

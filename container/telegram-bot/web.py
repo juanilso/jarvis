@@ -732,6 +732,9 @@ class Handler(BaseHTTPRequestHandler):
                     filmes.salvar_trailer(q.get("tipo", ["movie"])[0], int(q.get("id", ["0"])[0]), self._corpo())
                     return self._json({"ok": True})
                 d = json.loads(self._corpo() or b"{}")
+                if acao == "trailer_link":
+                    filmes.baixar_trailer(d.get("tipo", "movie"), int(d["id"]), str(d.get("url", "")))
+                    return self._json({"ok": True})
                 if acao == "token":
                     filmes.salvar_token(d.get("token", ""))
                     return self._json({"ok": True, "token": filmes.mascarado()})
@@ -750,8 +753,8 @@ class Handler(BaseHTTPRequestHandler):
                         return self._json({"ok": False, "erro": "nenhum vídeo gerado ainda"})
                     threading.Thread(target=filmes.mandar_telegram, args=(res,), daemon=True).start()
                     return self._json({"ok": True})
-            except (ValueError, RuntimeError, KeyError) as e:
-                return self._json({"ok": False, "erro": str(e)}, 400)
+            except (ValueError, RuntimeError, KeyError, OSError) as e:
+                return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
         if url.path == "/api/mensagem":
