@@ -30,7 +30,7 @@ import jarvis_core as core
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
-         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "jogos",
+         "pagamento", "painel_consultar", "painel_teste", "atendimento_cmd", "treinar_atendimento", "jogos",
          "previa", "site_testar"}
 _lock = threading.Lock()
 
@@ -86,6 +86,15 @@ def avisar_telegram(texto):
             except Exception as e:  # noqa: BLE001
                 print("erro ao avisar no Telegram:", e, flush=True)
     return ok
+
+
+TIPOS_ARQ = {"photo": ("sendPhoto", "image/png"), "video": ("sendVideo", "video/mp4"),
+             "document": ("sendDocument", "text/markdown")}
+
+
+def avisar_telegram_documento(caminho, legenda=""):
+    """Manda um arquivo (relatório, planilha…) para o seu Telegram."""
+    return avisar_telegram_foto(caminho, legenda, tipo="document")
 
 
 def avisar_telegram_album(itens):
@@ -147,8 +156,8 @@ def avisar_telegram_foto(caminho, legenda="", tipo="photo"):
             f"--{b}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat}\r\n".encode(),
             f"--{b}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{legenda[:1000]}\r\n".encode(),
             f"--{b}\r\nContent-Disposition: form-data; name=\"{tipo}\"; filename=\"{os.path.basename(caminho)}\"\r\n"
-            f"Content-Type: {'video/mp4' if tipo == 'video' else 'image/png'}\r\n\r\n".encode(), dados, f"\r\n--{b}--\r\n".encode()])
-        req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{'sendVideo' if tipo == 'video' else 'sendPhoto'}", data=corpo,
+            f"Content-Type: {TIPOS_ARQ.get(tipo, ('', 'application/octet-stream'))[1]}\r\n\r\n".encode(), dados, f"\r\n--{b}--\r\n".encode()])
+        req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{TIPOS_ARQ.get(tipo, ('sendDocument',))[0]}", data=corpo,
                                      headers={"Content-Type": f"multipart/form-data; boundary={b}"})
         try:
             urllib.request.urlopen(req, timeout=60)
@@ -234,12 +243,25 @@ def executar(dados, publicar, pool, estado):
                          "relatorio": d.get("relatorio_texto", "")[:8000]}
         threading.Thread(target=_testar, daemon=True).start()
         return 202, {"ok": True, "status": f"testando {url or projeto}; o resultado chega no Telegram"}
+    if acao == "treinar_atendimento":  # treinador: toda semana pelo n8n ou /treinar no Telegram
+        import linhas
+        import treinador
+        alvo = str(dados.get("linha") or "todas")
+        nums = linhas.lista() if alvo == "todas" else [int(alvo)] if alvo.isdigit() and linhas.ativa(int(alvo)) else []
+        if not nums:
+            return 400, {"erro": "número de WhatsApp desligado"}
+        textos = [treinador.comando(linhas.modulos(n)[0], str(dados.get("arg") or "")) for n in nums]
+        if len(nums) > 1:
+            textos = [f"【{linhas.nome(n)}】 {t}" for n, t in zip(nums, textos)]
+        registrar({"id": f"treino-{time.time():.0f}", "rotina": dados.get("rotina") or "Treinador do atendimento",
+                   "acao": "treinar_atendimento", "projeto": "", "ok": True, "resultado": " | ".join(textos)[:200]})
+        return 200, {"ok": True, "texto": "\n\n".join(textos)}
     if acao == "atendimento_cmd":  # /atendimento, /assumir, /devolver vindos do Telegram
-        import atendimento
+        import linhas
         cmd = str(dados.get("cmd") or "/atendimento")
         if cmd not in ("/atendimento", "/assumir", "/devolver", "/whatsapp"):
             return 400, {"erro": "comando inválido"}
-        return 200, {"ok": True, "texto": atendimento.comando(cmd, str(dados.get("arg") or ""), local=True)}
+        return 200, {"ok": True, "texto": linhas.comando(cmd, str(dados.get("arg") or ""), local=True)}
     if acao == "pagamento":  # mensagem "PAGAMENTO FASTFLOW RECEBIDO" (Telegram ou n8n)
         import pagamentos
         r = pagamentos.processar(str(dados.get("texto", ""))[:4000], fonte=str(dados.get("fonte") or "gatilho"))

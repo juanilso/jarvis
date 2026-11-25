@@ -191,6 +191,26 @@ services:
     mem_limit: 1g
     restart: unless-stopped
 
+  # Segundo número de WhatsApp (opcional): outro WAHA grátis, com sessão e QR code próprios. ./whatsapp2-configurar.sh
+  # As mensagens vão direto ao painel do Jarvis (webhook gravado na sessão pelo vigia), sem passar pelo n8n.
+  whatsapp2:
+    image: ${WAHA_IMAGEM:-devlikeapro/waha:gows-2026.10.1}
+    container_name: jarvis-whatsapp2
+    profiles: ["whatsapp2"]
+    env_file:
+      - path: .env.whatsapp      # mesma chave da API e senha do dashboard do primeiro
+        required: false
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: ${WAHA_MOTOR:-GOWS}
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      WAHA_RESTART_ALL_SESSIONS: "True"
+      WAHA_PRINT_QR: "False"
+      TZ: America/Sao_Paulo
+    volumes:
+      - whatsapp2-sessoes:/app/.sessions
+    mem_limit: 1g
+    restart: unless-stopped
+
   # Leitor de pagamentos (opcional): lê na SUA conta do Telegram só a conversa com o bot de pagamentos
   # (@DastDePixPartnerBot) e repassa ao Jarvis. ./pagamentos-configurar.sh
   leitor:
@@ -243,6 +263,7 @@ volumes:
   hermes-data:
   n8n-data:
   whatsapp-sessoes:
+  whatsapp2-sessoes:
   code-server-data:
   dev-home:
   mariadb-data:

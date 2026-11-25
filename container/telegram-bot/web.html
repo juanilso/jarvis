@@ -257,6 +257,7 @@ footer{position:relative}
 <div id="wa"><div class="caixa">
   <button class="fechar" id="waFechar">✕</button>
   <h2>WHATSAPP · ATENDIMENTO</h2>
+  <div id="waLinhas" style="display:none;gap:6px;margin:-4px 0 10px;flex-wrap:wrap"></div>
   <div class="topo">
     <div id="waQr">carregando…</div>
     <div>
@@ -316,6 +317,17 @@ footer{position:relative}
   <div class="waDica" style="margin:0 0 6px">O robô responde <b>só</b> com o que estiver aqui. Coloque preços, horários, como pagar, regras e quando chamar você.</div>
   <textarea id="waFaq" spellcheck="false"></textarea>
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="waSalvar" class="prim">💾 Salvar base</button><span class="waDica" id="waSalvo"></span></div>
+  <h3>🎓 TREINADOR DO ATENDIMENTO</h3>
+  <div class="waDica" style="margin:0 0 6px">Toda segunda de manhã ele lê as conversas da semana, aponta onde o robô se perdeu e sugere
+    a base revisada (trechos novos marcados com “(novo)”). Nada muda sem você aprovar.</div>
+  <div id="trInfo" class="waDica">carregando…</div>
+  <pre id="trRel" style="display:none;white-space:pre-wrap;max-height:320px;overflow:auto;background:rgba(0,0,0,.25);padding:10px;border-radius:8px;font-size:12.5px"></pre>
+  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+    <button id="trAnalisar">🔎 Analisar agora</button>
+    <button id="trAbrir" style="display:none" title="Coloca a base sugerida no campo acima para você revisar e salvar">📝 Revisar na base</button>
+    <button id="trAplicar" class="prim" style="display:none">✅ Aplicar base sugerida</button>
+    <button id="trDescartar" style="display:none">🗑 Descartar</button>
+    <span class="waDica" id="trMsg"></span></div>
 </div></div>
 <div id="kb"><div class="caixa">
   <button class="fechar" id="kbFechar" title="Fechar">✕</button>
@@ -532,7 +544,9 @@ const agEstado={};
 function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function fmt(t){return esc(t).replace(/```(\w*)\n?([\s\S]*?)```/g,(m,l,c)=>`<pre><code>${c}</code></pre>`).replace(/`([^`\n]+)`/g,"<code>$1</code>")}
 async function verGateway(){const p=$("gwLista");p.style.display="block";p.textContent="⏳ perguntando ao gateway…";const j=await api("/api/modelos?atualizar=1");p.textContent=j.texto||j.erro||"sem resposta"}
-async function api(c,b){const r=await fetch(c,b===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(r.status===401){location.reload();return{}}return r.json()}
+let waLinha=1;
+function comLinha(c){return waLinha!==1&&/^\/api\/(whatsapp|atendimento)/.test(c)?c+(c.includes("?")?"&":"?")+"linha="+waLinha:c}
+async function api(c,b){c=comLinha(c);const r=await fetch(c,b===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(r.status===401){location.reload();return{}}return r.json()}
 function add(cls,html){const d=document.createElement("div");d.className=cls;d.innerHTML=html;const box=$("logbox");const perto=box.scrollHeight-box.scrollTop-box.clientHeight<140;$("log").appendChild(d);if(perto)box.scrollTop=box.scrollHeight;return d}
 
 /* ---------- estado visual ---------- */
@@ -756,12 +770,17 @@ const WA_ST={WORKING:["✅ conectado","waOk"],SCAN_QR_CODE:["📷 aguardando lei
   STOPPED:["⏹ parado: clique em Conectar",""],FAILED:["⚠️ o QR code expirou ou a conexão caiu: clique em Conectar e leia em até 1 minuto","waEr"],SEM_SESSAO:["clique em Conectar",""],
   DESLIGADO:["desligado: rode ./whatsapp-configurar.sh na VPS","waEr"],ERRO:["⚠️ WhatsApp fora do ar","waEr"]};
 async function waAtualizar(){
-  const j=await api("/api/whatsapp");if(!j.whatsapp)return;const w=j.whatsapp,a=j.atendimento,st=WA_ST[w.status]||[w.status,""];
+  const j=await api("/api/whatsapp");if(!j.whatsapp)return;
+  const ls=j.linhas||[],cx=$("waLinhas");cx.style.display=ls.length>1?"flex":"none";
+  if(ls.length>1&&cx.dataset.v!==JSON.stringify(ls)+waLinha){cx.dataset.v=JSON.stringify(ls)+waLinha;
+    cx.innerHTML=ls.map(l=>`<button data-l="${l.n}" class="${l.n===waLinha?"prim":""}">📱 ${esc(l.nome)}</button>`).join("");
+    cx.querySelectorAll("button").forEach(b=>b.onclick=()=>{waLinha=+b.dataset.l;cx.dataset.v="";waAbrirLinha()})}
+  const w=j.whatsapp,a=j.atendimento,st=WA_ST[w.status]||[w.status,""];
   $("waStatus").innerHTML=`WhatsApp: <b class="${st[1]}">${esc(st[0])}</b>`+(w.numero?`<br>conta: <b>${esc(w.conta||"")}</b> · ${esc(w.numero)}`:"")+(w.motor&&w.motor!=="?"?` · motor ${esc(w.motor)}`+(w.motor==="NOWEB"?' <span class="waEr">(troque para GOWS: ./whatsapp-trocar-motor.sh)</span>':""):"")+(w.erro?`<br><span class="waEr">${esc(w.erro)}</span>`:"");
   $("waMsgs").textContent=a.mensagens_hoje;$("waResp").textContent=a.respostas_hoje;$("waHum").textContent=a.humano_hoje;
   waLigado=a.ligado;$("waLigar").textContent=a.ligado?"⏸ Pausar robô":"▶️ Ligar robô";$("waLigar").className=a.ligado?"":"prim";
   const q=$("waQr");
-  if(w.status==="SCAN_QR_CODE"){const u=`/api/whatsapp/qr?t=${Date.now()}`,im=new Image();
+  if(w.status==="SCAN_QR_CODE"){const u=comLinha(`/api/whatsapp/qr?t=${Date.now()}`),im=new Image();
     im.onload=()=>{q.classList.add("qr");q.textContent="";q.style.backgroundImage=`url(${u})`};
     im.onerror=()=>{q.classList.remove("qr");q.style.backgroundImage="";q.textContent="⏳ gerando o QR code… (se demorar, clique em Conectar)"};
     im.src=u}
@@ -807,8 +826,20 @@ $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("text
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,agrupar_seg:$("prAgrupar").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},mensagens:m}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
-$("btnWa").onclick=async()=>{$("wa").classList.add("aberto");cfgCarregar();atCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
-  waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)};
+async function waAbrirLinha(){$("wa").classList.add("aberto");cfgCarregar();atCarregar();trCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
+  waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)}
+$("btnWa").onclick=waAbrirLinha;
+let trDados={};
+async function trCarregar(){const j=await api("/api/whatsapp/treino");if(!j)return;trDados=j;
+  $("trInfo").textContent=j.rodando?"⏳ analisando as conversas (1 a 3 minutos)…":j.quando?`Última análise: ${j.quando} · ${j.analisadas||0} de ${j.conversas||0} conversas`+(j.pendente?" · 📄 base sugerida esperando você":j.aplicada?` · aplicada em ${j.aplicada}`:"")+(j.aviso?` · ${j.aviso}`:""):"Ainda não rodou. Clique em Analisar agora (precisa de algumas conversas guardadas).";
+  $("trRel").style.display=j.relatorio?"block":"none";$("trRel").textContent=j.relatorio||"";
+  ["trAbrir","trAplicar","trDescartar"].forEach(i=>$(i).style.display=j.pendente&&j.proposta?"":"none")}
+$("trAnalisar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"treinar"});$("trMsg").textContent=r.msg||r.erro||"";trCarregar();
+  let n=0;const t=setInterval(async()=>{await trCarregar();if(!trDados.rodando||++n>60)clearInterval(t)},5000)};
+$("trAbrir").onclick=()=>{$("waFaq").value=trDados.proposta.replace(/\s*\(novo\)\s*$/gm,"");$("waSalvo").textContent="📝 base sugerida no campo: revise e clique em Salvar base";$("waFaq").scrollIntoView({behavior:"smooth"})};
+$("trAplicar").onclick=async()=>{if(!confirm("Trocar a base de respostas pela sugerida? A atual fica guardada como cópia."))return;
+  const r=await api("/api/whatsapp/acao",{acao:"treino_aplicar"});$("trMsg").textContent=r.msg||"";const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";trCarregar()};
+$("trDescartar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"treino_descartar"});$("trMsg").textContent=r.msg||"";trCarregar()};
 function waFechar(){$("wa").classList.remove("aberto");clearInterval(waTimer)}
 $("waFechar").onclick=waFechar;$("wa").onclick=e=>{if(e.target.id==="wa")waFechar()};
 $("waReiniciar").onclick=async()=>{$("waDiagRes").textContent="⏳ reiniciando a sessão…";const r=await api("/api/whatsapp/acao",{acao:"reiniciar"});

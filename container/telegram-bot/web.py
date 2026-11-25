@@ -29,6 +29,9 @@ import atend_config  # noqa: E402
 atendimento.iniciar_fila()  # mensagens que o robô inicia saem por uma fila protegida
 import vigia_whatsapp  # noqa: E402
 vigia_whatsapp.iniciar()  # testa a corrente do atendimento de 5 em 5 min, conserta e avisa no Telegram
+import linhas  # noqa: E402
+if linhas.ativa(2):  # segundo WhatsApp: vigia próprio (grava o webhook direto no WAHA2 e confere a conexão)
+    linhas.modulos(2)[1].iniciar()
 import jogos_alertas  # noqa: E402
 jogos_alertas.iniciar()  # alerta X minutos antes de cada jogo (seu Telegram e/ou grupo)
 
@@ -302,8 +305,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(dados)
 
     # -- rotas
+    def _linha(self, url):
+        return urllib.parse.parse_qs(url.query).get("linha", ["1"])[0]
+
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
+        atendimento, vigia_whatsapp, atend_config = linhas.modulos(self._linha(url))  # número do WhatsApp (?linha=2)
         if url.path == "/":
             return self._html(HTML if self._logado() else LOGIN)
         if url.path.startswith("/static/"):
@@ -352,11 +359,11 @@ class Handler(BaseHTTPRequestHandler):
             forcar = urllib.parse.parse_qs(url.query).get("atualizar", [""])[0] == "1"
             return self._json({"texto": core.texto_modelos_gateway(forcar)})
         if url.path == "/api/whatsapp":
-            import vigia_whatsapp
             v = vigia_whatsapp._ler()
             return self._json({"whatsapp": atendimento.status_whatsapp(), "atendimento": atendimento.resumo(),
                                "vigia": {"ligado": v.get("ligado", True), "ultimo": v.get("ultimo"),
-                                         "min": vigia_whatsapp.INTERVALO // 60}})
+                                         "min": vigia_whatsapp.INTERVALO // 60},
+                               "linhas": [{"n": n, "nome": linhas.nome(n)} for n in linhas.lista()]})
         if url.path == "/api/whatsapp/qr":
             try:
                 png = atendimento.qr_png()
@@ -451,6 +458,11 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/painel/config":
             import painel_api
             return self._json(painel_api.publico())
+        if url.path == "/api/whatsapp/treino":
+            import treinador
+            e = treinador.estado(atendimento)
+            return self._json({k: e.get(k) for k in ("quando", "conversas", "analisadas", "pendente", "aviso", "aplicada",
+                                                     "relatorio", "proposta", "rodando")})
         if url.path == "/api/whatsapp/faq":
             return self._json({"texto": atendimento.ler_faq(), "caminho": atendimento.FAQ})
         if url.path == "/api/escritorio":
@@ -505,6 +517,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         url = urllib.parse.urlparse(self.path)
+        atendimento, vigia_whatsapp, atend_config = linhas.modulos(self._linha(url))  # número do WhatsApp (?linha=2)
         if url.path == "/login":
             senha = urllib.parse.parse_qs(self._corpo().decode()).get("senha", [""])[0]
             if SENHA and hmac.compare_digest(senha, SENHA):
@@ -526,6 +539,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"erro": "JSON inválido"}, 400)
             codigo, resp = rotinas.executar(dados, publicar, pool, estado)
             return self._json(resp, codigo)
+        m_waha = re.fullmatch(r"/api/waha/(\d)", url.path)
+        if m_waha:  # o WAHA do número 2 entrega as mensagens aqui (senha no endereço; só na rede interna)
+            at_l = linhas.linha_do_webhook(m_waha.group(1), urllib.parse.parse_qs(url.query).get("k", [""])[0])
+            if not at_l:
+                time.sleep(1)
+                return self._json({"erro": "não autorizado"}, 401)
+            try:
+                evento = json.loads(self._corpo() or b"{}")
+            except json.JSONDecodeError:
+                return self._json({"erro": "JSON inválido"}, 400)
+            if str(evento.get("event", "")).startswith("message"):
+                threading.Thread(target=at_l.atender, args=(linhas.dados_do_waha(evento),), daemon=True).start()
+            return self._json({"ok": True})
         if not self._logado():
             return self._json({"erro": "login"}, 401)
 
@@ -583,8 +609,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": "gerando (alguns minutos por causa da pesquisa de canais)" + envia})
             if a == "diagnostico":
                 return self._json(atendimento.diagnostico())
+            if a in ("treinar", "treino_aplicar", "treino_descartar"):
+                import treinador
+                if a == "treinar":
+                    return self._json({"ok": True, "msg": treinador.comando(atendimento, "")})
+                ok, t = (treinador.aplicar if a == "treino_aplicar" else treinador.descartar)(atendimento)
+                return self._json({"ok": ok, "msg": t})
             if a in ("reiniciar", "reconectar", "vigia_testar", "vigia_ligar"):
-                import vigia_whatsapp
                 if a == "reiniciar":
                     ok, t = atendimento.reiniciar_sessao()
                     return self._json({"ok": ok, "msg": t})

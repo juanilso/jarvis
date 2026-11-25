@@ -111,6 +111,30 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.32: segundo número de WhatsApp e treinador do atendimento
+
+**Segundo número (grátis):** outro WAHA, com QR code, base de respostas, configurações, vigia e estado próprios.
+```bash
+cd ~/jarvis/container && git pull && docker compose build
+./whatsapp2-configurar.sh "Nome da loja 2"        # desligar: ./whatsapp2-configurar.sh desligar
+```
+- Painel → 📱: botões no topo para trocar entre os números (tudo abaixo passa a ser do número escolhido).
+- As mensagens do número 2 vão direto do WAHA ao painel (endereço com senha, só na rede interna), sem n8n.
+- Avisos no Telegram vêm com o nome do número: 【Loja 2】. Comandos: `/atendimento 2`, `/whatsapp 2 testar`,
+  `/assumir 2 <número>` (sem o "2", o Jarvis procura em qual número a conversa está).
+- O número 1 continua exatamente como antes (n8n). Pagamentos, consulta e teste grátis seguem no número 1.
+
+**Treinador do atendimento:** toda segunda (fluxo n8n "Jarvis · Treinador do atendimento", importe e ative) ele lê
+as conversas da semana de cada número, aponta onde o robô se perdeu e manda no Telegram o relatório + a base
+sugerida (trechos novos com "(novo)"). Nada muda sem você: `/treinar aplicar` · `/treinar descartar` ·
+`/treinar 2 aplicar`, ou no painel 📱 → 🎓 Treinador (Analisar agora · Revisar na base · Aplicar · Descartar).
+A base anterior fica guardada. Usa o modelo mais forte (alguns centavos por semana).
+- O atendimento passou a guardar um diário das conversas por 35 dias (sem o número do cliente) para o treinador.
+```bash
+docker compose --profile automacoes exec -T -u node n8n n8n import:workflow --input=/opt/jarvis-n8n/fluxos/jarvisRotina0010.json
+```
+- Restauração: branch `versao-1.31.0`.
+
 ## Jarvis 1.31: atendimento do WhatsApp que lê e pensa antes de responder
 
 - Antes de cada resposta o robô **pensa** (o que o cliente disse, o que já se sabe, o que falta, o que a base manda)

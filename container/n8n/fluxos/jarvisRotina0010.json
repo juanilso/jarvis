@@ -1,0 +1,94 @@
+{
+  "id": "jarvisRotina0010",
+  "name": "Jarvis · Treinador do atendimento",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7,
+              "triggerAtMinute": 10
+            }
+          ]
+        }
+      },
+      "id": "655457b0-d812-4b1b-99b5-8e1eae097950",
+      "name": "Toda segunda, 7h10",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.JARVIS_GATILHO_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.JARVIS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"rotina\": \"Treinador do atendimento (semanal)\",\n  \"acao\": \"treinar_atendimento\",\n  \"linha\": \"todas\"\n}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "433d6a40-5680-4590-8686-ea41d102d735",
+      "name": "Analisar a semana",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Treinador do atendimento\nToda segunda o Jarvis lê as conversas do WhatsApp da semana (todos os números), aponta onde o robô se perdeu e manda no seu Telegram o relatório e a **base sugerida**.\n\nNada muda sozinho: aprove com `/treinar aplicar` (ou `/treinar 2 aplicar`) ou no painel 📱 → Treinador.\n\nAtive no botão **Active**.",
+        "height": 280,
+        "width": 460
+      },
+      "id": "10600026-fbe8-4a9b-aef9-7ae8b2c0840e",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -340
+      ]
+    }
+  ],
+  "connections": {
+    "Toda segunda, 7h10": {
+      "main": [
+        [
+          {
+            "node": "Analisar a semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

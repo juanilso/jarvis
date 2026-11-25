@@ -24,6 +24,7 @@ import atendimento as at
 INTERVALO = max(2, int(os.environ.get("JARVIS_VIGIA_MIN", "5"))) * 60
 N8N_URL = os.environ.get("N8N_URL", "http://n8n:5678").rstrip("/")
 ARQ = os.path.join(at.DIR, "vigia.json")
+USA_N8N = True  # o número 2 recebe direto do WAHA (sem n8n): veja linhas.py
 _lock = threading.Lock()
 _rodando = {"ativo": False}
 
@@ -194,14 +195,14 @@ def checar(consertar=True, avisar=True):
         if ok and "agora" in t:
             consertos.append("webhook/histórico gravados de novo na sessão")
 
-        cod, t = _testar_n8n()
+        cod, t = _testar_n8n() if USA_N8N else ("ok", "mensagens chegam direto do WhatsApp ao Jarvis (sem n8n)")
         if cod == "inativo" and consertar:
             ok2, t2 = republicar_fluxo()
             consertos.append(t2)
             if ok2:
                 time.sleep(3)
                 cod, t = _testar_n8n()
-        item(cod == "ok", "n8n recebe e repassa ao Jarvis", t)
+        item(cod == "ok", "n8n recebe e repassa ao Jarvis" if USA_N8N else "Recebimento direto", t)
 
         # mensagens de clientes que chegaram muito atrasadas desde o último teste (sintoma de recebimento travado)
         ult = d.get("ultimo_teste_t", time.time() - INTERVALO)
@@ -259,7 +260,8 @@ def _fechar(d, passos, consertos, lista, avisar, qr=False):
             if lista:
                 linhas += ["", "📵 Clientes que escreveram e não receberam resposta (responda por você):"] + \
                           [f"• {x['nome'] or x['numero']} ({x['numero']}) há {x['min']} min: “{x['texto']}”" for x in lista[:15]]
-            linhas.append("\n/whatsapp testar · /whatsapp reiniciar · /whatsapp reconectar")
+            c = f"/whatsapp {at.CMD_LINHA}"
+            linhas.append(f"\n{c}testar · {c}reiniciar · {c}reconectar")
             _avisar("\n".join(linhas))
             if qr:
                 mandar_qr_depois(0)

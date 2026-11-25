@@ -20,6 +20,7 @@ import urllib.request
 import atend_config as C
 import jarvis_core as core
 
+LINHA, NOME, CMD_LINHA = 1, "", ""  # número do WhatsApp (o 2 é uma cópia deste módulo: veja linhas.py)
 DIR = os.path.join(core.CONFIG_DIR, "atendimento")
 ESTADO = os.path.join(DIR, "estado.json")
 FAQ = os.environ.get("ATENDIMENTO_FAQ", os.path.join(core.WORKSPACE, ".jarvis-atendimento", "atendimento.md"))
@@ -152,6 +153,26 @@ def _guardar(chat, papel, texto):
         json.dump(msgs[-14:], f, ensure_ascii=False)
 
 
+def diario(chat, tipo, texto, **extra):
+    """Diário das conversas para o treinador (35 dias). Sem número: o cliente vira um código."""
+    try:
+        pasta = os.path.join(DIR, "diario")
+        os.makedirs(pasta, exist_ok=True)
+        hoje = time.strftime("%Y-%m-%d")
+        arq = os.path.join(pasta, hoje + ".jsonl")
+        if not os.path.exists(arq):  # um dia novo: apaga os antigos
+            corte = time.time() - 35 * 86400
+            for n in os.listdir(pasta):
+                if n.endswith(".jsonl") and os.path.getmtime(os.path.join(pasta, n)) < corte:
+                    os.remove(os.path.join(pasta, n))
+        linha = {"t": int(time.time()), "c": hashlib.sha256(chat.encode()).hexdigest()[:10], "p": tipo,
+                 "x": str(texto)[:1500], **extra}
+        with open(arq, "a", encoding="utf-8") as f:
+            f.write(json.dumps(linha, ensure_ascii=False) + "\n")
+    except Exception as e:  # noqa: BLE001
+        print("diário do atendimento:", e, flush=True)
+
+
 def _hash(texto):
     return hashlib.sha256(re.sub(r"\s+", " ", texto.strip()).encode()).hexdigest()[:16]
 
@@ -189,12 +210,13 @@ class ErroModelo(Exception):
 _MODELO_ENV = os.environ.get("ATENDIMENTO_MODELO")  # o que você definiu no .env (lido uma vez, na partida)
 
 
-def _modelos():
+def _modelos(forte=None):
     vistos, lista = set(), []
     rapidos = (os.environ.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"), "claude-haiku-5-5")
     fortes = (os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL"), "claude-sonnet-5-5")
-    ordem = fortes + rapidos if C.recurso("ia_caprichada") else rapidos + fortes
-    escolhido = os.environ.get("ATENDIMENTO_MODELO_FIXO") or (None if C.recurso("ia_caprichada") else _MODELO_ENV)
+    forte = C.recurso("ia_caprichada") if forte is None else forte
+    ordem = fortes + rapidos if forte else rapidos + fortes
+    escolhido = os.environ.get("ATENDIMENTO_MODELO_FIXO") or (None if forte else _MODELO_ENV)
     for m in (escolhido,) + ordem:
         if m and m not in vistos:
             vistos.add(m)
@@ -262,7 +284,7 @@ def _lembrar_frase(resposta):
         _salvar_estado(e)
 
 
-def _chamar_modelo(sistema, msgs, max_tokens=450, temperatura=None):
+def _chamar_modelo(sistema, msgs, max_tokens=450, temperatura=None, forte=None, tempo=60):
     """Chamada ao modelo do gateway (Anthropic Messages), com a lista de modelos de reserva."""
     base = (os.environ.get("ANTHROPIC_BASE_URL") or "https://api.anthropic.com").rstrip("/")
     url = base + ("/messages" if base.endswith("/v1") else "/v1/messages")
@@ -270,17 +292,17 @@ def _chamar_modelo(sistema, msgs, max_tokens=450, temperatura=None):
     cab = {"content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": chave,
            "authorization": f"Bearer {chave}", "user-agent": UA, "accept": "application/json"}
     erros = []
-    for modelo in _modelos():
+    for modelo in _modelos(forte):
         corpo = {"model": modelo, "max_tokens": max_tokens, "system": sistema, "messages": msgs}
         if temperatura is not None:
             corpo["temperature"] = temperatura
         req = urllib.request.Request(url, data=json.dumps(corpo).encode(), headers=cab, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=tempo) as r:
                 j = json.loads(r.read().decode("utf-8", "replace"))
             texto = "".join(b.get("text", "") for b in j.get("content", []) if b.get("type") == "text").strip()
             if texto:
-                if modelo != os.environ.get("ATENDIMENTO_MODELO"):
+                if forte is None and modelo != os.environ.get("ATENDIMENTO_MODELO"):
                     os.environ["ATENDIMENTO_MODELO"] = modelo
                 return texto
             erros.append(f"{modelo}: resposta vazia")
@@ -713,8 +735,15 @@ def qr_png():
 
 # ------------------------------------------------------------------ regras do atendimento
 def _avisar_dono(texto):
+    import linhas
     import rotinas
-    rotinas.avisar_telegram(texto)
+    rotulo = NOME or (linhas.nome(1) if linhas.ativa(2) else "")
+    rotinas.avisar_telegram(f"【{rotulo}】 {texto}" if rotulo else texto)
+
+
+def _vigia():
+    import linhas
+    return linhas.modulos(LINHA)[1]
 
 
 def _numero(e, chat):
@@ -741,7 +770,7 @@ def _chamar_dono(e, chat, nome, motivo):
     _avisar_dono(f"📞 Atendimento: {nome or numero} ({numero}) precisa de você.\nMotivo: {motivo}\n\n{resumo}\n\n"
                  f"O robô continua conversando até você responder pelo WhatsApp; aí ele se cala e volta sozinho "
                  f"{int(_seg_humano() // 60)} min depois da sua última mensagem.\n"
-                 f"Calar agora: /assumir {numero} · devolver depois: /devolver {numero}")
+                 f"Calar agora: /assumir {CMD_LINHA}{numero} · devolver depois: /devolver {CMD_LINHA}{numero}")
     return True
 
 
@@ -952,6 +981,7 @@ def atender(dados):
                 return {"responder": False, "motivo": "você assumiu com #eu"}
             if not C.recurso("calar_quando_respondo") and not texto.lower().startswith("#bot"):
                 _guardar(chat, "dono", texto)  # o robô segue atendendo e sabe o que você disse
+                diario(chat, "dono", texto)
                 e.get("esperando", {}).pop(chat, None)
                 _evento(e, chat, "💬 você respondeu (robô continua atendendo: modo sem pausa)", texto)
                 _salvar_estado(e)
@@ -964,6 +994,7 @@ def atender(dados):
             e.setdefault("humano", {})[chat] = time.time() + _seg_humano()  # você respondeu: o robô se cala
             e.get("esperando", {}).pop(chat, None)
             _guardar(chat, "dono", texto)
+            diario(chat, "dono", texto)
             _evento(e, chat, f"🙋 você respondeu: robô calado até {int(_seg_humano() // 60)} min sem você", texto)
             _salvar_estado(e)
             return {"responder": False, "motivo": "você assumiu a conversa"}
@@ -1102,6 +1133,9 @@ def _responder(chat, nome, minha):
             resposta = resposta.replace("[[HUMANO]]", "").strip() or "Já avisei o atendente, ele te responde em breve. 🙌"
             _chamar_dono(e, chat, nome, "o pedido precisa de uma pessoa")
         resposta = sem_marca_ia(resposta)[:1500]
+        diario(chat, "cliente", texto)
+        diario(chat, "robo", resposta, ficha=ficha or {}, humano=chat in e.get("esperando", {}),
+               erro=bool(erro))
         _evento(e, chat, "💬 respondeu (você foi avisado)" if chat in e.get("esperando", {}) else "💬 respondeu",
                 texto.replace("\n", " / ")[:200])
         _guardar(chat, "bot", resposta)
@@ -1192,7 +1226,7 @@ def comando(cmd, arg, local=False):
         if r:
             return r
     if cmd == "/whatsapp":
-        import vigia_whatsapp
+        vigia_whatsapp = _vigia()
         a = arg.lower().strip()
         if a == "reiniciar":
             ok, t = reiniciar_sessao()
