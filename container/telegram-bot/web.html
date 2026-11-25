@@ -141,14 +141,65 @@ footer{position:relative}
 #menuCmd div{display:flex;gap:12px;padding:7px 12px;cursor:pointer;font-size:13px}
 #menuCmd div b{font:500 13px var(--mono);color:var(--c2);min-width:150px}#menuCmd div span{color:var(--m)}
 #menuCmd div.sel,#menuCmd div:hover{background:rgba(56,189,248,.14)}
-@media (max-width:980px){
-  main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);overflow:auto}
-  #agentes,#projeto{display:none}
-  main.abrir #agentes,main.abrir #projeto{display:block}
-  #orb{width:250px;height:255px}
-  #btnPainel{display:inline-block}
-  #centro{min-height:60vh}
+/* ===== Layout A · Cockpit (1.33) ===== */
+#app{max-width:1600px}
+main{grid-template-columns:260px minmax(0,1fr) 290px}
+#ferr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:auto}
+#ferr button,#parar,#btnPainel{display:inline-flex;align-items:center;gap:6px;min-height:38px}
+.rot{font-size:12.5px;color:#b9d6e6}
+#parar{border-color:rgba(251,113,133,.5);background:rgba(60,12,20,.6)}#parar .rot{color:#ffb4c0}
+#btnFerr{display:none}
+.pil{font:11px var(--mono);color:#7af0d6;background:rgba(10,45,45,.7);border:1px solid rgba(52,211,153,.4);padding:5px 10px;border-radius:20px;white-space:nowrap}
+#centro{grid-template-rows:auto minmax(0,1fr)}
+#orbbox{position:relative;display:block;height:clamp(220px,44vh,420px);background:#030816;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+#orb,#orbbox #orb{position:absolute;inset:0;width:100%;height:100%}
+#estadoOrb{position:absolute;left:16px;bottom:14px;z-index:2;min-width:0;max-width:calc(100% - 32px);text-shadow:0 1px 4px #000}
+#estadoOrb small{max-width:420px}#aoVivo{max-width:420px;margin-top:6px}
+#abas{display:none}
+.agc{border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:13px;color:#9fc3d6}
+.agc .l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.agc .st{font:11px var(--mono);color:var(--m);white-space:nowrap}
+.agc.ativo{background:rgba(11,34,48,.9);border:1px solid rgba(56,189,248,.55);color:var(--t)}
+.agc.ativo b{font-weight:600}.agc.ativo .st{color:#7af0d6}
+.agc .ds{display:block;font-size:12px;color:#9fc3d6;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agc .ind{display:block;height:3px;margin-top:7px;border-radius:3px;background:linear-gradient(90deg,transparent,var(--c),transparent) 0 0/40% 100% no-repeat,#12324a;animation:ind 1.4s linear infinite}
+@keyframes ind{from{background-position:-40% 0,0 0}to{background-position:140% 0,0 0}}
+.agc.ok .st{color:var(--ok)}.agc.erro .st{color:var(--er)}
+.agc.hermes{border-color:rgba(255,196,90,.6)}.agc.hermes b,.agc.hermes .st{color:#ffc45a}
+.agMais{width:100%;margin-top:6px;border-style:dashed;color:var(--m);background:none;min-height:38px}
+.logo{margin-right:0}
+#estadoOrb{background:rgba(3,8,22,.62);padding:6px 10px;border-radius:8px}
+@media (max-width:1600px){.rot2{display:none}.logo small{display:none}}
+@media (max-width:1250px){.rot{display:none}#parar .rot{display:inline}}
+@media (max-width:1100px){
+  #btnFerr{display:inline-block}
+  #ferr{display:none;position:absolute;right:14px;top:58px;z-index:15;flex-direction:column;align-items:stretch;background:#06111b;border:1px solid var(--ln2);border-radius:10px;padding:10px;min-width:220px}
+  header{position:relative}header.ferrAberto #ferr{display:flex}
+  #ferr .rot,#ferr .rot2{display:inline}#parar .rot{display:none}
+  main{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr)}
+  #agentes{display:block;padding:8px 10px;overflow-x:auto;overflow-y:hidden}#agentes h3{display:none}
+  #listaAg{display:flex;gap:8px;width:max-content}
+  .agc{margin:0;white-space:nowrap;border:1px solid var(--ln);border-radius:20px;padding:8px 12px}.agc .ds,.agc .ind{display:none}
+  .agc.ativo .ds{display:inline;margin:0 0 0 6px}.agMais{width:auto;margin:0;border-radius:20px;padding:0 12px}
+  #projeto{display:none;position:fixed;right:0;top:0;bottom:0;width:min(380px,92vw);z-index:16;border-radius:0}
+  main.abrir #projeto{display:block}
 }
+@media (max-width:700px){
+  header{padding:8px 10px;gap:6px}.logo small{display:none}.logo{font-size:13px;letter-spacing:.25em}
+  #pilAg,#agentesBtn{display:none}#btnFerr,#btnPainel{display:none}#parar .rot{display:none}
+  #ferr{position:fixed;left:0;right:0;top:auto;bottom:64px;border-radius:14px 14px 0 0;display:none;flex-direction:row;flex-wrap:wrap}
+  #ferr>*{flex:1 1 45%}body.aba-ferr #ferr{display:flex}
+  #orbbox{height:240px}
+  main{padding:8px 10px;gap:8px}
+  #abas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--ln);background:#05090f;order:3}
+  #abas button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;color:#9fc3d6;padding:8px 0 max(8px,env(safe-area-inset-bottom));min-height:56px}
+  #abas button b{font-size:16px}#abas button.on{color:var(--c2)}
+  #app{grid-template-rows:auto 1fr auto auto}footer{order:2;padding-bottom:10px}
+  body.aba-agentes #agentes{position:fixed;inset:auto 0 64px 0;max-height:70vh;overflow:auto;z-index:16;border-radius:14px 14px 0 0;padding:12px;background:#06111b}
+  body.aba-projeto #projeto{background:#06111b}#ferr{background:#06111b}
+  body.aba-agentes #listaAg{display:block;width:auto}body.aba-agentes .agc{white-space:normal;border-radius:10px}body.aba-agentes .agc .ds,body.aba-agentes .agc .ind{display:block}
+  body.aba-projeto #projeto{display:block;inset:0 0 64px 0;width:auto}
+}
+@media (min-width:1101px){#btnPainel{display:none}}
 </style>
 </head>
 <body>
@@ -503,31 +554,39 @@ footer{position:relative}
   <header>
     <div class="logo">JARVIS<small>orquestrador de projetos</small></div>
     <select id="projetoSel" title="Projeto"></select>
+    <span id="pilAg" class="pil" hidden></span>
+    <button id="btnFerr" title="Ferramentas">☰ Ferramentas</button>
+    <nav id="ferr" aria-label="Ferramentas">
     <select id="audio" title="Resposta em áudio">
       <option value="auto">🔊 auto</option><option value="sempre">🔊 sempre</option><option value="nunca">🔇 nunca</option>
     </select>
     <button id="agentesBtn" title="Avisos dos agentes">👥 on</button>
-    <button id="btnGestao" title="Projetos e GitHub">📁</button>
-    <button id="btnJg" title="Jogos do dia (futebol brasileiro)">⚽</button>
-    <button id="btnWa" title="WhatsApp: atendimento automático">📱</button>
-    <button id="btnKb" title="Base de conhecimento">🧠</button>
-    <button id="btnPrevia" title="Prévia do site do projeto">👁</button>
-    <button id="btnSite" title="Prints e teste automático do site">🖼</button>
-    <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺</button>
-    <button onclick="location.href='/escritorio'" title="Escritório virtual: agentes e rotinas">🏢</button>
-    <button id="btnGuia" title="Guia de uso do Jarvis">❔</button>
-    <button id="btnPainel" title="Mostrar painéis">📋</button>
-    <button id="novo" title="Conversa nova neste projeto">🆕</button>
-    <button id="parar" title="Parar">⛔</button>
+    <button id="btnGestao" title="Projetos e GitHub">📁<span class="rot">Projetos</span></button>
+    <button id="btnPrevia" title="Prévia do site do projeto">👁<span class="rot">Prévia</span></button>
+    <button id="btnSite" title="Prints e teste automático do site">🖼<span class="rot">Prints</span></button>
+    <button id="btnWa" title="WhatsApp: atendimento automático">📱<span class="rot rot2">WhatsApp</span></button>
+    <button id="btnJg" title="Jogos do dia (futebol brasileiro)">⚽<span class="rot rot2">Jogos</span></button>
+    <button id="btnKb" title="Base de conhecimento">🧠<span class="rot rot2">Base</span></button>
+    <button id="btnMapa" title="Mapa do sistema (Floorplan)">🗺<span class="rot rot2">Mapa</span></button>
+    <button onclick="location.href='/escritorio'" title="Escritório virtual: agentes e rotinas">🏢<span class="rot rot2">Escritório</span></button>
+    <button id="btnGuia" title="Guia de uso do Jarvis">❔<span class="rot rot2">Guia</span></button>
+    <button id="novo" title="Conversa nova neste projeto">🆕<span class="rot rot2">Nova conversa</span></button>
+    </nav>
+    <button id="btnPainel" title="Projeto: estado, custos e decisões">📋 Projeto</button>
+    <button id="parar" title="Parar">⛔<span class="rot">Parar</span></button>
   </header>
   <main id="main">
-    <section class="pn" id="agentes"><h3>Agentes</h3><div id="listaAg"></div></section>
+    <section class="pn" id="agentes"><h3>Equipe</h3><div id="listaAg"></div></section>
     <section id="centro">
       <div id="orbbox"><canvas id="orb"></canvas><div id="estadoOrb">em espera<small id="estadoTxt"></small><div id="aoVivo"><div id="cron"></div><div id="feed"></div></div></div></div>
       <div class="pn" id="logbox"><h3>Registro</h3><div id="log"></div></div>
     </section>
     <section class="pn" id="projeto"><h3>Projeto</h3><div id="infoProj" class="vazio">Escolha um projeto.</div></section>
   </main>
+  <nav id="abas" aria-label="Seções">
+    <button data-aba="conversa" class="on"><b>◉</b>Conversa</button><button data-aba="agentes"><b>◎</b>Agentes</button>
+    <button data-aba="projeto"><b>▤</b>Projeto</button><button data-aba="ferr"><b>⋯</b>Ferramentas</button>
+  </nav>
   <footer>
     <div id="menuCmd" role="listbox"></div>
     <button id="mic" title="Gravar áudio (clique para começar e para enviar)">🎙️</button>
@@ -552,14 +611,24 @@ function add(cls,html){const d=document.createElement("div");d.className=cls;d.i
 /* ---------- estado visual ---------- */
 function setModo(m,txt){modo=m;$("estadoOrb").firstChild.nodeValue={espera:"em espera",ouvindo:"ouvindo",pensando:"processando",falando:"falando"}[m];$("estadoTxt").textContent=txt||""}
 const ROBO=`<svg class="robo" viewBox="0 0 40 40" aria-hidden="true"><line class="haste" x1="20" y1="5" x2="20" y2="10"/><circle class="ant" cx="20" cy="4" r="2.6"/><rect class="orelha" x="4" y="15" width="4" height="7" rx="1.5"/><rect class="orelha" x="32" y="15" width="4" height="7" rx="1.5"/><rect class="cab" x="8" y="10" width="24" height="17" rx="5"/><circle class="olho" cx="15" cy="18" r="2.8"/><circle class="olho" cx="25" cy="18" r="2.8"/><line class="boca" x1="16" y1="23" x2="24" y2="23"/><rect class="corpo" x="12" y="29" width="16" height="9" rx="3"/></svg>`;
+let agVerOciosos=false;
+function tempo(ms){const s=Math.max(0,Math.round((Date.now()-ms)/1000));return s<60?s+"s":s<3600?Math.floor(s/60)+"m"+String(s%60).padStart(2,"0")+"s":Math.floor(s/3600)+"h"}
 function desenharAgentes(){
-  $("listaAg").innerHTML=AGENTES.filter(([n])=>n!=="hermes"||hermesAtivo||agEstado.hermes).map(([n,e])=>{const s=n==="hermes"&&hermesAtivo?{c:"ativo hermes",t:"ativo",d:"ajudante (Hermes Agent)"}:(agEstado[n]||{c:"",t:"ocioso",d:""});
-    return `<div class="ag ${s.c}">${ROBO}<div class="nm"><span>${n}</span><span class="ds">${esc(s.d||"")}</span></div><span class="st">${esc(s.t)}</span></div>`}).join("");
+  const lista=AGENTES.filter(([n])=>n!=="hermes"||hermesAtivo||agEstado.hermes).map(([n])=>{
+    const s=n==="hermes"&&hermesAtivo?{c:"ativo hermes",d:"ajudante (Hermes Agent)",ini:(agEstado.hermes||{}).ini}:(agEstado[n]||{c:""});return{n,...s}});
+  const ativos=lista.filter(a=>(a.c||"").startsWith("ativo")),feitos=lista.filter(a=>a.c==="ok"||a.c==="erro").sort((a,b)=>(b.fim||0)-(a.fim||0)),
+    ociosos=lista.filter(a=>!a.c);
+  let h=ativos.map(a=>`<div class="agc ativo${a.c.includes("hermes")?" hermes":""}"><div class="l1"><b>${a.n}</b><span class="st">ativo${a.ini?" · "+tempo(a.ini):""}</span></div><span class="ds">${esc(a.d||"")}</span><i class="ind"></i></div>`).join("");
+  h+=feitos.map(a=>`<div class="agc ${a.c}"><div class="l1"><span>${a.n}</span><span class="st">${a.c==="erro"?"erro":"✓ há "+tempo(a.fim||Date.now())}</span></div></div>`).join("");
+  if(agVerOciosos||!ativos.length&&!feitos.length)h+=ociosos.map(a=>`<div class="agc"><div class="l1"><span>${a.n}</span><span class="st">ocioso</span></div></div>`).join("");
+  else if(ociosos.length)h+=`<button class="agMais" onclick="agVerOciosos=true;desenharAgentes()">+ ${ociosos.length} agentes ociosos</button>`;
+  $("listaAg").innerHTML=h;
+  const p=$("pilAg");p.hidden=!ativos.length;p.textContent=`● ${ativos.length} ${ativos.length>1?"agentes trabalhando":"agente trabalhando"}`;
 }
+setInterval(()=>{if(Object.values(agEstado).some(a=>a.c&&a.c!==""))desenharAgentes()},1000);
 function agente(ev){
-  if(ev.tipo==="agente_inicio") agEstado[ev.agente]={c:"ativo",t:"ativo",d:ev.descricao};
-  else{agEstado[ev.agente]={c:ev.erro?"erro":"ok",t:ev.erro?"erro":`ok ${ev.segundos}s`,d:(agEstado[ev.agente]||{}).d};
-    setTimeout(()=>{if(agEstado[ev.agente]&&agEstado[ev.agente].c!=="ativo"){delete agEstado[ev.agente];desenharAgentes()}},30000)}
+  if(ev.tipo==="agente_inicio") agEstado[ev.agente]={c:"ativo",t:"ativo",d:ev.descricao,ini:Date.now()};
+  else agEstado[ev.agente]={c:ev.erro?"erro":"ok",t:ev.erro?"erro":`ok ${ev.segundos}s`,d:(agEstado[ev.agente]||{}).d,fim:Date.now()};
   desenharAgentes();
 }
 
@@ -678,6 +747,12 @@ $("guia").onclick=e=>{if(e.target.id==="guia")$("guia").classList.remove("aberto
 $("audio").onchange=e=>api("/api/config",{audio:e.target.value});
 $("agentesBtn").onclick=async()=>{agentesOn=!agentesOn;await api("/api/config",{agentes:agentesOn});$("agentesBtn").textContent="👥 "+(agentesOn?"on":"off")};
 $("btnPainel").onclick=()=>$("main").classList.toggle("abrir");
+$("btnFerr").onclick=e=>{e.stopPropagation();document.querySelector("header").classList.toggle("ferrAberto")};
+function abaCel(a){document.body.classList.remove("aba-agentes","aba-projeto","aba-ferr");if(a!=="conversa")document.body.classList.add("aba-"+a);
+  document.querySelectorAll("#abas button").forEach(b=>b.classList.toggle("on",b.dataset.aba===a));if(a==="agentes"){agVerOciosos=true;desenharAgentes()}}
+document.querySelectorAll("#abas button").forEach(b=>b.onclick=()=>abaCel(document.body.classList.contains("aba-"+b.dataset.aba)?"conversa":b.dataset.aba));
+document.addEventListener("click",e=>{if(!e.target.closest("#ferr")&&!e.target.closest("#btnFerr"))document.querySelector("header").classList.remove("ferrAberto");
+  if(e.target.closest("#ferr button")&&document.body.classList.contains("aba-ferr"))abaCel("conversa")});
 /* ---------- base de conhecimento ---------- */
 let kbTipo="";
 function md(t){t=t.replace(/^---[\s\S]*?---\s*/,"");let h=esc(t);
@@ -1055,9 +1130,9 @@ function frame(t){
   sobe=sobe.filter(s=>{s.y-=s.v*(1+nivel*2);s.a-=.008;const[X,Y]=P(s.x+(s.x-BASE.x)*.002*(BASE.y-s.y),s.y);
     g.fillStyle=`rgba(${cor},${Math.max(0,s.a)*.8})`;g.fillRect(X,Y,1.6*d,1.6*d);return s.a>0&&s.y>30});
   /* esfuma as bordas da imagem para fundir com o painel */
-  g.save();g.globalCompositeOperation="destination-in";g.translate(ox+IW*k/2,oy+IH*k*.5);g.scale(1,IH/IW*1.02);
-  const vm=g.createRadialGradient(0,0,IW*k*.34,0,0,IW*k*.5);vm.addColorStop(0,"rgba(0,0,0,1)");vm.addColorStop(1,"rgba(0,0,0,0)");
-  g.fillStyle=vm;g.fillRect(-IW*k,-IW*k,IW*k*2,IW*k*2);g.restore();
+  /* sem degradê: a imagem ocupa a altura toda sobre o mesmo azul das bordas; só uma emenda fina nas laterais */
+  if(ox>1){const lf=Math.min(24*d,IW*k*.04);for(const[x0,x1]of[[ox,ox+lf],[ox+IW*k,ox+IW*k-lf]]){const lg=g.createLinearGradient(x0,0,x1,0);
+    lg.addColorStop(0,"rgba(3,8,22,1)");lg.addColorStop(1,"rgba(3,8,22,0)");g.globalCompositeOperation="source-over";g.fillStyle=lg;g.fillRect(Math.min(x0,x1),oy,lf,IH*k)}}
   g.globalCompositeOperation="source-over";
   requestAnimationFrame(frame);
 }

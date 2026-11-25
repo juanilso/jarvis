@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.33: painel novo (layout A · Cockpit) para PC, tablet e celular
+
+- **Holograma em destaque:** o Jarvis/Hermes ocupa a altura toda de um quadro próprio, sem degradê; o status
+  (processando, agentes da vez) fica no canto, por cima.
+- **Equipe:** cartões dos agentes trabalhando (o que cada um está fazendo, tempo e barra de atividade), os que
+  terminaram com "✓ há X min" e os ociosos recolhidos em "+N agentes ociosos". No topo: "● N agentes trabalhando".
+- **Ferramentas com nome** no PC (as menos usadas ficam só com ícone em telas menores que 1600px).
+- **Tablet:** a equipe vira uma faixa de fichas que rola de lado; ferramentas no botão "☰ Ferramentas" e o painel
+  do projeto no botão "📋 Projeto".
+- **Celular:** holograma no alto, conversa, e abas embaixo: Conversa · Agentes · Projeto · Ferramentas.
+- Depois de atualizar, aperte Ctrl+F5 (ou feche e abra o painel no celular). Restauração: branch `versao-1.32.1`.
+
 ## Jarvis 1.32.1: agentes trabalhando de verdade e holograma novo
 
 - **Agentes:** o Claude Code 2.1+ passou a rodar subagentes em segundo plano por padrão; o painel via o agente
