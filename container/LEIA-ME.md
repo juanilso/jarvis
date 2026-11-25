@@ -111,6 +111,21 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.41: servidores (SSH, SFTP e MySQL/MariaDB) para homologar na hora
+
+- O Jarvis acessa os servidores cadastrados para reproduzir o problema, ler logs, consultar o banco, corrigir e
+  validar no mesmo instante: `jarvis-servidor ssh | sql | baixar | enviar | testar`.
+- **Homologação:** lê e altera, sempre com backup antes. Arquivo substituído → cópia no próprio servidor em
+  `~/.jarvis-backup/<data>/`. SQL que altera dados → dump das tabelas em `.jarvis-backups/` (desfazer:
+  `jarvis-servidor restaurar-sql <srv> <arquivo>`).
+- **Produção:** somente leitura (comandos de consulta, SELECT/SHOW, download). Enviar arquivo e alterar banco são
+  bloqueados pela ferramenta, não só por regra.
+- Sempre bloqueados: DROP DATABASE, usuários/permissões do banco, `rm -rf /`, desligar/reiniciar o servidor.
+- Cadastro: `./servidores-configurar.sh` (host, usuário, pasta, banco; acesso pela chave SSH do Jarvis, recomendado,
+  ou por senha). As senhas ficam só no volume `servidores-segredos` (600) e são apagadas de qualquer saída.
+- `/servidores` lista os servidores e as últimas ações (auditoria) · `/servidores testar <nome>`.
+- A imagem ganhou `openssh-client` e `sshpass`: precisa de `docker compose build`. Restauração: `versao-1.40.0`.
+
 ## Jarvis 1.40: memória contínua
 
 - O Jarvis passa a lembrar o que aprende nas conversas, **em todos os projetos**: `memoria/geral.md` (vale para tudo:

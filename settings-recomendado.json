@@ -49,7 +49,9 @@
       "Bash(adb shell am:*)",
       "Bash(jarvis-hermes:*)",
       "Bash(jarvis-busca:*)",
-      "Bash(jarvis-tendencias:*)"
+      "Bash(jarvis-tendencias:*)",
+      "Bash(jarvis-servidor:*)",
+      "Bash(jarvis-memoria:*)"
     ],
     "ask": [
       "Bash(composer require:*)",
@@ -79,7 +81,10 @@
       "Read(./**/*.keystore)",
       "Read(./keystore.properties)",
       "mcp__plugin_jarvis_playwright__browser_run_code_unsafe",
-      "mcp__playwright__browser_run_code_unsafe"
+      "mcp__playwright__browser_run_code_unsafe",
+      "Read(/segredos-servidores/**)",
+      "Edit(/segredos-servidores/**)",
+      "Bash(cat /segredos-servidores:*)"
     ]
   }
 }

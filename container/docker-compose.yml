@@ -20,6 +20,7 @@ services:
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace   # pasta compartilhada com o PC (outras IAs/IDE enxergam)
       - claude-config:/home/dev/.claude              # login e configurações do Claude persistem
+      - servidores-segredos:/segredos-servidores     # SSH/banco dos servidores (./servidores-configurar.sh)
       - dev-home:/home/dev/.cache
     ports:
       - "127.0.0.1:8080:8080"   # php -S 0.0.0.0:8080 -t public  -> abra http://localhost:8080 no PC
@@ -53,6 +54,7 @@ services:
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace
       - claude-config:/home/dev/.claude
+      - servidores-segredos:/segredos-servidores
       - dev-home:/home/dev/.cache          # modelo de transcrição fica salvo aqui
     depends_on: [dev]
     mem_limit: 3g
@@ -109,6 +111,7 @@ services:
     volumes:
       - ${PROJETOS_DIR:-../../projetos}:/workspace
       - atendimento-segredos:/segredos      # config da API do painel (token): só este serviço monta
+      - servidores-segredos:/segredos-servidores
       - claude-config:/home/dev/.claude
       - dev-home:/home/dev/.cache
     ports:
@@ -259,6 +262,7 @@ services:
 volumes:
   claude-config:
   atendimento-segredos:
+  servidores-segredos:
   pagamentos-sessao:
   hermes-data:
   n8n-data:

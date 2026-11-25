@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""SSH, SFTP e MySQL/MariaDB dos servidores cadastrados (homologação: lê e altera com backup; produção: só leitura).
+Ajuda: jarvis-servidor --help"""
+import os
+import sys
+
+sys.path.insert(0, os.environ.get("JARVIS_BOTS", "/opt/jarvis-bots"))
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import servidores  # noqa: E402
+
+sys.exit(servidores.main())

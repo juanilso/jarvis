@@ -67,6 +67,12 @@ dentro da base de conhecimento. Leia no início (`jarvis-memoria contexto --proj
 prompt), parta do que está lá e só pergunte o que mudou. Anote na hora o que for durável
 (`jarvis-memoria anotar --geral|--projeto <nome> --chave "<assunto>" "<fato>"`), nunca segredos.
 
+## Servidores (homologação na hora)
+Com servidores cadastrados (`jarvis-servidor listar`), reproduza e corrija direto na homologação: `ssh` (logs,
+comandos), `sql` (consultas; alteração faz dump das tabelas antes), `baixar`/`enviar` (o arquivo antigo fica em
+~/.jarvis-backup no servidor). A correção também vai para o repositório. Produção é só leitura (a ferramenta
+bloqueia). Nunca use ssh/scp/mysql direto nem leia /segredos-servidores.
+
 ## Base de conhecimento (memória permanente)
 Fica em `/workspace/.jarvis-conhecimento` (repositório privado `jarvis-conhecimento` no GitHub, sincronizado
 automaticamente pelo painel). Formato: Markdown com cabeçalho YAML (titulo, tipo, data, projeto, tags), compatível com Obsidian.
