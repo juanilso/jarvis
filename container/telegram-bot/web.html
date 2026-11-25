@@ -58,7 +58,14 @@ audio{width:100%;margin-top:6px;height:34px;filter:invert(.85) hue-rotate(160deg
 .vazio{color:var(--m);font-size:12.5px}
 footer{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--ln);padding-bottom:max(10px,env(safe-area-inset-bottom))}
 textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
-#mic,#enviar{width:50px;height:46px;font-size:20px;padding:0}
+#mic,#enviar,#clipe{width:50px;height:46px;font-size:20px;padding:0}
+#anexosFila{display:none;gap:8px;padding:8px 14px 0;flex-wrap:wrap;border-top:1px solid var(--ln)}#anexosFila.tem{display:flex}
+.anx{position:relative;width:64px;height:64px;border:1px solid var(--ln2);border-radius:8px;overflow:hidden;background:#06111b;display:flex;align-items:center;justify-content:center;font-size:24px}
+.anx img,.anx video{width:100%;height:100%;object-fit:cover}.anx .x{position:absolute;top:2px;right:2px;width:20px;height:20px;min-height:0;padding:0;border-radius:50%;font-size:11px;line-height:20px;background:#000a}
+.anx .pct{position:absolute;inset:auto 0 0 0;height:4px;background:var(--c2);transition:width .2s}.anx small{position:absolute;bottom:2px;left:3px;font-size:9px;color:#fff;text-shadow:0 0 3px #000}
+.msgAnx{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.msgAnx a{display:block;width:110px;height:80px;border-radius:6px;overflow:hidden;border:1px solid var(--ln)}
+.msgAnx img,.msgAnx video{width:100%;height:100%;object-fit:cover}.msgAnx .arq{display:flex;align-items:center;justify-content:center;font-size:12px;padding:4px;text-align:center;color:var(--m)}
+#app.arrastando footer{outline:2px dashed var(--c2);outline-offset:-4px}
 #mic.gravando{background:rgba(251,113,133,.25);border-color:var(--er);animation:pl 1s infinite}
 #btnPainel{display:none}
 #aoVivo{margin-top:10px;font:12px var(--mono);color:var(--m);letter-spacing:0;text-transform:none;max-width:280px}
@@ -206,7 +213,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   #abas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--ln);background:#05090f;order:3}
   #abas button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;color:#9fc3d6;padding:8px 0 max(8px,env(safe-area-inset-bottom));min-height:56px}
   #abas button b{font-size:16px}#abas button.on{color:var(--c2)}
-  #app{grid-template-rows:auto 1fr auto auto}footer{order:2;padding-bottom:10px}
+  #app{grid-template-rows:auto 1fr auto auto}footer{order:2;padding-bottom:10px}#anexosFila{order:2}
   body.aba-agentes #agentes{position:fixed;inset:auto 0 64px 0;max-height:70vh;overflow:auto;z-index:16;border-radius:14px 14px 0 0;padding:12px;background:#06111b}
   body.aba-projeto #projeto{background:#06111b}#ferr{background:#06111b}
   body.aba-agentes #listaAg{display:block;width:auto}body.aba-agentes .agc{white-space:normal;border-radius:10px}body.aba-agentes .agc .ds,body.aba-agentes .agc .ind{display:block}
@@ -646,8 +653,11 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <button data-aba="conversa" class="on"><b>◉</b>Conversa</button><button data-aba="agentes"><b>◎</b>Agentes</button>
     <button data-aba="projeto"><b>▤</b>Projeto</button><button data-aba="ferr"><b>⋯</b>Ferramentas</button>
   </nav>
+  <div id="anexosFila" aria-label="Anexos para enviar"></div>
   <footer>
     <div id="menuCmd" role="listbox"></div>
+    <button id="clipe" title="Anexar imagem, vídeo ou arquivo (também dá para colar com Ctrl+V ou arrastar)">📎</button>
+    <input type="file" id="clipeArq" multiple accept="image/*,video/*,.pdf,.txt,.csv,.json,.zip,.sql,.log,.docx,.xlsx" hidden>
     <button id="mic" title="Gravar áudio (clique para começar e para enviar)">🎙️</button>
     <textarea id="texto" placeholder="Fale ou escreva a demanda… ( / para comandos)"></textarea>
     <button id="enviar" title="Enviar">➤</button>
@@ -730,7 +740,7 @@ function mostrar(ev){
     if(ev.agente&&ev.agente!=="jarvis"&&agEstado[ev.agente]&&agEstado[ev.agente].c==="ativo"){agEstado[ev.agente].d=ev.texto;desenharAgentes()}
     if(carregado&&modo!=="falando"&&modo!=="ouvindo")setModo("pensando",ev.agente!=="jarvis"?ev.agente:"");return}
   if(ev.tipo==="resposta"||ev.tipo==="erro")fecharRun();
-  if(ev.tipo==="usuario")add("msg eu",esc(ev.texto)+h);
+  if(ev.tipo==="usuario")add("msg eu",esc(ev.texto)+htmlAnexos(ev.anexos)+h);
   else if(ev.tipo==="agente_inicio"){add("ev",`${ev.emoji} ${esc(ev.agente)} › ${esc(ev.descricao)}`);agente(ev);if(carregado)setModo("pensando",`${ev.agente}: ${ev.descricao}`)}
   else if(ev.tipo==="agente_fim"){add("ev "+(ev.erro?"erro":"ok"),`${ev.emoji} ${esc(ev.agente)} ${ev.erro?"✕ erro":"✓ concluiu"} (${ev.segundos}s)`);agente(ev)}
   else if(ev.tipo==="erro")add("msg jv err","⚠ "+esc(ev.texto)+h);
@@ -778,7 +788,31 @@ async function estado(){
 /* ---------- ações ---------- */
 function prepararAudio(){if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();analyser=ctx.createAnalyser();analyser.fftSize=256;analyser.connect(ctx.destination)}catch(e){}}if(ctx&&ctx.state!=="running")ctx.resume()}
 document.addEventListener("click",prepararAudio,{once:false});
-async function enviar(){const t=$("texto").value.trim();if(!t)return;const r=await api("/api/mensagem",{texto:t});if(r.erro)add("ev erro",esc(r.erro));else{$("texto").value="";setModo("pensando")}}
+let fila=[];  /* anexos do chat: {id,arquivo,tipo,nome,url,pct,erro} */
+function desenharFila(){const f=$("anexosFila");f.classList.toggle("tem",fila.length>0);
+  f.innerHTML=fila.map(a=>`<div class="anx" title="${esc(a.nome)}">${a.tipo==="imagem"?`<img src="${a.url}">`:a.tipo==="video"?`<video src="${a.url}" muted></video><small>▶ vídeo</small>`:"📄"}
+    ${a.arquivo?"":`<div class="pct" style="width:${a.pct||0}%"></div>`}${a.erro?'<small>erro</small>':""}<button class="x" data-id="${a.id}" title="Tirar">✕</button></div>`).join("");
+  f.querySelectorAll(".x").forEach(b=>b.onclick=()=>{fila=fila.filter(a=>a.id!=b.dataset.id);desenharFila()})}
+function anexar(arqs){for(const arq of arqs){if(!arq||!arq.size)continue;if(arq.size>500*1024*1024){add("ev erro",`${esc(arq.name)}: maior que 500 MB`);continue}
+  const a={id:Date.now()+Math.random(),nome:arq.name||"colado.png",tipo:arq.type.startsWith("image/")?"imagem":arq.type.startsWith("video/")?"video":"arquivo",url:URL.createObjectURL(arq),pct:0};
+  fila.push(a);desenharFila();
+  const x=new XMLHttpRequest();x.open("POST","/api/anexo?nome="+encodeURIComponent(a.nome));
+  x.upload.onprogress=e=>{if(e.lengthComputable){a.pct=Math.round(e.loaded/e.total*100);desenharFila()}};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(j.arquivo){a.arquivo=j.arquivo;a.tipo=j.tipo}else{a.erro=1;add("ev erro",esc(a.nome)+": "+esc(j.erro||"falha no envio"))}desenharFila()};
+  x.onerror=()=>{a.erro=1;desenharFila()};x.send(arq)}}
+$("clipe").onclick=()=>$("clipeArq").click();$("clipeArq").onchange=e=>{anexar([...e.target.files]);e.target.value=""};
+$("texto").addEventListener("paste",e=>{const fs=[...(e.clipboardData||{}).files||[]];if(fs.length){e.preventDefault();anexar(fs)}});
+let arrasto=0;document.addEventListener("dragenter",e=>{if([...e.dataTransfer.types].includes("Files")){arrasto++;$("app").classList.add("arrastando")}});
+document.addEventListener("dragleave",()=>{if(--arrasto<=0){arrasto=0;$("app").classList.remove("arrastando")}});
+document.addEventListener("dragover",e=>{if([...e.dataTransfer.types].includes("Files"))e.preventDefault()});
+document.addEventListener("drop",e=>{if(!e.dataTransfer.files.length)return;if(e.target.closest&&e.target.closest("#gestao,#jogos,#filmes"))return;e.preventDefault();arrasto=0;$("app").classList.remove("arrastando");anexar([...e.dataTransfer.files])});
+function htmlAnexos(lista){return lista&&lista.length?'<div class="msgAnx">'+lista.map(a=>{const u="/api/anexo/ver?n="+encodeURIComponent(a.n);
+  return a.tipo==="imagem"?`<a href="${u}" target="_blank"><img src="${u}" loading="lazy"></a>`:a.tipo==="video"?`<a href="${u}" target="_blank"><video src="${u}#t=0.5" preload="metadata" muted></video></a>`:`<a href="${u}" target="_blank" class="arq">📄 ${esc(a.n.replace(/^\d{8}-\d{6}-[0-9a-f]{6}-/,""))}</a>`}).join("")+"</div>":""}
+async function enviar(){const t=$("texto").value.trim();
+  if(fila.some(a=>!a.arquivo&&!a.erro)){add("ev","⏳ Esperando terminar o envio dos anexos…");return}
+  const nomes=fila.filter(a=>a.arquivo).map(a=>a.arquivo);if(!t&&!nomes.length)return;
+  const r=await api("/api/mensagem",nomes.length?{texto:t,anexos:nomes}:{texto:t});
+  if(r.erro)add("ev erro",esc(r.erro));else{$("texto").value="";fila=[];desenharFila();setModo("pensando")}}
 $("enviar").onclick=enviar;
 let CMDS=[],selCmd=0,filtrados=[];
 fetch("/api/comandos").then(r=>r.json()).then(j=>CMDS=j).catch(()=>{});

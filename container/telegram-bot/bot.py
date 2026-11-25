@@ -309,7 +309,54 @@ def pesquisar(chat_id, tema, tipo="pesquisa"):
         enviar(chat_id, f"📚 Pesquisa salva na base de conhecimento: {os.path.relpath(destino, kb.KB_DIR)}")
 
 
+ESPERA_ANEXO = 40  # segundos esperando a explicação de um anexo mandado sem legenda
+anexos_pendentes, pendentes_lock = {}, threading.Lock()
+
+
+def _anexo_sem_legenda(chat_id, caminhos):
+    """Guarda o anexo por alguns segundos: a próxima mensagem (texto ou áudio) vira a explicação dele."""
+    with pendentes_lock:
+        antigo = anexos_pendentes.pop(chat_id, None)
+        if antigo:
+            antigo["timer"].cancel()
+            caminhos = antigo["caminhos"] + caminhos
+        timer = threading.Timer(ESPERA_ANEXO, lambda: _anexo_vencido(chat_id))
+        anexos_pendentes[chat_id] = {"caminhos": caminhos, "timer": timer}
+        timer.start()
+
+
+def _anexo_vencido(chat_id):
+    with pendentes_lock:
+        p = anexos_pendentes.pop(chat_id, None)
+    if p:
+        _rodar_anexos(chat_id, "", p["caminhos"])
+
+
+def _rodar_anexos(chat_id, pedido, caminhos, veio_de_audio=False):
+    import anexos
+    est = estado.ler()
+    ok, motivo = pool.pode_iniciar(est["projeto"])
+    if not ok:
+        enviar(chat_id, motivo + " Mande o arquivo de novo depois.")
+        return
+    try:
+        texto = anexos.montar_pedido(pedido, caminhos, "Telegram", avisar=lambda t: enviar(chat_id, t))
+    except Exception as e:  # noqa: BLE001
+        enviar(chat_id, f"Não consegui preparar o anexo: {type(e).__name__}: {str(e)[:200]}")
+        return
+    audio = est["audio"] == "sempre" or (est["audio"] == "auto" and veio_de_audio)
+    rodar(chat_id, texto, audio, False, est["projeto"])
+
+
 def iniciar_pedido(chat_id, texto, veio_de_audio):
+    with pendentes_lock:  # anexo mandado sem legenda logo antes: esta mensagem é a explicação dele
+        p = anexos_pendentes.pop(chat_id, None)
+    if p and not texto.startswith("/"):
+        p["timer"].cancel()
+        threading.Thread(target=_rodar_anexos, args=(chat_id, texto, p["caminhos"], veio_de_audio), daemon=True).start()
+        return
+    if p:  # era um comando: devolve o anexo para a espera
+        _anexo_sem_legenda(chat_id, p["caminhos"])
     est = estado.ler()
     if not est["projeto"]:
         enviar(chat_id, "Escolha um projeto antes: /projetos e depois /projeto <nome>")
@@ -343,7 +390,6 @@ def tratar_audio(chat_id, msg):
     iniciar_pedido(chat_id, texto, veio_de_audio=True)
 
 
-ANEXOS_DIR = os.path.join(core.WORKSPACE, ".jarvis-anexos")  # fora dos projetos: não entra no Git
 grupos, grupos_lock = {}, threading.Lock()  # álbuns (várias fotos de uma vez)
 
 
@@ -369,19 +415,23 @@ def processar_anexos(chat_id, msgs):
     if not ok:
         enviar(chat_id, motivo + " Mande o arquivo de novo depois.")
         return
-    os.makedirs(ANEXOS_DIR, exist_ok=True)
     caminhos, legenda = [], ""
     for i, m in enumerate(msgs):
         legenda = legenda or (m.get("caption") or "").strip()
         if m.get("photo"):
             arq, ext = m["photo"][-1], ".jpg"  # a última é a de maior resolução
+        elif m.get("video") or m.get("video_note") or m.get("animation"):
+            arq = m.get("video") or m.get("video_note") or m.get("animation")
+            ext = os.path.splitext(arq.get("file_name") or "")[1] or ".mp4"
         else:
             arq = m["document"]
             ext = os.path.splitext(arq.get("file_name") or "")[1] or ".bin"
         if (arq.get("file_size") or 0) > 20 * 1024 * 1024:
-            enviar(chat_id, "Arquivo maior que 20 MB: o Telegram não deixa o bot baixar. Envie compactado ou divida.")
+            enviar(chat_id, "Arquivo maior que 20 MB: o Telegram não deixa o bot baixar. Mande pelo painel "
+                            "(botão 📎 do chat, até 500 MB) ou envie compactado.")
             continue
-        destino = os.path.join(ANEXOS_DIR, time.strftime("%Y%m%d-%H%M%S") + f"-{uuid.uuid4().hex[:6]}{ext}")
+        import anexos
+        destino = anexos.novo_caminho((arq.get("file_name") or "telegram") if "." in (arq.get("file_name") or "") else "telegram" + ext)
         try:
             baixar_arquivo(arq["file_id"], destino)
             caminhos.append(destino)
@@ -390,15 +440,17 @@ def processar_anexos(chat_id, msgs):
             enviar(chat_id, "Não consegui baixar um dos arquivos.")
     if not caminhos:
         return
-    lista = "\n".join(f"- {c}" for c in caminhos)
-    pedido = legenda or "Analise o(s) anexo(s) e me diga o que você vê e o que sugere fazer neste projeto."
-    texto = (f"{pedido}\n\n[Anexos enviados pelo usuário pelo Telegram. Abra cada um com a ferramenta Read "
-             f"(imagens incluídas) antes de responder. Não faça commit destes arquivos.]\n{lista}")
-    nomes = ", ".join(os.path.basename(c) for c in caminhos)
-    enviar(chat_id, f"📎 Recebi {len(caminhos)} arquivo(s): {nomes}" +
-           ("" if legenda else "\nDica: escreva a pergunta na legenda da imagem."))
-    audio = est["audio"] == "sempre"
-    threading.Thread(target=rodar, args=(chat_id, texto, audio, False, est["projeto"]), daemon=True).start()
+    import anexos
+    tipos = [anexos.tipo(c) for c in caminhos]
+    resumo = ", ".join(f"{tipos.count(t)} {n}" for t, n in (("imagem", "imagem(ns)"), ("video", "vídeo(s)"),
+                                                           ("arquivo", "arquivo(s)")) if tipos.count(t))
+    if not legenda:
+        enviar(chat_id, f"📎 Recebi {resumo}. O que devo fazer com isso? Escreva ou mande um áudio explicando "
+                        f"(se não disser nada em {ESPERA_ANEXO} s, eu analiso e sugiro).")
+        _anexo_sem_legenda(chat_id, caminhos)
+        return
+    enviar(chat_id, f"📎 Recebi {resumo}.")
+    _rodar_anexos(chat_id, legenda, caminhos)
 
 
 PAGAMENTOS_CHATS = {c.strip() for c in os.environ.get("PAGAMENTOS_CHAT_ID", "").split(",") if c.strip()}
@@ -447,7 +499,7 @@ def tratar(msg):
     if msg.get("voice") or msg.get("audio"):
         threading.Thread(target=tratar_audio, args=(chat_id, msg), daemon=True).start()
         return
-    if msg.get("photo") or msg.get("document"):
+    if msg.get("photo") or msg.get("document") or msg.get("video") or msg.get("video_note") or msg.get("animation"):
         receber_anexo(chat_id, msg)
         return
     texto = (msg.get("text") or "").strip()

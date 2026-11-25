@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.42: imagens e vídeos para o Jarvis entender a demanda
+
+- **Painel:** botão 📎 no chat (no celular abre câmera/galeria), colar print com Ctrl+V ou arrastar arquivos para a
+  tela. As miniaturas aparecem antes de enviar e ficam na conversa. Até 500 MB por arquivo.
+- **Telegram:** fotos, álbuns, vídeos, vídeos redondos e arquivos (o Telegram limita o bot a 20 MB; maior, pelo painel).
+  Mandou sem legenda? O Jarvis espera 40 s: o próximo texto ou áudio vira a explicação do anexo.
+- **Vídeo:** o Claude não assiste vídeo, então o Jarvis extrai até 12 quadros com o instante de cada um e transcreve a
+  fala (até 15 min). O Claude vê os quadros como imagens e pode extrair mais quadros de um trecho específico.
+- Os anexos ficam em `/workspace/.jarvis-anexos` (fora dos projetos, não vão para o Git) e são apagados após 30 dias.
+- Restauração: `versao-1.41.0`.
+
 ## Jarvis 1.41: servidores (SSH, SFTP e MySQL/MariaDB) para homologar na hora
 
 - O Jarvis acessa os servidores cadastrados para reproduzir o problema, ler logs, consultar o banco, corrigir e

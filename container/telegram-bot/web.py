@@ -9,6 +9,7 @@ import re
 import json
 import os
 import secrets
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -285,6 +286,36 @@ def iniciar(texto, veio_de_audio):
     return None
 
 
+def iniciar_com_anexos(texto, nomes, veio_de_audio=False):
+    """Mensagem do painel com imagens/vídeos: prepara os anexos (quadros e fala do vídeo) e roda."""
+    import anexos
+    caminhos = [os.path.join(anexos.DIR, os.path.basename(str(n))) for n in nomes][:20]
+    caminhos = [c for c in caminhos if anexos.valido(c)]
+    if not caminhos:
+        return "Os anexos não foram encontrados (mande de novo)."
+    est = estado.ler()
+    if not est["projeto"]:
+        return "Escolha um projeto primeiro."
+    ok, motivo = pool.pode_iniciar(est["projeto"])
+    if not ok:
+        return motivo
+    proj = est["projeto"]
+    publicar({"tipo": "usuario", "texto": texto or "(sem texto: analise os anexos)", "projeto": proj,
+              "anexos": [{"n": os.path.basename(c), "tipo": anexos.tipo(c)} for c in caminhos]})
+
+    def _trabalho():
+        try:
+            pedido = anexos.montar_pedido(texto, caminhos, "painel",
+                                          avisar=lambda t: publicar({"tipo": "info", "texto": t}, proj))
+        except Exception as e:  # noqa: BLE001
+            publicar({"tipo": "erro", "texto": f"Não consegui preparar o anexo: {type(e).__name__}: {str(e)[:200]}"}, proj)
+            return
+        audio = est["audio"] == "sempre" or (est["audio"] == "auto" and veio_de_audio)
+        rodar(pedido, audio, False, proj)
+    threading.Thread(target=_trabalho, daemon=True).start()
+    return None
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # silencioso
         pass
@@ -341,6 +372,21 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/cerebro":
             import cerebro
             return self._json({**cerebro.ler(), "falhas": cerebro.falhas(estado.ler()["projeto"])})
+        if url.path == "/api/anexo/ver":  # miniatura/arquivo de um anexo enviado (só da pasta de anexos)
+            import anexos
+            import mimetypes
+            caminho = os.path.join(anexos.DIR, os.path.basename(urllib.parse.parse_qs(url.query).get("n", [""])[0]))
+            if not anexos.valido(caminho):
+                return self._json({"erro": "não encontrado"}, 404)
+            tamanho = os.path.getsize(caminho)
+            self.send_response(200)
+            self.send_header("Content-Type", mimetypes.guess_type(caminho)[0] or "application/octet-stream")
+            self.send_header("Content-Length", str(tamanho))
+            self.send_header("Cache-Control", "private, max-age=86400")
+            self.end_headers()
+            with open(caminho, "rb") as f:
+                shutil.copyfileobj(f, self.wfile)
+            return
         if url.path == "/api/filmes":
             import filmes
             res = filmes.TRABALHO.get("resultado") or filmes.ultimo()
@@ -705,6 +751,15 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 return self._json({"ok": False, "erro": str(e)}, 400)
             return self._json({"ok": True, "segundos": seg})
+        if url.path == "/api/anexo":  # imagem/vídeo/arquivo para o chat (gravado em partes, até 500 MB)
+            import anexos
+            nome = urllib.parse.parse_qs(url.query).get("nome", ["anexo"])[0]
+            try:
+                caminho = anexos.receber(nome, self.rfile.read, int(self.headers.get("Content-Length") or 0))
+            except ValueError as e:
+                return self._json({"erro": str(e)}, 400)
+            return self._json({"ok": True, "arquivo": os.path.basename(caminho), "tipo": anexos.tipo(caminho),
+                               "nome": os.path.basename(nome)[:80]})
         if url.path == "/api/upload":
             q = urllib.parse.parse_qs(url.query)
             try:
@@ -769,6 +824,8 @@ class Handler(BaseHTTPRequestHandler):
         dados = json.loads(self._corpo() or b"{}")
         if url.path == "/api/mensagem":
             texto = (dados.get("texto") or "").strip()
+            if dados.get("anexos"):
+                return self._json({"erro": iniciar_com_anexos(texto, dados["anexos"])})
             if not texto:
                 return self._json({"erro": "Escreva uma mensagem."}, 400)
             return self._json({"erro": iniciar(texto, veio_de_audio=False)})
