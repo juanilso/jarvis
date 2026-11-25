@@ -61,6 +61,12 @@ Também é portão a troca de perfil de modelos para `maximo` em projeto já em 
 - Instale o que faltar na stack (apt, pecl, composer) sem pedir confirmação, porque o ambiente é descartável.
 - Não existe emulador Android: compile e rode os testes unitários; testes no aparelho viram tarefa para o usuário.
 
+## Memória contínua (o que você já sabe)
+`jarvis-memoria` guarda fatos duráveis em `memoria/geral.md` (todos os projetos) e `memoria/projetos/<projeto>.md`
+dentro da base de conhecimento. Leia no início (`jarvis-memoria contexto --projeto <nome>`; pelo painel já vem no
+prompt), parta do que está lá e só pergunte o que mudou. Anote na hora o que for durável
+(`jarvis-memoria anotar --geral|--projeto <nome> --chave "<assunto>" "<fato>"`), nunca segredos.
+
 ## Base de conhecimento (memória permanente)
 Fica em `/workspace/.jarvis-conhecimento` (repositório privado `jarvis-conhecimento` no GitHub, sincronizado
 automaticamente pelo painel). Formato: Markdown com cabeçalho YAML (titulo, tipo, data, projeto, tags), compatível com Obsidian.

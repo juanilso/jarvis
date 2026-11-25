@@ -206,6 +206,7 @@ class Execucao:
         compactar=True: resume a conversa, encerra a sessão e guarda o resumo como contexto."""
         est = estado.ler()
         projeto = projeto or est["projeto"]
+        sistema_externo = bool(sistema)  # rotinas automáticas trazem regras próprias: não viram memória
         if not usar_sessao:  # tarefa avulsa (ex.: pesquisa): sem retomar nem salvar a conversa do projeto
             est = dict(est, sessoes={}, resumos={})
         resumo_usado = None
@@ -232,6 +233,12 @@ class Execucao:
             ao_evento({"tipo": "info", "texto": dec["aviso"]})
         if usar_sessao and not compactar:
             sistema = (sistema + "\n\n" if sistema else "") + dec["sistema"]
+            try:  # memória contínua: o que o Jarvis já sabe (geral + deste projeto) e a regra de anotar
+                import memoria
+                if cerebro.ler().get("memoria") != "desligada":
+                    sistema += "\n\n" + memoria.contexto(projeto)
+            except Exception as e:  # noqa: BLE001
+                print("memória: não carreguei:", e, flush=True)
         if usar_sessao and not compactar:
             cmd += ["--append-system-prompt", ORQUESTRADOR]
         if sistema:  # regras extras (ex.: rotinas automáticas, só leitura)
@@ -247,7 +254,8 @@ class Execucao:
             with self._lock:
                 # agentes em primeiro plano: o Claude Code 2.1+ manda subagentes para segundo plano por padrão, aí o
                 # painel via "terminou" logo no início e o orquestrador seguia sozinho
-                env_exec = {**os.environ, "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}
+                env_exec = {**os.environ, "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1", "JARVIS_EXECUCAO": "1",
+                            "JARVIS_PROJETO": projeto or ""}
                 self.proc = subprocess.Popen(cmd, cwd=cwd or os.path.join(WORKSPACE, projeto), env=env_exec, stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE, text=True, bufsize=1)
                 self.inicio, self.pedido, self.projeto = time.time(), texto[:80], projeto or "conhecimento"
@@ -342,6 +350,12 @@ class Execucao:
         except Exception as e:  # noqa: BLE001
             print("prints da resposta:", e, flush=True)
         ao_evento(ev)
+        if not sistema_externo and not resultado.get("is_error"):
+            try:  # revisão leve em segundo plano: guarda o que o Jarvis esqueceu de anotar
+                import memoria
+                memoria.revisar_depois(projeto, texto, resposta)
+            except Exception as e:  # noqa: BLE001
+                print("memória:", e, flush=True)
 
 
 # ------------------------------------------------------------------ painel do projeto
@@ -581,6 +595,7 @@ COMANDOS = [
     ("/guia", "Como usar o Jarvis, com exemplos"),
     ("/ideia", "Guarda uma ideia na base de conhecimento"),
     ("/lembrar", "Procura na base de conhecimento"),
+    ("/memoria", "O que o Jarvis já sabe (geral e do projeto); /memoria <termo>, anotar, esquecer"),
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
     ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
@@ -849,7 +864,7 @@ def comando(estado, pool, texto):
         if not ok:
             return motivo, None
         return f"📈 Buscando o que estão falando de “{arg}” nos últimos 30 dias… aviso quando terminar.", "tendencias"
-    if cmd in ("/ideia", "/lembrar", "/sincronizar", "/pesquisar"):
+    if cmd in ("/ideia", "/lembrar", "/memoria", "/sincronizar", "/pesquisar"):
         import kb  # import tardio (kb depende deste módulo)
         if cmd == "/ideia":
             if not arg:
@@ -857,6 +872,9 @@ def comando(estado, pool, texto):
             titulo = arg.split("\n")[0][:70]
             caminho = kb.salvar("ideias", titulo, arg, tags=["ideia"], projeto=proj)
             return f"💡 Ideia guardada: {caminho}", None
+        if cmd == "/memoria":
+            import memoria
+            return memoria.comando(arg, estado.ler()["projeto"]), None
         if cmd == "/lembrar":
             if not arg:
                 rec = kb.recentes(limite=8)

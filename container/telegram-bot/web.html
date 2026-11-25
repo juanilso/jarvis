@@ -441,12 +441,13 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <label>Nível dos agentes<select id="cbAgentes"><option value="economico">Econômico (o menor modelo que resolve)</option><option value="equilibrado">Equilibrado (modelo conforme a dificuldade da tarefa)</option><option value="caprichado">Caprichado (qualidade acima do custo)</option></select></label>
   <label>Conselho de IAs (Gemini, Groq, Ollama, Grok e as outras ligadas)<select id="cbConselho"><option value="desligado">Desligado</option><option value="decisoes">Nas decisões e nos problemas difíceis</option><option value="sempre">Em todas as etapas</option></select></label>
   <label>Quando travar no mesmo problema (3 tentativas)<select id="cbEscalar"><option value="sugerir">Sugerir o Fable</option><option value="automatico">Usar o Fable automaticamente</option><option value="nunca">Nunca escalar</option></select></label>
+  <label>Memória contínua (o que ele aprende nas conversas, em todos os projetos)<select id="cbMemoria"><option value="auto">Automática (ele anota e uma revisão leve pega o que faltou)</option><option value="manual">Só quando ele mesmo anotar</option><option value="desligada">Desligada</option></select></label>
   <table><tr><th>Agente</th><th>Equilibrado (padrão)</th></tr>
     <tr><td>explorador · documentador · deploy</td><td>Haiku · esforço baixo</td></tr><tr><td>testador</td><td>Haiku · médio</td></tr>
     <tr><td>designer · desenvolvedor · android</td><td>Sonnet · baixo a médio (alto em lógica de negócio)</td></tr>
     <tr><td>dba · revisor</td><td>Sonnet · alto</td></tr><tr><td>arquiteto, pagamentos, segurança, bugs que falharam</td><td>Opus · alto</td></tr></table>
   <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button id="cbSalvar" class="prim">💾 Salvar</button><span class="waDica" id="cbMsg"></span></div>
-  <p class="waDica">No Telegram: /cerebro · /esforco alto · /equipe economico · /conselho sempre · /fable &lt;pedido&gt;</p>
+  <p class="waDica">No Telegram: /cerebro · /esforco alto · /equipe economico · /conselho sempre · /fable &lt;pedido&gt; · /memoria</p>
 </div></div>
 <div id="guia"><div class="caixa">
   <button class="fechar" id="guiaFechar" title="Fechar">✕</button>
@@ -810,7 +811,7 @@ $("projetoSel").onchange=async e=>{await api("/api/config",{projeto:e.target.val
 $("btnMapa").onclick=()=>window.open("/api/mapa","_blank");
 async function cbAbrir(){const c=await api("/api/cerebro");if(!c||c.erro)return;
   const m=["opus","sonnet","haiku","fable"].includes(c.modelo)?c.modelo:null;if(!m){const o=document.createElement("option");o.value=c.modelo;o.textContent=c.modelo;$("cbModelo").appendChild(o)}
-  $("cbModelo").value=c.modelo;$("cbEsforco").value=c.esforco;$("cbAgentes").value=c.agentes;$("cbConselho").value=c.conselho;$("cbEscalar").value=c.escalar;
+  $("cbModelo").value=c.modelo;$("cbEsforco").value=c.esforco;$("cbAgentes").value=c.agentes;$("cbConselho").value=c.conselho;$("cbEscalar").value=c.escalar;$("cbMemoria").value=c.memoria||"auto";
   $("cbMsg").textContent=c.falhas?`${c.falhas} tentativa(s) sem resolver neste projeto`:"";$("cerebro").classList.add("aberto")}
 let fmEsc=null,fmTimer=null;
 async function fmCarregar(){const j=await api("/api/filmes");if(!j||j.erro)return;const c=j.config;
@@ -841,7 +842,7 @@ $("fmLinkBaixar").onclick=async()=>{const u=$("fmLink").value.trim();if(!u||!fmE
 $("fmGerar").onclick=async()=>{if(!fmEsc)return;await fmSalvarCfg();const r=await api("/api/filmes/gerar",{tipo:fmEsc.tipo,id:fmEsc.id,trailer:true,telegram:$("fmTg").checked});
   if(!r.ok){$("fmStatus").textContent="⚠️ "+(r.erro||"");return}$("fmStatus").textContent="⏳ começando…";clearInterval(fmTimer);fmTimer=setInterval(fmCarregar,2500)};
 $("btnCerebro").onclick=cbAbrir;$("cbFechar").onclick=()=>$("cerebro").classList.remove("aberto");
-$("cbSalvar").onclick=async()=>{const r=await api("/api/cerebro",{modelo:$("cbModelo").value,esforco:$("cbEsforco").value,agentes:$("cbAgentes").value,conselho:$("cbConselho").value,escalar:$("cbEscalar").value});
+$("cbSalvar").onclick=async()=>{const r=await api("/api/cerebro",{modelo:$("cbModelo").value,esforco:$("cbEsforco").value,agentes:$("cbAgentes").value,conselho:$("cbConselho").value,escalar:$("cbEscalar").value,memoria:$("cbMemoria").value});
   $("cbMsg").textContent=r.ok?"✅ salvo: vale a partir da próxima mensagem (painel e Telegram)":"⚠️ "+(r.erro||"não salvou")};
 $("btnGuia").onclick=()=>$("guia").classList.add("aberto");$("guiaFechar").onclick=()=>$("guia").classList.remove("aberto");
 $("guia").onclick=e=>{if(e.target.id==="guia")$("guia").classList.remove("aberto")};

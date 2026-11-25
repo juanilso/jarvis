@@ -111,6 +111,20 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.40: memória contínua
+
+- O Jarvis passa a lembrar o que aprende nas conversas, **em todos os projetos**: `memoria/geral.md` (vale para tudo:
+  hospedagem, deploy, preferências, padrões) e `memoria/projetos/<projeto>.md` (escopo, configurações, decisões,
+  problemas resolvidos). Fica na base de conhecimento e vai para o GitHub (`jarvis-conhecimento`).
+- Toda execução já começa com essa memória no prompt. Ele parte do que sabe e, se algo parecer diferente, pergunta
+  ("na memória está X; agora é Y?") e atualiza. A versão antiga vai para `memoria/historico.md`.
+- Duas formas de anotar: o próprio Jarvis anota na hora (`jarvis-memoria anotar`) e, ao fim de cada conversa, uma
+  revisão leve (Haiku, em segundo plano) pega o que faltou. Senhas, tokens e chaves nunca são guardados.
+- `/memoria` mostra o que ele sabe · `/memoria <termo>` busca · `/memoria anotar [geral] <fato>` ·
+  `/memoria esquecer [geral] <assunto>`. No painel: 🧠 Cérebro → "Memória contínua" (automática, manual ou desligada).
+- Também funciona no Claude Code direto no terminal (o hook de início de sessão carrega a memória).
+- Restauração: `versao-1.39.0`.
+
 ## Jarvis 1.39: DeepSeek como ajudante
 
 - **/deepseek <pedido>** no Telegram e no painel (resposta com o rótulo 🐋 DEEPSEEK; aparece na equipe enquanto

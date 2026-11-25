@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""Memória contínua do Jarvis (geral e por projeto).
+
+Uso:
+  jarvis-memoria ver [--projeto P]
+  jarvis-memoria anotar --geral --chave "hospedagem" "Os projetos ficam na hospedagem X, deploy por git pull"
+  jarvis-memoria anotar --projeto P --chave "login" "Login por e-mail e senha, sessão de 30 dias"
+  jarvis-memoria esquecer [--projeto P] <chave>
+  jarvis-memoria buscar <termo>
+  jarvis-memoria contexto [--projeto P]      (o bloco que entra no prompt)
+"""
+import os
+import sys
+
+sys.path.insert(0, os.environ.get("JARVIS_BOTS", "/opt/jarvis-bots"))
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import memoria  # noqa: E402
+
+sys.exit(memoria.main())

@@ -19,4 +19,8 @@ if [ -f "docs/ESTADO.md" ]; then
 else
   echo "Jarvis disponível. Projeto sem orquestração. Para iniciar: /jarvis <ideia do projeto>. Modelos de arquivo: ${TEMPLATES}"
 fi
+# Memória contínua do Jarvis (geral + deste projeto). Pelo painel/Telegram ela já vai no prompt.
+if [ -z "$JARVIS_EXECUCAO" ] && command -v jarvis-memoria >/dev/null 2>&1; then
+  echo; jarvis-memoria contexto --projeto "$(basename "$PWD")" 2>/dev/null | head -n 120
+fi
 exit 0

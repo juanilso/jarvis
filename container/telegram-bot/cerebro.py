@@ -17,11 +17,13 @@ import jarvis_core as core
 
 ARQ = os.path.join(core.CONFIG_DIR, "cerebro.json")
 ARQ_FALHAS = os.path.join(core.CONFIG_DIR, "cerebro-falhas.json")
-PADRAO = {"modelo": "opus", "esforco": "auto", "agentes": "equilibrado", "conselho": "decisoes", "escalar": "sugerir"}
+PADRAO = {"modelo": "opus", "esforco": "auto", "agentes": "equilibrado", "conselho": "decisoes", "escalar": "sugerir",
+          "memoria": "auto"}
 OPCOES = {"esforco": ("auto", "low", "medium", "high", "xhigh", "max"),
           "agentes": ("economico", "equilibrado", "caprichado"),
           "conselho": ("desligado", "decisoes", "sempre"),
-          "escalar": ("sugerir", "automatico", "nunca")}
+          "escalar": ("sugerir", "automatico", "nunca"),
+          "memoria": ("auto", "manual", "desligada")}
 NOMES_ESFORCO = {"auto": "automático", "low": "baixo", "medium": "médio", "high": "alto", "xhigh": "extra-alto",
                  "max": "máximo"}
 APELIDOS = {"opus": "claude-opus-5-5", "sonnet": "claude-sonnet-5-5", "haiku": "claude-haiku-5-5",
@@ -212,6 +214,7 @@ def texto_status(projeto=None):
     return (f"🧠 Cérebro do Jarvis\n• Modelo do Jarvis: {c['modelo']}\n• Esforço: {NOMES_ESFORCO[c['esforco']]}"
             + (" (alto para planejar/começar, médio para continuar e validar)" if c["esforco"] == "auto" else "")
             + f"\n• Agentes: {c['agentes']}\n• Conselho de IAs: {c['conselho']}\n• Escalar para o Fable: {c['escalar']}"
+            + f"\n• Memória contínua: {c['memoria']} (/memoria)"
             + (f"\n• Tentativas sem resolver neste projeto: {n}" if n else "")
             + "\n\nMudar: /esforco alto · /equipe economico · /conselho sempre · /escalar automatico · /modelo sonnet"
             + "\nFable só na próxima mensagem: /fable (ou /fable <pedido>)")

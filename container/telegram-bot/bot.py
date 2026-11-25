@@ -464,7 +464,7 @@ def tratar(msg):
     if texto.split()[0].split("@")[0].lower() == "/planejar":  # atalho para o planejamento (skill planejar-projeto)
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
-                                                  "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
+                                                  "/ideia", "/lembrar", "/memoria", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/ollama", "/deepseek", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/filme", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp", "/treinar", "/bloquear", "/desbloquear", "/bloqueados",
                                                   "/print", "/testar", "/previa", "/piloto",
