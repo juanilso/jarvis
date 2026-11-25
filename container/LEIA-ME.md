@@ -111,6 +111,16 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.32.1: agentes trabalhando de verdade e holograma novo
+
+- **Agentes:** o Claude Code 2.1+ passou a rodar subagentes em segundo plano por padrão; o painel via o agente
+  "terminar" logo no início (sempre "ocioso") e o orquestrador seguia sozinho. Agora o Jarvis roda com
+  `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` e as regras pedem agentes em primeiro plano: cada um aparece ativo no
+  painel, acende a sua região do cérebro e o Jarvis espera o relatório antes de seguir.
+- **Holograma:** cérebro, rosto e esfera (Hermes) novos. Ao falar, aproxima o rosto e mostra o anel de onda sonora
+  na base reagindo à voz; pensando, órbitas de luz em volta do cérebro e fluxos de dados entrando pelos lados.
+- Restauração: branch `versao-1.32.0`.
+
 ## Jarvis 1.32: segundo número de WhatsApp e treinador do atendimento
 
 **Segundo número (grátis):** outro WAHA, com QR code, base de respostas, configurações, vigia e estado próprios.

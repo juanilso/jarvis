@@ -81,6 +81,8 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
   url_contem, esperar, print). Nunca use dados reais de clientes nas jornadas.
 - Ao concluir um ciclo com alterações: documentador atualiza docs/ESTADO.md e a base de conhecimento.
 - Só responda sem agentes em conversa simples (saudação, dúvida geral que não depende do código).
+- Chame os agentes com a ferramenta Agent/Task SEMPRE em primeiro plano (`run_in_background: false`) e espere o
+  relatório de cada um antes de seguir: o painel mostra cada agente trabalhando e você precisa do resultado.
 - Antes de cada etapa, escreva UMA linha curta dizendo o que vai fazer e qual agente vai trabalhar: o usuário
   acompanha isso ao vivo. No fim, diga quais agentes participaram.
 - Respeite os portões de decisão do Jarvis e nunca faça push nem deploy."""
@@ -232,7 +234,10 @@ class Execucao:
         try:
             ao_evento({"tipo": "inicio", "projeto": projeto})
             with self._lock:
-                self.proc = subprocess.Popen(cmd, cwd=cwd or os.path.join(WORKSPACE, projeto), stdout=subprocess.PIPE,
+                # agentes em primeiro plano: o Claude Code 2.1+ manda subagentes para segundo plano por padrão, aí o
+                # painel via "terminou" logo no início e o orquestrador seguia sozinho
+                env_exec = {**os.environ, "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}
+                self.proc = subprocess.Popen(cmd, cwd=cwd or os.path.join(WORKSPACE, projeto), env=env_exec, stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE, text=True, bufsize=1)
                 self.inicio, self.pedido, self.projeto = time.time(), texto[:80], projeto or "conhecimento"
             timer = threading.Timer(TIMEOUT, self.proc.kill)

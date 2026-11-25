@@ -928,7 +928,7 @@ $("mic").onclick=async()=>{
 /* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */
 const cv=$("orb"),g=cv.getContext("2d"),buf=new Uint8Array(128);
 function amp(an){if(!an)return 0;an.getByteFrequencyData(buf);let s=0;for(let i=0;i<buf.length;i++)s+=buf[i];return s/buf.length/255}
-const IW=600,IH=600,BOCA={x:352,y:352,meia:36};
+const IW=600,IH=600,BOCA={x:368,y:347,meia:42};
 function carregar(src,base){const im=new Image();im.src=src;const o={im,ok:false,brilho:null,pts:[],base};
   im.onload=()=>{o.ok=true;
     const c=document.createElement("canvas");c.width=IW;c.height=IH;const x=c.getContext("2d");x.filter="blur(7px)";x.drawImage(im,0,0);o.brilho=c;
@@ -937,11 +937,11 @@ function carregar(src,base){const im=new Image();im.src=src;const o={im,ok:false
     for(let k=0;k<9000&&o.pts.length<700;k++){const px=Math.floor(Math.random()*IW),py=Math.floor(Math.random()*(base.y-60))+30,i=(py*IW+px)*4;
       if(d[i]*.3+d[i+1]*.59+d[i+2]*.11>150&&Math.abs(px-300)<220)o.pts.push([px,py])}};
   return o}
-const imgC=carregar("/static/cerebro.jpg?v=172",{x:300,y:465}),imgR=carregar("/static/rosto.jpg?v=172",{x:293,y:498}),imgH=carregar("/static/hermes.jpg?v=172",{x:293,y:498});
+const imgC=carregar("/static/cerebro.jpg?v=180",{x:300,y:468}),imgR=carregar("/static/rosto.jpg?v=180",{x:300,y:500}),imgH=carregar("/static/hermes.jpg?v=180",{x:318,y:532});
 /* regiões do cérebro (coordenadas da imagem 600x600; frente à esquerda) e qual agente "acende" cada uma */
 const REG={frontal:{x:165,y:175,r:52,c:"120,220,255"},motor:{x:300,y:105,r:50,c:"150,170,255"},parietal:{x:410,y:135,r:46,c:"190,140,255"},
-  occipital:{x:468,y:228,r:38,c:"255,130,230"},temporal:{x:300,y:268,r:46,c:"110,255,220"},cerebelo:{x:420,y:318,r:36,c:"255,170,120"},
-  tronco:{x:360,y:372,r:20,c:"255,220,140"},centro:{x:290,y:200,r:30,c:"200,240,255"}};
+  occipital:{x:478,y:235,r:38,c:"255,130,230"},temporal:{x:295,y:285,r:46,c:"110,255,220"},cerebelo:{x:438,y:340,r:36,c:"255,170,120"},
+  tronco:{x:350,y:392,r:20,c:"255,220,140"},centro:{x:300,y:205,r:30,c:"200,240,255"}};
 const REG_AG={jarvis:"centro",arquiteto:"frontal",revisor:"frontal",explorador:"occipital",desenvolvedor:"motor",android:"motor",
   dba:"temporal",documentador:"temporal",testador:"cerebelo",deploy:"tronco",hermes:"parietal",designer:"occipital"};
 const NOMES_REG=Object.keys(REG);let pens=[],ativ={};NOMES_REG.forEach(n=>ativ[n]=0);
@@ -970,7 +970,7 @@ function desenharImg(o,alpha,k,ox,oy,aberto){
   g.globalAlpha=1}
 function frame(t){
   ajustarCanvas();const W=cv.width,H=cv.height,d=window.devicePixelRatio||1;
-  const k=Math.min(W/IW,H/IH),ox=(W-IW*k)/2,oy=(H-IH*k)/2,P=(x,y)=>[ox+x*k,oy+y*k];
+  const mz=morph*morph*(3-2*morph),k=Math.min(W/IW,H/IH)*(1+.05*mz),ox=(W-IW*k)/2,oy=(H-IH*k)/2+18*mz*k,P=(x,y)=>[ox+x*k,oy+y*k];
   g.globalCompositeOperation="source-over";g.clearRect(0,0,W,H);
   const dt=Math.min(.05,(t-ultimoT)/1000||0);ultimoT=t;
   let alvo=modo==="falando"?amp(analyser)*2.6:modo==="ouvindo"?amp(window._micAn)*3:0;nivel+=(Math.min(alvo,1)-nivel)*.3;
@@ -1015,7 +1015,20 @@ function frame(t){
   /* cintilação (todos) e sinapses curtas (rostos) */
   const ritmo={espera:3,ouvindo:10,pensando:30,falando:4}[modo];
   acumulo+=dt*(ritmo+nivel*30);while(acumulo>1){acumulo--;if(o!==imgC)novoPulso(o);if(o.pts.length)brilhos.push({p:o.pts[Math.floor(Math.random()*o.pts.length)],v:1})}
-  const cor=modo==="ouvindo"?"255,170,90":hh>.5?"255,214,120":"170,255,240";
+  const cor=modo==="ouvindo"?"255,170,90":hh>.5?"255,150,235":"170,255,240";
+  /* órbitas em volta do cérebro e da esfera (Hermes), com pontos de luz correndo */
+  const wO=Math.max((1-m)*(1-hh),hh);
+  if(wO>.05){const C=hh>.5?[318,260]:[305,235],vel=(modo==="pensando"||hermesAtivo?2.2:1);
+    [[255,62,-.22,0,"120,230,255"],[232,52,.3,2.1,"235,130,255"],[275,78,.08,4.2,"120,255,220"]].forEach(([rx,ry,rot,fase,c],i)=>{
+      const[cx,cy]=P(C[0],C[1]);g.lineWidth=1.2*d;g.strokeStyle=`rgba(${c},${.22*wO})`;g.beginPath();g.ellipse(cx,cy,rx*k,ry*k,rot,0,6.283);g.stroke();
+      for(let j=0;j<3;j++){const a=t/1000*vel*(.5+i*.15)+fase+j*2.094,x=Math.cos(a)*rx*k,y=Math.sin(a)*ry*k,
+        X=cx+x*Math.cos(rot)-y*Math.sin(rot),Y=cy+x*Math.sin(rot)+y*Math.cos(rot),fr=Math.sin(a)>0?1:.45,
+        gr=g.createRadialGradient(X,Y,0,X,Y,10*d);gr.addColorStop(0,`rgba(255,255,255,${.95*wO*fr})`);gr.addColorStop(.35,`rgba(${c},${.6*wO*fr})`);gr.addColorStop(1,`rgba(${c},0)`);
+        g.fillStyle=gr;g.fillRect(X-10*d,Y-10*d,20*d,20*d)}})}
+  /* fluxos de dados entrando pelos lados enquanto processa */
+  if(modo==="pensando"&&wC>.05){g.lineWidth=1.4*d;
+    for(let s=0;s<6;s++){const lado=s%2?1:-1,y0=150+s*28,c=s%3?"120,230,255":"255,120,230";g.strokeStyle=`rgba(${c},${.35*wC})`;g.beginPath();
+      for(let x=0;x<=200;x+=8){const px=lado<0?x-20:IW+20-x,py=y0+Math.sin(x/28+t/260+s)*14*(1-x/220)+(x/200)*(230-y0)*.6,[X,Y]=P(px,py);x?g.lineTo(X,Y):g.moveTo(X,Y)}g.stroke()}}
   pulsos=pulsos.filter(q=>{q.p+=q.v;const x=q.a[0]+(q.b[0]-q.a[0])*q.p,y=q.a[1]+(q.b[1]-q.a[1])*q.p,[X,Y]=P(x,y);
     const gr=g.createRadialGradient(X,Y,0,X,Y,7*d);gr.addColorStop(0,`rgba(${cor},.95)`);gr.addColorStop(1,`rgba(${cor},0)`);
     g.fillStyle=gr;g.fillRect(X-7*d,Y-7*d,14*d,14*d);return q.p<1});
@@ -1030,6 +1043,13 @@ function frame(t){
   [[160,28,1,.5],[122,21,-1.6,.6],[82,14,2.4,.7]].forEach(([rx,ry,vel,a])=>{
     const ang=t/1000*vel*(modo==="pensando"?2:1);g.strokeStyle=`rgba(${cor},${a*(.6+.4*resp)+nivel*.3})`;
     for(let s=0;s<3;s++){g.beginPath();g.ellipse(bx,by,rx*k,ry*k,0,ang+s*2.1,ang+s*2.1+1.1);g.stroke()}});
+  /* anel de onda sonora na base enquanto fala (reage à voz) */
+  if(m>.05&&(analyser||window._micAn)){const an=modo==="ouvindo"?window._micAn:analyser;if(an)an.getByteFrequencyData(buf);
+    const[wx,wy]=P(BASE.x,BASE.y-6);g.lineWidth=2*d;
+    for(const[esp,al] of [[6*d,.18],[2*d,.9]]){g.lineWidth=esp;g.strokeStyle=`rgba(150,255,250,${al*m})`;g.beginPath();
+      for(let i=0;i<=96;i++){const a=i/96*6.283,v=buf[Math.floor((i<48?i:96-i)/48*60)]/255,sp=Math.sin(i*1.7+t/90)*.5+.5,
+        X=wx+Math.cos(a)*175*k,Y=wy+Math.sin(a)*30*k-(Math.sin(a)>-.2?0:1)*v*(30+40*sp)*k*Math.min(1,nivel*2+.2);i?g.lineTo(X,Y):g.moveTo(X,Y)}
+      g.closePath();g.stroke()}}
   /* partículas subindo do emissor */
   if(Math.random()<.5+nivel)sobe.push({x:BASE.x+(Math.random()-.5)*140,y:BASE.y-5,v:.4+Math.random()*1.2,a:1});
   sobe=sobe.filter(s=>{s.y-=s.v*(1+nivel*2);s.a-=.008;const[X,Y]=P(s.x+(s.x-BASE.x)*.002*(BASE.y-s.y),s.y);
