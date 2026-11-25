@@ -42,7 +42,8 @@ NOMES_MENSAGENS = {
 }
 RECURSOS = {"pagamentos": True, "teste": True, "consulta": True, "jogos": True,
             "calar_quando_respondo": True,
-            "variar": True}  # o Jarvis cria versões diferentes de cada mensagem automática (evita texto repetido)  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
+            "variar": True,
+            "ia_caprichada": False}  # usa o modelo mais forte (entende melhor, custa mais) no atendimento  # o Jarvis cria versões diferentes de cada mensagem automática (evita texto repetido)  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
     "atraso_min": 2, "atraso_max": 6,   # segundos de pausa antes de responder (+ tempo de "digitar")

@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.31: atendimento do WhatsApp que lê e pensa antes de responder
+
+- Antes de cada resposta o robô **pensa** (o que o cliente disse, o que já se sabe, o que falta, o que a base manda)
+  e só depois escreve. O raciocínio nunca vai para o cliente.
+- **Ficha por cliente** (caso, login, app, aparelho, resumo): ele lembra o que já foi dito e não repete perguntas.
+  Quando chama você, o aviso no Telegram traz o 📝 resumo do pedido.
+- A **sua base manda**: as regras internas não brigam mais com ela (ex.: não fala de pagamento se a base não explica).
+- Imagem/áudio/vídeo: em vez de resposta pronta, o robô responde dentro do assunto e pede para escrever.
+- Painel → 🧠 **Atendimento caprichado**: usa o modelo mais forte (entende melhor, custa mais por mensagem).
+- Restauração: branch `versao-1.30.1`.
+
 ## Jarvis 1.30.1: tudo no Telegram ao gerar
 
 - O Telegram recebe **um álbum só** com o banner, o vídeo vertical, o vídeo da TV e a imagem da TV, e depois o texto
