@@ -592,6 +592,9 @@ COMANDOS = [
     ("/ollama", "Pede direto ao Ollama (modelos abertos grandes na nuvem); sem texto: status"),
     ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq) · número 2: /atendimento 2"),
     ("/filme", "Vídeo de divulgação de um filme ou série (dados do TMDB; cortes do trailer se você enviar no painel)"),
+    ("/bloquear", "WhatsApp: o robô passa a ignorar um número (/bloquear 21999990000 nome · número 2: /bloquear 2 …)"),
+    ("/desbloquear", "WhatsApp: o robô volta a responder o número"),
+    ("/bloqueados", "WhatsApp: lista os números que o robô ignora"),
     ("/treinar", "Treinador do atendimento: analisa as conversas e sugere a base · /treinar aplicar · /treinar 2"),
     ("/whatsapp", "WhatsApp: vigia (testar), reiniciar sem QR ou reconectar com QR novo"),
     ("/assumir", "WhatsApp: você assume a conversa de um número"),
@@ -693,6 +696,7 @@ Jogos do dia
 WhatsApp (atendimento automático)
 • 📱 no painel: conectar pelo QR code, ligar/desligar e editar a base de respostas
 • /atendimento · /assumir <número> · /devolver <número> (número 2 do WhatsApp: /atendimento 2 · /assumir 2 <número>)
+• /bloquear 21999990000 Fulano · /desbloquear 21999990000 · /bloqueados: números que o robô ignora
 • /treinar: o treinador lê as conversas da semana e sugere ajustes na base · /treinar aplicar · /treinar descartar · no próprio WhatsApp, escrever #bot devolve ao robô
 
 Escritório e rotinas
@@ -815,7 +819,7 @@ def comando(estado, pool, texto):
                 return json.loads(r.read().decode()).get("texto") or "🎓 ok", None
         except Exception as e:  # noqa: BLE001
             return f"⚠️ não consegui pedir ao painel ({type(e).__name__})", None
-    if cmd in ("/atendimento", "/assumir", "/devolver", "/whatsapp"):
+    if cmd in ("/atendimento", "/assumir", "/devolver", "/whatsapp", "/bloquear", "/desbloquear", "/bloqueados"):
         import linhas
         return linhas.comando(cmd, arg), None
     if cmd == "/tendencias":

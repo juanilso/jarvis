@@ -405,7 +405,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"whatsapp": atendimento.status_whatsapp(), "atendimento": atendimento.resumo(),
                                "vigia": {"ligado": v.get("ligado", True), "ultimo": v.get("ultimo"),
                                          "min": vigia_whatsapp.INTERVALO // 60},
-                               "linhas": [{"n": n, "nome": linhas.nome(n)} for n in linhas.lista()]})
+                               "linhas": [{"n": n, "nome": linhas.nome(n)} for n in linhas.lista()],
+                               "bloqueados": atendimento.bloqueados()})
         if url.path == "/api/whatsapp/qr":
             try:
                 png = atendimento.qr_png()
@@ -610,6 +611,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
             if a == "devolver":
                 return self._json({"ok": True, "msg": atendimento.devolver(str(d.get("numero", "")))})
+            if a in ("bloquear", "desbloquear"):
+                try:
+                    if a == "bloquear":
+                        atendimento.bloquear(str(d.get("numero", "")), str(d.get("nome", "")))
+                    else:
+                        atendimento.desbloquear(str(d.get("numero", "")))
+                except ValueError as x:
+                    return self._json({"ok": False, "erro": str(x)}, 400)
+                return self._json({"ok": True, "bloqueados": atendimento.bloqueados()})
             if a == "faq":
                 atendimento.salvar_faq(str(d.get("texto", "")))
                 return self._json({"ok": True})

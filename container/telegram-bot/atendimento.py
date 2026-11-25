@@ -746,6 +746,62 @@ def _vigia():
     return linhas.modulos(LINHA)[1]
 
 
+# ------------------------------------------------------------------ números bloqueados (o robô ignora)
+def _arq_bloq():
+    return os.path.join(DIR, "bloqueados.json")
+
+
+def chave_numero(n):
+    """Forma comparável de um telefone: sem 55 do Brasil e sem o nono dígito (21 99999-0000 = 2199990000)."""
+    d = re.sub(r"\D", "", str(n or ""))
+    if len(d) >= 12 and d.startswith("55"):
+        d = d[2:]
+    if len(d) == 11 and d[2] == "9":
+        d = d[:2] + d[3:]
+    return d
+
+
+def bloqueados():
+    try:
+        return json.load(open(_arq_bloq(), encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+
+
+def bloquear(numero, nome=""):
+    d = re.sub(r"\D", "", str(numero or ""))
+    if len(d) < 8:
+        raise ValueError("número inválido: use DDD + número (ex.: 21999990000)")
+    with _lock:
+        lista = [b for b in bloqueados() if chave_numero(b["n"]) != chave_numero(d)]
+        lista.append({"n": d, "nome": str(nome or "")[:40], "t": int(time.time())})
+        os.makedirs(DIR, exist_ok=True)
+        json.dump(lista, open(_arq_bloq(), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    return d
+
+
+def desbloquear(numero):
+    k = chave_numero(numero)
+    with _lock:
+        antes = bloqueados()
+        lista = [b for b in antes if chave_numero(b["n"]) != k]
+        json.dump(lista, open(_arq_bloq(), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    return len(lista) < len(antes)
+
+
+def bloqueado(chat, telefone="", e=None):
+    """O chat (ou o telefone por trás de um ID interno @lid) está na lista de bloqueados?"""
+    lista = bloqueados()
+    if not lista:
+        return False
+    cands = {chave_numero(chat.split("@")[0]) if chat.endswith("@c.us") else "", chave_numero(telefone)}
+    if e is None:
+        e = _ler_estado()
+    cands.add(chave_numero(e.get("telefones", {}).get(chat, "")))
+    cands.discard("")
+    return any(chave_numero(b["n"]) in cands for b in lista)
+
+
 def _numero(e, chat):
     """Telefone para mostrar (o WhatsApp às vezes usa um ID interno no lugar do número)."""
     return e.get("telefones", {}).get(chat) or chat.split("@")[0]
@@ -925,6 +981,14 @@ def atender(dados):
         ts /= 1000
     with _lock:  # registra que o n8n entregou algo (para o diagnóstico)
         e0 = _ler_estado()
+        if telefone and chat.endswith("@lid"):  # guarda o telefone do ID interno (para achar bloqueados)
+            e0.setdefault("telefones", {}).setdefault(chat, telefone)
+        if texto != DIAG and bloqueado(chat, telefone, e0):
+            e0["ultimo_recebido"] = {"t": time.time(), "de_mim": de_mim, "evento": str(dados.get("evento") or "")}
+            e0.setdefault("ignorados_bloq", {})[time.strftime("%Y-%m-%d")] = \
+                e0.get("ignorados_bloq", {}).get(time.strftime("%Y-%m-%d"), 0) + 1
+            _salvar_estado(e0)
+            return {"responder": False, "motivo": "número bloqueado: o robô ignora"}
         if texto == DIAG:
             e0["diag"] = time.time()
         else:
@@ -1240,6 +1304,25 @@ def comando(cmd, arg, local=False):
             return vigia_whatsapp.texto(vigia_whatsapp.checar(consertar=True, avisar=False))
         return vigia_whatsapp.texto(vigia_whatsapp.ultimo()) + \
             "\n\n/whatsapp testar · /whatsapp reiniciar (sem QR) · /whatsapp reconectar (QR novo)"
+    if cmd in ("/bloquear", "/desbloquear", "/bloqueados"):
+        rot = f"【{NOME}】 " if NOME else ""
+        if cmd == "/bloqueados" or not arg.strip():
+            lista = bloqueados()
+            if not lista:
+                return rot + "🚫 Nenhum número bloqueado. Use /bloquear <número> [nome]."
+            return rot + "🚫 Números que o robô ignora:\n" + "\n".join(
+                f"• {b['n']}" + (f" ({b['nome']})" if b.get("nome") else "") for b in lista) + \
+                "\n\nTirar: /desbloquear <número>"
+        m = re.match(r"\s*([+(\d][\d\s().+\-]{6,}\d)\s*(.*)$", arg)
+        partes = [m.group(1), m.group(2).strip()] if m else arg.split(maxsplit=1)
+        if cmd == "/bloquear":
+            try:
+                n = bloquear(partes[0], partes[1] if len(partes) > 1 else "")
+            except ValueError as x:
+                return rot + f"⚠️ {x}"
+            return rot + f"🚫 {n} bloqueado: o robô não responde mais esse número (você continua podendo falar com ele)."
+        return rot + (f"✅ {partes[0]} desbloqueado: o robô volta a responder." if desbloquear(partes[0])
+                      else f"Esse número não estava bloqueado. Veja /bloqueados")
     if cmd == "/assumir":
         return assumir(arg)
     if cmd == "/devolver":

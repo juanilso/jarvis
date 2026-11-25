@@ -111,6 +111,15 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.38: números bloqueados no atendimento do WhatsApp
+
+- O robô **ignora** os números bloqueados: não responde, não chama você e o vigia não avisa "mensagem sem resposta".
+  Você continua podendo falar com eles pelo celular. Cada número de WhatsApp (1 e 2) tem a sua lista.
+- Painel 📱 → **🚫 Números bloqueados** (adicionar com nome, desbloquear) e botão 🚫 nas conversas que esperam você.
+- Telegram: `/bloquear 21 99999-0000 Fulano` · `/desbloquear 21999990000` · `/bloqueados` (número 2: `/bloquear 2 …`).
+- O número é reconhecido com ou sem +55, com ou sem o nono dígito, e também quando o WhatsApp manda o ID interno
+  (@lid) no lugar do telefone. Restauração: branch `versao-1.37.1`.
+
 ## Jarvis 1.37.1: trailer por link direto
 
 - Painel 🎬 Filmes → "cole o link direto do arquivo do trailer" (Google Drive, Dropbox, área de imprensa da

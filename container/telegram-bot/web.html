@@ -378,6 +378,10 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     Escreva várias versões separadas por <code>||</code>: o robô sorteia uma (mensagens sempre iguais chamam a atenção do filtro do WhatsApp).</div>
   <div class="waMsgs" id="waModelos"></div>
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button id="atSalvar" class="prim">💾 Salvar recursos, proteção e mensagens</button><span class="waDica" id="atMsg"></span></div>
+  <h3>🚫 NÚMEROS BLOQUEADOS</h3>
+  <div class="waDica">O robô ignora esses números: não responde, não chama você e o vigia não avisa. Você continua podendo falar com eles pelo celular.</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="bqNum" placeholder="Número com DDD (ex.: 21999990000)" style="flex:1;min-width:180px"><input id="bqNome" placeholder="Nome (opcional)" style="flex:1;min-width:140px"><button id="bqAdd">🚫 Bloquear</button></div>
+  <div id="bqLista" class="waDica">nenhum</div>
   <h3>ÚLTIMOS EVENTOS</h3><div id="waEventos"><div class="waDica">nenhuma mensagem ainda</div></div>
   <h3>BASE DE RESPOSTAS</h3>
   <div class="waDica" style="margin:0 0 6px">O robô responde <b>só</b> com o que estiver aqui. Coloque preços, horários, como pagar, regras e quando chamar você.</div>
@@ -971,7 +975,11 @@ async function waAtualizar(){
     :`<div class="waAg">🙋 <b>${esc(x.nome||x.numero)}</b> <span class="waDica">${esc(x.numero)} · com você · o robô volta em ${Math.max(1,Math.round(x.ate/60))} min sem resposta sua</span><button data-n="${esc(x.numero)}">🤖 devolver ao robô</button></div>`).join(""):'<div class="waDica">ninguém esperando</div>';
   if(a.fila)$("waFila").innerHTML=`📤 Fila de mensagens do robô: <b>${a.fila.na_fila}</b> aguardando · <b>${a.fila.ultima_hora}</b> enviadas na última hora`+(a.fila.silencio?" · 🌙 horário de silêncio (saem no fim dele)":"");
   $("waEventos").innerHTML=(a.eventos||[]).length?a.eventos.map(x=>`<div class="waAg"><span class="waDica" style="margin:0;min-width:58px">${esc(x.h)}</span><b>${esc(x.nome||x.n)}</b> <span>${esc(x.m)}</span>${x.x?`<span class="waDica" style="margin:0 0 0 auto;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">“${esc(x.x)}”</span>`:""}</div>`).join(""):'<div class="waDica">nenhuma mensagem ainda</div>';
-  $("waAguard").querySelectorAll("button").forEach(b=>b.onclick=async()=>{await api("/api/whatsapp/acao",{acao:"devolver",numero:b.dataset.n});waAtualizar()});
+  $("waAguard").querySelectorAll("button:not(.bqB)").forEach(b=>b.onclick=async()=>{await api("/api/whatsapp/acao",{acao:"devolver",numero:b.dataset.n});waAtualizar()});
+  $("waAguard").querySelectorAll(".waAg").forEach(div=>{const n=(div.querySelector("button")||{}).dataset?.n;if(!n||div.querySelector(".bqB"))return;
+    const b=document.createElement("button");b.className="bqB";b.textContent="🚫";b.title="Bloquear: o robô passa a ignorar este número";
+    b.onclick=async()=>{if(!confirm("Bloquear "+n+"? O robô não vai mais responder esse número."))return;await api("/api/whatsapp/acao",{acao:"bloquear",numero:n,nome:div.querySelector("b")?.textContent||""});waAtualizar()};div.appendChild(b)});
+  bqMostrar(j.bloqueados||[]);
 }
 async function cfgCarregar(){const c=await api("/api/painel/config");if(!c||c.erro)return;
   $("cfgUrl").value=c.url||"";$("cfgRenovar").value=c.acao_renovar||"";$("cfgPlanos").value=c.planos||"";$("cfgHoras").value=c.teste_horas||4;
@@ -1001,6 +1009,10 @@ $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("text
 async function waAbrirLinha(){$("wa").classList.add("aberto");cfgCarregar();atCarregar();trCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)}
 $("btnWa").onclick=waAbrirLinha;
+function bqMostrar(l){$("bqLista").innerHTML=l.length?l.map(b=>`<div class="waAg">🚫 <b>${esc(b.n)}</b> <span class="waDica">${esc(b.nome||"")}</span><button data-n="${esc(b.n)}">desbloquear</button></div>`).join(""):"nenhum";
+  $("bqLista").querySelectorAll("button").forEach(x=>x.onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"desbloquear",numero:x.dataset.n});bqMostrar(r.bloqueados||[])})}
+$("bqAdd").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"bloquear",numero:$("bqNum").value,nome:$("bqNome").value});
+  if(!r.ok){alert(r.erro||"não deu");return}$("bqNum").value="";$("bqNome").value="";bqMostrar(r.bloqueados||[])};
 let trDados={};
 async function trCarregar(){const j=await api("/api/whatsapp/treino");if(!j)return;trDados=j;
   $("trInfo").textContent=j.rodando?"⏳ analisando as conversas (1 a 3 minutos)…":j.quando?`Última análise: ${j.quando} · ${j.analisadas||0} de ${j.conversas||0} conversas`+(j.pendente?" · 📄 base sugerida esperando você":j.aplicada?` · aplicada em ${j.aplicada}`:"")+(j.aviso?` · ${j.aviso}`:""):"Ainda não rodou. Clique em Analisar agora (precisa de algumas conversas guardadas).";

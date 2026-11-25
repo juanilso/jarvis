@@ -154,6 +154,8 @@ def perdidas(desde, ja_avisadas=()):
             continue
         if (mid or f"{chat}:{int(ts)}") in ja_avisadas:  # já avisada: não reinicia a sessão de novo por ela
             continue
+        if at.bloqueado(chat):  # o robô ignora esse número de propósito
+            continue
         numero = re.sub(r"\D", "", chat.split("@")[0])
         lista.append({"chave": mid or f"{chat}:{int(ts)}", "chat": chat, "nome": c.get("name") or "", "numero": numero,
                       "texto": str(m.get("body") or "(mídia)")[:80], "min": int((agora - ts) // 60)})
