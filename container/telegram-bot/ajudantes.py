@@ -46,9 +46,15 @@ PROVEDORES = {
                    [], 60, "cota grátis diária pequena (10.000 neurons); a Cloudflare não treina com o conteúdo"),
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1",
                    [r":free$"], 50, "modelos :free têm limite diário baixo e podem registrar o conteúdo"),
+    "ollama": ("OLLAMA_API_KEY", "https://ollama.com/v1",
+               [r"^gpt-oss:120b", r"^(qwen3|deepseek|kimi|glm)", r"^gpt-oss", r"^gemma"],
+               300, "Ollama Cloud: limites conforme o plano da sua conta em ollama.com"),
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1",
              [r"llama-3\.3-70b", r"llama.*70b", r"qwen", r"llama"], 300, "plano grátis com limite por minuto"),
 }
+
+# se a lista de modelos do provedor falhar ou vier vazia
+MODELOS_RESERVA = {"ollama": ["gpt-oss:120b", "qwen3-coder:480b", "deepseek-v3.1:671b", "gpt-oss:20b"]}
 
 # provedores sem lista de modelos no formato OpenAI: candidatos fixos (o primeiro que funcionar fica guardado)
 MODELOS_FIXOS = {
@@ -161,7 +167,7 @@ def disponivel(nome):
 
 
 def configurados():
-    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,nvidia,cloudflare,openrouter,mistral,grok").split(",") if n.strip()]
+    ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,nvidia,cloudflare,ollama,openrouter,mistral,grok").split(",") if n.strip()]
     return [n for n in ordem if n in PROVEDORES and os.environ.get(PROVEDORES[n][0])]
 
 
@@ -196,7 +202,14 @@ def candidatos(nome, quantos=4):
         c[nome] = {"modelo": lista[0], "lista": lista, "quando": time.time(), "v": 2}
         _gravar_cache(c)
         return lista
-    ids = [m.get("id", "") for m in (_http(nome, "/models") or {}).get("data", [])]
+    try:
+        ids = [m.get("id", "") for m in (_http(nome, "/models") or {}).get("data", [])]
+    except Exception:  # noqa: BLE001
+        if nome not in MODELOS_RESERVA:
+            raise
+        ids = []
+    if not ids and nome in MODELOS_RESERVA:
+        ids = list(MODELOS_RESERVA[nome])
     ids = [i.split("/", 1)[1] if i.startswith("models/") else i for i in ids]
     lista = []
     for padrao in PROVEDORES[nome][2]:  # até 2 de cada tipo (ex.: 2 Flash + 2 Flash-Lite), para variar se um lotar

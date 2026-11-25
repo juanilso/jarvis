@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.34: Ollama Cloud como ajudante (igual ao Hermes)
+
+- **/ollama <pedido>** no Telegram e no painel: pergunta direto ao Ollama (modelos abertos grandes na nuvem:
+  gpt-oss 120b, qwen3-coder, deepseek…). A resposta chega com o rótulo 🦙 OLLAMA; no painel ele aparece na equipe
+  como ativo enquanto trabalha. `/ollama` sozinho mostra se está ligado e qual modelo está usando.
+- Os agentes do Jarvis também podem chamá-lo (`jarvis-ajudante --ia ollama …`) para segunda opinião e textos longos,
+  e ele entra na fila automática dos ajudantes. Dados sensíveis são apagados antes de enviar.
+- Ligar: `./ajudantes-configurar.sh` → cole a chave do Ollama (ollama.com/settings/keys). Para fixar um modelo:
+  `JARVIS_AJUDANTE_OLLAMA_MODELO=qwen3-coder:480b` no `.env.ajudantes`.
+- Restauração: branch `versao-1.33.0`.
+
 ## Jarvis 1.33: painel novo (layout A · Cockpit) para PC, tablet e celular
 
 - **Holograma em destaque:** o Jarvis/Hermes ocupa a altura toda de um quadro próprio, sem degradê; o status

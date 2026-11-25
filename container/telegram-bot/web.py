@@ -47,7 +47,7 @@ VOZ_DIR = tempfile.mkdtemp(prefix="jarvis-voz-")
 
 
 HIST_DIR = os.path.join(core.CONFIG_DIR, "historico-web")
-PERSISTIR = {"hermes", "usuario", "resposta", "info", "erro", "agente_inicio", "agente_fim", "sistema"}
+PERSISTIR = {"hermes", "ollama", "usuario", "resposta", "info", "erro", "agente_inicio", "agente_fim", "sistema"}
 _contador = [0]
 
 
@@ -258,6 +258,10 @@ def iniciar(texto, veio_de_audio):
             elif acao == "site_corrigir":
                 import site_previa
                 return iniciar(site_previa.PROMPT_CORRIGIR, veio_de_audio)
+            elif acao == "ollama":
+                proj = estado.ler()["projeto"]
+                threading.Thread(target=core.rodar_ollama, args=(texto.partition(" ")[2].strip(), proj,
+                                 lambda tipo, t: publicar({"tipo": tipo, "texto": t}, proj)), daemon=True).start()
             elif acao == "hermes":
                 proj = estado.ler()["projeto"]
                 threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), proj,
@@ -469,7 +473,7 @@ class Handler(BaseHTTPRequestHandler):
             agora = time.time()
             agentes = {n: dict(e, segundos=int(agora - e["desde"])) for n, e in ESCRITORIO.items()
                        if e.get("estado") == "ativo" or agora - e.get("fim", agora) < 60}
-            return self._json({"agentes": agentes, "rodando": pool.resumo(), "hermes": hermes.ocupado(),
+            return self._json({"agentes": agentes, "rodando": pool.resumo(), "hermes": hermes.ocupado(), "ollama": core.OLLAMA["ocupado"] > 0,
                                "atendimento": atendimento.resumo(),
                                "hermes_ligado": hermes.configurado(), "rotinas": rotinas.listar(20),
                                "n8n": bool(os.environ.get("JARVIS_GATILHO_TOKEN")), "projeto": estado.ler()["projeto"]})
@@ -489,7 +493,7 @@ class Handler(BaseHTTPRequestHandler):
                 novos = [e for e in eventos if e["id"] > desde and e.get("projeto") == proj]
                 ultimo = _contador[0]
             ex = pool.de(proj)
-            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": ex.ocupado, "hermes": hermes.ocupado(), "projeto_ocupado": proj if ex.ocupado else None,
+            return self._json({"eventos": novos, "ultimo": ultimo, "ocupado": ex.ocupado, "hermes": hermes.ocupado(), "ollama": core.OLLAMA["ocupado"] > 0, "projeto_ocupado": proj if ex.ocupado else None,
                                "pedido": ex.pedido, "rodando": pool.resumo(),
                                "desde_inicio": int(time.time() - ex.inicio) if ex.inicio else 0})
         if url.path == "/api/mapa":

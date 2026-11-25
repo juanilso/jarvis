@@ -459,7 +459,7 @@ def tratar(msg):
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
                                                   "/ideia", "/lembrar", "/pesquisar", "/sincronizar", "/guia",
-                                                  "/modelos", "/hermes", "/tendencias",
+                                                  "/modelos", "/hermes", "/ollama", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp", "/treinar",
                                                   "/print", "/testar", "/previa", "/piloto",
                                                   "/ajudantes", "/ajudante") \
@@ -488,6 +488,10 @@ def tratar(msg):
         elif acao == "site_corrigir":
             import site_previa
             iniciar_pedido(chat_id, site_previa.PROMPT_CORRIGIR, veio_de_audio=False)
+        elif acao == "ollama":
+            threading.Thread(target=core.rodar_ollama, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
+                             lambda tipo, t: enviar(chat_id, ("🦙 Ollama:\n\n" if tipo == "ollama" else "") + t)),
+                             daemon=True).start()
         elif acao == "hermes":
             threading.Thread(target=core.rodar_hermes, args=(texto.partition(" ")[2].strip(), estado.ler()["projeto"],
                              lambda tipo, t: responder_hermes(chat_id, tipo, t)), daemon=True).start()

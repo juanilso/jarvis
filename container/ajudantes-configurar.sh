@@ -38,6 +38,7 @@ if [ -n "$(atual MISTRAL_API_KEY)" ]; then
   read -r -p "• Mistral: o plano grátis acabou. Remover a chave da Mistral? [S/n] " r
   case "${r:-s}" in [sS]*) gravar MISTRAL_API_KEY ""; echo "  removida";; esac
 fi
+pedir OLLAMA_API_KEY "Ollama Cloud (modelos grandes: gpt-oss 120b, qwen3-coder, deepseek…; também no /ollama)" "https://ollama.com/settings/keys"
 pedir OPENROUTER_API_KEY "OpenRouter (modelos :free)" "https://openrouter.ai/keys"
 if [ -n "$(atual XAI_API_KEY)" ]; then
   read -r -p "• Grok: a conta precisa de crédito. Remover a chave do Grok? [S/n] " r
@@ -45,7 +46,7 @@ if [ -n "$(atual XAI_API_KEY)" ]; then
 fi
 
 ordem="$(atual JARVIS_AJUDANTES)"; ordem="${ordem:-gemini,groq,nvidia,cloudflare,openrouter}"
-for n in nvidia cloudflare; do case ",$ordem," in *,$n,*) ;; *) ordem="$ordem,$n";; esac; done
+for n in nvidia cloudflare ollama; do case ",$ordem," in *,$n,*) ;; *) ordem="$ordem,$n";; esac; done
 ordem="$(echo ",$ordem," | sed 's/,grok,/,/g; s/,mistral,/,/g; s/^,//; s/,$//')"
 read -r -p "Ordem de preferência [$ordem]: " o; gravar JARVIS_AJUDANTES "${o:-$ordem}"
 
@@ -64,4 +65,4 @@ for n in a.configurados():
     r = a.perguntar("Responda só: ok", ia=n, maximo=300)
     print(f"  {n}: {'✅ ' + r['modelo'] if r['ok'] else '❌ ' + '; '.join(r.get('tentativas', []))[:200]}", flush=True)
 PY
-echo; echo "Pronto. No Telegram: /ajudantes (situação) · /ajudante <tarefa> (pedido direto)."
+echo; echo "Pronto. No Telegram: /ajudantes (situação) · /ajudante <tarefa> (pedido direto) · /ollama <pedido> (direto ao Ollama)."

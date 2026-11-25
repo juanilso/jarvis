@@ -61,6 +61,8 @@ jarvis (carregue-a se ainda não estiver carregada) e trabalhe em MODO ATIVO com
 - Qualquer alteração de código: explorador → executor da área (desenvolvedor, dba, android ou designer) → testador →
   revisor → commit local. Sem pular o testador e o revisor.
 - Evolução, escopo, arquitetura ou decisão técnica: arquiteto primeiro.
+- Ollama (`jarvis-ajudante --ia ollama`, modelos abertos grandes): segunda opinião em revisão de trecho de código,
+  comparação de abordagens e textos longos. Mesmas regras dos ajudantes (nada de segredos ou dados de clientes).
 - Ajudantes (`jarvis-ajudante`, outras IAs grátis/baratas): delegue tarefas de TEXTO volumosas e simples
   (rascunhos de textos do site, conteúdo provisório, traduções, title/description, alt de imagens, resumos, listas
   de ideias, segunda opinião). Revise sempre o que voltar. Nunca mande dados de clientes, .env, tokens ou banco.
@@ -419,6 +421,29 @@ TABELA_MODELOS = """🧠 Modelos disponíveis (preço por milhão de tokens: ent
 Todos têm contexto de 1 milhão de tokens. No gateway, a disponibilidade e os nomes podem variar.
 Uso: /modelo sonnet · /modelo fable · /modelo padrao (ou um ID completo, como claude-opus-5-5)
 Seu gateway tem outros? /modelos lista o que ele oferece."""
+OLLAMA = {"ocupado": 0}
+PAPEL_OLLAMA = ("Você é o Ollama, um ajudante do Jarvis (orquestrador de projetos de software), rodando modelos abertos "
+                "na nuvem do Ollama. Responda em português do Brasil, direto e bem organizado. Você não tem acesso aos "
+                "arquivos do projeto nem à internet: trabalhe com o que veio na mensagem e diga o que falta.")
+
+
+def rodar_ollama(pedido, projeto, avisar):
+    """Executa /ollama em segundo plano e entrega com avisar("ollama", texto)."""
+    import ajudantes
+    OLLAMA["ocupado"] += 1
+    try:
+        r = ajudantes.perguntar(pedido, contexto=PAPEL_OLLAMA + (f" Projeto atual: {projeto}." if projeto else ""),
+                                ia="ollama", maximo=6000)
+        if r.get("ok"):
+            avisar("ollama", r["texto"].strip() + f"\n\n— {r.get('modelo', 'Ollama')}")
+        else:
+            avisar("erro", "Ollama: " + ("; ".join(r.get("tentativas", [])) or r.get("erro", "não respondeu"))[:400])
+    except Exception as e:  # noqa: BLE001
+        avisar("erro", f"Ollama: {type(e).__name__}: {str(e)[:200]}")
+    finally:
+        OLLAMA["ocupado"] -= 1
+
+
 def rodar_hermes(pedido, projeto, avisar):
     """Executa /hermes em segundo plano e entrega a resposta com avisar(tipo, texto).
     tipo "hermes" = resposta dele (a interface fala com a voz do Hermes)."""
@@ -548,6 +573,7 @@ COMANDOS = [
     ("/modelo", "Modelo da conversa: haiku, sonnet, opus, fable, padrao ou um ID do gateway"),
     ("/modelos", "Pergunta ao seu gateway quais modelos ele oferece"),
     ("/hermes", "Pede ajuda ao Hermes Agent (pesquisa, análise, automações); sem texto: status"),
+    ("/ollama", "Pede direto ao Ollama (modelos abertos grandes na nuvem); sem texto: status"),
     ("/atendimento", "WhatsApp: status do robô de atendimento (on, off, faq) · número 2: /atendimento 2"),
     ("/treinar", "Treinador do atendimento: analisa as conversas e sugere a base · /treinar aplicar · /treinar 2"),
     ("/whatsapp", "WhatsApp: vigia (testar), reiniciar sem QR ou reconectar com QR novo"),
@@ -601,6 +627,7 @@ Modelos (/modelo sem nome mostra a lista e os preços · /modelos pergunta ao ga
 
 Hermes (ajudante, se ligado)
 • /hermes pesquise gateways PIX para PHP com fontes · /hermes analise o README do projeto
+• /ollama compare estas duas abordagens… · /ollama revise este trecho… (modelos abertos grandes na nuvem do Ollama)
 • Ele só lê os projetos; quem altera código continua sendo o Jarvis. /hermes sozinho mostra se está ligado
 
 Jogos do dia: alerta antes do jogo
@@ -842,6 +869,19 @@ def comando(estado, pool, texto):
         estado.salvar(est)
         return (f"🧠 Modelo da sessão: {est['modelo'] or 'padrão'} (os agentes do Jarvis seguem o perfil do projeto)"
                 + aviso), None
+    if cmd == "/ollama":
+        import ajudantes
+        if not os.environ.get("OLLAMA_API_KEY"):
+            return ("🦙 O Ollama não está ligado. Na VPS: ./ajudantes-configurar.sh e cole a chave do Ollama "
+                    "(ollama.com/settings/keys)."), None
+        if not arg:
+            try:
+                mod = ajudantes.modelo("ollama")
+            except Exception as e:  # noqa: BLE001
+                mod = f"não consegui listar os modelos ({type(e).__name__})"
+            return (f"🦙 Ollama ligado · modelo: {mod}\nUse: /ollama <pedido>. Os agentes do Jarvis também podem "
+                    "chamá-lo como ajudante. Dados sensíveis são apagados antes de enviar."), None
+        return "🦙 Pedi ao Ollama… aviso quando ele responder.", "ollama"
     if cmd == "/hermes":
         import hermes_cliente as hermes
         if not arg:
