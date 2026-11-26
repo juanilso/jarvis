@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.48: jogos internacionais no banner e no vídeo
+
+- Além dos brasileiros, entram os **internacionais que passam no Brasil**: Libertadores, Sul-Americana, Mundial de
+  Clubes, Copa do Mundo, Eliminatórias, Copa América, amistosos de seleções, Champions, Premier League, La Liga e
+  Serie A (marcados por padrão); Bundesliga, Ligue 1, Europa/Conference League, Portugal, Saudi, MLS e Argentino
+  opcionais. Painel → ⚽ Jogos → 🌎 Internacionais.
+- Ordem: brasileiros sempre primeiro → internacionais com time brasileiro (ou a seleção) → demais, pela importância.
+- Só entra internacional com **canal brasileiro confirmado** na pesquisa (o canal que a ESPN informa é o dos EUA e
+  é ignorado). Limite de internacionais por dia (padrão 8) para o banner/vídeo não ficar enorme.
+- Texto dos grupos com 🌎 nos internacionais; o banner vira "FUTEBOL NO BRASIL E NO MUNDO" quando há internacional.
+- Restauração: `versao-1.47.0`.
+
 ## Jarvis 1.47: skills de design, SEO e segurança
 
 - Revisadas e adicionadas ao `jarvis-extras` (commits revisados em 26/11/2026; atualizar exige nova revisão:

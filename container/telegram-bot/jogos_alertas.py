@@ -227,7 +227,9 @@ def verificar(agora=None):
             lista = _cache["lista"]
         else:
             try:
-                lista = jogos.agenda(dia)
+                lista, _ = jogos.agenda(dia)
+                # sem a lista do dia (canais não confirmados), só alerta internacional com time brasileiro
+                lista = [j for j in lista if not j.get("internacional") or jogos.tem_brasileiro(j)]
                 _cache.update(dia=dia.isoformat(), t=time.time(), lista=lista)
             except Exception as e:  # noqa: BLE001
                 print("alertas: agenda falhou", e, flush=True)

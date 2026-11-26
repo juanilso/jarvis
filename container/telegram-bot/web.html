@@ -243,7 +243,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
 </div></div>
 <div id="jg"><div class="caixa">
   <button class="fechar" id="jgFechar">✕</button>
-  <h2>⚽ JOGOS DO DIA · FUTEBOL BRASILEIRO</h2>
+  <h2>⚽ JOGOS DO DIA · BRASIL E MUNDO</h2>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <button id="jgGerar" class="prim">⚽ Gerar agora</button><button id="jgNovaArte" title="A IA desenha um fundo novo">🎨 Nova arte</button><button id="jgTg">📨 Mandar no meu Telegram</button>
     <button id="jgCopiar">📋 Copiar texto</button><span class="waDica" id="jgMsg"></span></div>
@@ -254,6 +254,9 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   </div>
   <h3>CONFIGURAÇÃO</h3>
   <div class="jgLigas" id="jgLigas"></div>
+  <div class="waDica" style="margin-top:10px">🌎 <b>Internacionais</b> (entram depois dos brasileiros, e só os que passam no Brasil: o canal é confirmado na pesquisa; com time brasileiro, vêm primeiro)</div>
+  <div class="jgLigas" id="jgLigasInt"></div>
+  <label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-top:6px">Máximo de jogos internacionais por dia <input id="jgMaxInt" type="number" min="0" max="30" style="width:70px"></label>
   <div class="waCfg" style="margin-top:8px">
     <label>Nome da marca na imagem<input id="jgMarca" placeholder="ex.: IT Suport"></label>
     <label>Frase do rodapé<input id="jgRodape" placeholder="Bom jogo! ⚽"></label>
@@ -600,7 +603,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
    <b>🛠 Corrigir</b> (<code>/testar corrigir</code>): o Jarvis corrige o que achou, testa de novo e confere os prints.
    Quando você pede uma mudança de site, o Jarvis faz isso sozinho e as imagens chegam junto com a resposta (aqui e no Telegram).</details>
   <details><summary>Como funcionam os jogos do dia (⚽)?</summary>
-   O Jarvis pega a agenda do futebol brasileiro (Série A, B, C, Copa do Brasil e estaduais) na ESPN, pesquisa na internet onde
+   O Jarvis pega a agenda do futebol brasileiro (Série A, B, C, Copa do Brasil e estaduais) e dos internacionais que passam no Brasil (Libertadores, Champions, Premier League…) na ESPN, pesquisa na internet onde
    passa cada jogo (marca "a confirmar" quando não acha), e gera uma <b>imagem</b> no formato de Status e um <b>texto pronto</b> para grupos.
    Use o botão ⚽ do painel, <code>/jogos</code> no Telegram, ou ative no n8n a rotina "Jarvis · Jogos do dia" (todo dia às 8h, chega no Telegram).
    O robô do WhatsApp responde "que jogos tem hoje?" com a lista. Os canais vêm de sites de notícias: confira os jogos mais importantes.</details>
@@ -949,6 +952,7 @@ let jgTimer=null,jgGerado=null;
 async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)return;const c=j.config;
   if(!jgGerado||!$("jg").contains(document.activeElement))alMostrar(j.alertas);
   $("jgLigas").innerHTML=Object.entries(j.ligas).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${c.ligas.includes(k)?"checked":""}> ${esc(n)}</label>`).join("");
+  $("jgLigasInt").innerHTML=Object.entries(j.ligas_int||{}).map(([k,n])=>`<label><input type="checkbox" data-l="${k}" ${(c.ligas_int||[]).includes(k)?"checked":""}> ${esc(n)}</label>`).join("");$("jgMaxInt").value=c.max_int??8;
   if(document.activeElement!==$("jgMarca"))$("jgMarca").value=c.marca||"";if(document.activeElement!==$("jgRodape"))$("jgRodape").value=c.rodape||"";$("jgCanais").checked=!!c.canais;if(document.activeElement!==$("jgEstilo"))$("jgEstilo").value=c.estilo||"arte";$("jgEscudos").checked=!!c.escudos;if(document.activeElement!==$("jgVideo"))$("jgVideo").value=c.video||"desligado";if(document.activeElement!==$("jgVideoLimite"))$("jgVideoLimite").value=c.video_limite??20;
   if(document.activeElement!==$("jgProv"))$("jgProv").value=c.video_provedor||"gemini";if(document.activeElement!==$("jgModGw"))$("jgModGw").value=c.video_modelo_gateway||"";
   $("jgRoteiro").checked=!!c.roteiro_claude;$("jgModGwL").style.display=$("jgProv").value==="gateway"?"":"none";
@@ -995,7 +999,8 @@ $("jgModGw").onfocus=async()=>{if($("jgModGwLista").childElementCount)return;con
   const l=(r.video&&r.video.length?r.video:r.todos)||[];$("jgModGwLista").innerHTML=l.map(i=>`<option value="${esc(i)}">`).join("");
   if(!r.ok)$("jgModGw").placeholder="não consegui ler a lista do gateway: digite o ID"};
 $("jgSalvar").onclick=async()=>{const ligas=[...$("jgLigas").querySelectorAll("input:checked")].map(i=>i.dataset.l);
-  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value,video_formatos:[$("jgFmtV").checked&&"vertical",$("jgFmtH").checked&&"horizontal"].filter(Boolean),musica_volume:$("jgVolume").value,telegram_ao_gerar:$("jgTgAuto").checked,video_provedor:$("jgProv").value,video_modelo_gateway:$("jgModGw").value.trim(),roteiro_claude:$("jgRoteiro").checked}});
+  const ligas_int=[...$("jgLigasInt").querySelectorAll("input:checked")].map(i=>i.dataset.l);
+  const r=await api("/api/whatsapp/acao",{acao:"jogos_config",config:{ligas,ligas_int,max_int:$("jgMaxInt").value,marca:$("jgMarca").value,rodape:$("jgRodape").value,canais:$("jgCanais").checked,estilo:$("jgEstilo").value,escudos:$("jgEscudos").checked,video:$("jgVideo").value,video_limite:$("jgVideoLimite").value,video_formatos:[$("jgFmtV").checked&&"vertical",$("jgFmtH").checked&&"horizontal"].filter(Boolean),musica_volume:$("jgVolume").value,telegram_ao_gerar:$("jgTgAuto").checked,video_provedor:$("jgProv").value,video_modelo_gateway:$("jgModGw").value.trim(),roteiro_claude:$("jgRoteiro").checked}});
   $("jgCfgMsg").textContent=r.ok?"✔ salvo (vale na próxima geração)":"erro"};
 /* ---------- WhatsApp ---------- */
 let waTimer=null,waLigado=true;

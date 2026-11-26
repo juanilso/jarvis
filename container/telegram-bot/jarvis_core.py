@@ -616,7 +616,7 @@ COMANDOS = [
     ("/memoria", "O que o Jarvis já sabe (geral e do projeto); /memoria <termo>, anotar, esquecer"),
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
     ("/tendencias", "O que estão falando do tema nos últimos 30 dias (Reddit, HN, GitHub)"),
-    ("/jogos", "Jogos do dia do futebol brasileiro: imagem + texto para grupos no seu Telegram"),
+    ("/jogos", "Jogos do dia (brasileiros + internacionais que passam no Brasil): imagem + texto para grupos no seu Telegram"),
     ("/pagina", "Cria uma página web do zero (landing, vendas, captura, serviço, evento…) com formulário, SEO e prints"),
     ("/planejar", "Planeja um projeto antes de desenvolver: perguntas, fluxos, regras, protótipo e testes (n8n)"),
     ("/ajudantes", "Outras IAs (Gemini, Groq, NVIDIA, Cloudflare…) como mão de obra do Jarvis: situação e cota do dia"),

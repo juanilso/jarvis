@@ -217,7 +217,8 @@ def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
     f_tag, f_tit = _fonte("DejaVuSans-Bold.ttf", 28), _fonte("BebasNeue-Regular.ttf", 168)
     f_sub, f_data = _fonte("BebasNeue-Regular.ttf", 86), _fonte("DejaVuSans-Bold.ttf", 34)
     # cabeçalho
-    tag = "FUTEBOL BRASILEIRO"
+    tag = "FUTEBOL BRASILEIRO" if not any(j.get("internacional") for j in (cfg.get("_jogos_todos") or [])) \
+        else "FUTEBOL NO BRASIL E NO MUNDO"
     wt = d.textlength(tag, font=f_tag)
     d.rounded_rectangle([(L - wt) / 2 - 26, 60, (L + wt) / 2 + 26, 112], 26, fill=VERDE)
     d.text(((L - wt) / 2, 70), tag, font=f_tag, fill=(6, 20, 12))

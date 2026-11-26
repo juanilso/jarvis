@@ -496,7 +496,7 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/jogos":
             import jogos
             d = jogos.do_dia() or {}
-            return self._json({"config": jogos.config(), "ligas": jogos.LIGAS, "dia": d.get("dia"), "texto": d.get("texto", ""),
+            return self._json({"config": jogos.config(), "ligas": jogos.LIGAS, "ligas_int": jogos.INTERNACIONAIS, "dia": d.get("dia"), "texto": d.get("texto", ""),
                                "imagens": len(d.get("imagens") or []), "total": len(d.get("jogos") or []),
                                "gerado": d.get("gerado"), "canais_pesquisados": d.get("canais_pesquisados", 0),
                                "estilo": d.get("estilo", "simples"), "arte": d.get("arte", ""),
