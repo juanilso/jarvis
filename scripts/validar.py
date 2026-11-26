@@ -63,6 +63,35 @@ for a in os.listdir(os.path.join(RAIZ, "agents")):
     if not os.path.isfile(os.path.join(RAIZ, "projeto/.claude/agents", a)):
         avisos.append(f"modo projeto sem o agente {a}")
 
+# Código Python do contêiner: compila e acha "import dentro da função" que sombreia um nome já usado antes nela
+# (vira UnboundLocalError na hora de rodar; foi o que derrubou o /api/gatilho na 1.49.0)
+import ast  # noqa: E402
+import glob  # noqa: E402
+_bots = os.path.join(RAIZ, "container", "telegram-bot")
+for arq in sorted(glob.glob(os.path.join(_bots, "*.py"))):
+    nome_arq = os.path.relpath(arq, RAIZ)
+    try:
+        arvore = ast.parse(open(arq, encoding="utf-8").read(), arq)
+    except SyntaxError as e:
+        erros.append(f"{nome_arq}: erro de sintaxe na linha {e.lineno}: {e.msg}")
+        continue
+    for fn in ast.walk(arvore):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        locais = {}
+        for n in ast.walk(fn):
+            if isinstance(n, (ast.Import, ast.ImportFrom)):
+                for al in n.names:
+                    k = al.asname or al.name.split(".")[0]
+                    locais[k] = min(locais.get(k, 10 ** 9), n.lineno)
+        vistos = set()
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and n.id in locais \
+                    and n.lineno < locais[n.id] and (n.id, fn.name) not in vistos:
+                vistos.add((n.id, fn.name))
+                erros.append(f"{nome_arq}:{n.lineno}: '{n.id}' é usado antes do import local da linha "
+                             f"{locais[n.id]} na função {fn.name} (UnboundLocalError ao rodar)")
+
 for e in erros:
     print("ERRO  ", e)
 for a in avisos:

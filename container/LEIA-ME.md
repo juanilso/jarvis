@@ -111,6 +111,13 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.49.2: correção urgente do atendimento do WhatsApp
+
+- A 1.49.0 quebrou a rota `/api/gatilho` (o n8n entrega as mensagens do WhatsApp e as rotinas por ela): um
+  `import` dentro da central de chaves fazia o painel fechar a conexão ("The connection to the server was closed
+  unexpectedly"). Corrigido. O robô voltou a receber as mensagens.
+- O `scripts/validar.py` agora barra esse tipo de erro antes de qualquer versão sair.
+
 ## Jarvis 1.49.1: diagnóstico do WhatsApp diz por que o n8n não chamou o Jarvis
 
 - No passo "n8n repassou ao Jarvis", o diagnóstico agora mostra a causa: token do n8n diferente do Jarvis (o Jarvis

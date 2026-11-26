@@ -888,7 +888,6 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"erro": str(e)}, 400)
                 nome = chaves.CATALOGO.get(env, (env,))[0]
                 try:
-                    import rotinas
                     rotinas.avisar_telegram(f"🔑 Chave {'trocada' if acao == 'definir' else 'removida'} pelo painel: "
                                             f"{nome}" + (f" (final {final})" if final else ""))
                 except Exception:  # noqa: BLE001
