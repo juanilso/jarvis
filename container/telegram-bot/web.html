@@ -372,6 +372,21 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica">Com essa opção <b>desligada</b>, o robô continua respondendo mesmo depois de você; para calar uma conversa, escreva
     <code>#eu</code> nela (o cliente vê). Ligada: ele se cala sozinho e volta depois dos minutos sem resposta sua. <code>#bot</code> devolve na hora.</div>
   <div class="waDica">O robô inteiro liga e desliga no botão <b>⏸ Pausar robô</b> lá em cima.</div>
+  <h3>🔊 RESPOSTAS EM ÁUDIO</h3>
+  <div class="waCfg">
+    <label>Responder em áudio<select id="vzModo"><option value="quando_audio">Quando o cliente manda áudio (ou pede)</option><option value="sempre">Sempre</option><option value="nunca">Nunca</option></select></label>
+    <label>Texto junto do áudio<select id="vzTexto"><option value="quando_precisa">Só quando tem link, Pix ou código</option><option value="sempre">Sempre</option><option value="nunca">Nunca</option></select></label>
+  </div>
+  <div class="waDica">Se o cliente disser que não sabe ler (ou que prefere áudio), a IA percebe e passa a responder sempre em áudio para ele.
+    Links e códigos Pix não são lidos em voz alta: vão por escrito junto.</div>
+  <div class="waCfg">
+    <label>Chave da ElevenLabs<input id="vzToken" type="password" autocomplete="off" placeholder="cole a chave (fica só no servidor)"></label>
+    <label>Voz<select id="vzVoz"><option value="">— salve a chave para listar as vozes —</option></select></label>
+    <label>Modelo<select id="vzModelo"></select></label>
+    <label>Velocidade<input id="vzVel" type="number" min="0.7" max="1.2" step="0.05" value="1"></label>
+  </div>
+  <div class="waDica" id="vzInfo">Sem chave da ElevenLabs, o áudio usa a voz gratuita do Jarvis.</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="vzSalvar">💾 Salvar voz</button><button id="vzOuvir">▶ Ouvir teste</button><audio id="vzAudio" controls style="height:36px;display:none"></audio></div>
   <h3>PROTEÇÃO DO NÚMERO</h3>
   <div class="waCfg">
     <label><span><input type="checkbox" id="prDig"> Marcar como visto e mostrar "digitando…"</span></label>
@@ -1033,7 +1048,18 @@ $("cfgSalvar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"p
   $("cfgMsg").textContent=r.ok?"✔ salvo":"❌ "+(r.erro||"erro ao salvar");if(r.ok)cfgCarregar()};
 $("cfgTestar").onclick=async()=>{$("cfgMsg").textContent="⏳ testando…";const r=await api("/api/whatsapp/acao",{acao:"painel_testar"});$("cfgMsg").textContent=r.msg||r.erro||"?"};
 let atPadrao={};
+async function vzCarregar(){const v=await api("/api/voz");if(!v||v.erro)return;
+  $("vzToken").value="";$("vzToken").placeholder=v.token?`chave salva (${v.token}) — cole outra para trocar`:"cole a chave (fica só no servidor)";
+  $("vzModelo").innerHTML=Object.entries(v.modelos).map(([k,n])=>`<option value="${k}"${k===v.modelo?" selected":""}>${esc(n)}</option>`).join("");$("vzVel").value=v.velocidade;
+  $("vzVoz").innerHTML=(v.vozes||[]).length?v.vozes.map(x=>`<option value="${x.id}"${x.id===v.voz?" selected":""}>${esc(x.nome)}${x.info?" — "+esc(x.info):""}</option>`).join(""):`<option value="">${v.token?"nenhuma voz na conta":"— salve a chave para listar as vozes —"}</option>`;
+  $("vzInfo").textContent=v.erro_vozes?("⚠ "+v.erro_vozes):v.token&&v.voz?`Usando ElevenLabs: ${v.voz_nome||v.voz}.`:v.token?"Escolha uma voz e salve.":"Sem chave da ElevenLabs, o áudio usa a voz gratuita do Jarvis."}
+$("vzSalvar").onclick=async()=>{const o=$("vzVoz").selectedOptions[0];const r=await api("/api/voz/salvar",{token:$("vzToken").value.trim(),voz:$("vzVoz").value,voz_nome:o?o.textContent.split(" — ")[0]:"",modelo:$("vzModelo").value,velocidade:$("vzVel").value});
+  if(r.erro){$("vzInfo").textContent="⚠ "+r.erro;return}await vzCarregar()};
+$("vzOuvir").onclick=async()=>{$("vzInfo").textContent="⏳ gerando o áudio de teste…";const r=await fetch("/api/voz/testar",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+  if(!r.ok){let j={};try{j=await r.json()}catch(e){}$("vzInfo").textContent="⚠ "+(j.erro||"falhou");return}
+  const a=$("vzAudio");a.src=URL.createObjectURL(await r.blob());a.style.display="";a.play().catch(()=>{});$("vzInfo").textContent="Teste com: "+(r.headers.get("X-Origem")==="elevenlabs"?"ElevenLabs":"voz gratuita (sem ElevenLabs configurada)")};
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
+  if(c.voz){$("vzModo").value=c.voz.modo;$("vzTexto").value=c.voz.texto_junto}vzCarregar();
   $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;$("recVariar").checked=c.recursos.variar!==false;$("recIA").checked=!!c.recursos.ia_caprichada;$("recMidia").checked=c.recursos.ler_midia!==false;$("recJogos").checked=c.recursos.jogos!==false;
   const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prAgrupar").value=p.agrupar_seg??7;$("prMinuto").value=p.max_por_minuto;
   $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
@@ -1046,7 +1072,8 @@ $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa 
 $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("textarea").forEach(t=>m[t.dataset.k]=t.value);
   const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked,calar_quando_respondo:$("recCalar").checked,variar:$("recVariar").checked,ia_caprichada:$("recIA").checked,ler_midia:$("recMidia").checked,jogos:$("recJogos").checked},
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,agrupar_seg:$("prAgrupar").value,max_por_minuto:$("prMinuto").value,
-      intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},mensagens:m}});
+      intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},
+    voz:{modo:$("vzModo").value,texto_junto:$("vzTexto").value},mensagens:m}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
 async function waAbrirLinha(){$("wa").classList.add("aberto");cfgCarregar();atCarregar();trCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)}

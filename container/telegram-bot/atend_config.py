@@ -45,6 +45,9 @@ RECURSOS = {"pagamentos": True, "teste": True, "consulta": True, "jogos": True,
             "variar": True,
             "ler_midia": True,  # ouve áudios (transcreve) e entende imagens/vídeos do cliente
             "ia_caprichada": False}  # usa o modelo mais forte (entende melhor, custa mais) no atendimento  # o Jarvis cria versões diferentes de cada mensagem automática (evita texto repetido)  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
+VOZ = {"modo": "quando_audio",          # nunca | quando_audio (cliente mandou áudio ou pediu) | sempre
+       "texto_junto": "quando_precisa"}  # sempre | quando_precisa (link, Pix, código) | nunca
+VOZ_OPCOES = {"modo": ("nunca", "quando_audio", "sempre"), "texto_junto": ("sempre", "quando_precisa", "nunca")}
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
     "atraso_min": 2, "atraso_max": 6,   # segundos de pausa antes de responder (+ tempo de "digitar")
@@ -63,7 +66,8 @@ def carregar():
         salvo = {}
     return {"mensagens": {**MENSAGENS, **{k: v for k, v in (salvo.get("mensagens") or {}).items() if k in MENSAGENS and v}},
             "recursos": {**RECURSOS, **{k: bool(v) for k, v in (salvo.get("recursos") or {}).items() if k in RECURSOS}},
-            "protecao": {**PROTECAO, **{k: v for k, v in (salvo.get("protecao") or {}).items() if k in PROTECAO}}}
+            "protecao": {**PROTECAO, **{k: v for k, v in (salvo.get("protecao") or {}).items() if k in PROTECAO}},
+            "voz": {**VOZ, **{k: v for k, v in (salvo.get("voz") or {}).items() if v in VOZ_OPCOES.get(k, ())}}}
 
 
 def salvar(novo):
@@ -74,6 +78,9 @@ def salvar(novo):
     for k, v in (novo.get("recursos") or {}).items():
         if k in RECURSOS:
             atual["recursos"][k] = bool(v)
+    for k, v in (novo.get("voz") or {}).items():
+        if v in VOZ_OPCOES.get(k, ()):
+            atual["voz"][k] = v
     for k, v in (novo.get("protecao") or {}).items():
         if k not in PROTECAO:
             continue
@@ -92,6 +99,10 @@ def salvar(novo):
         json.dump(atual, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         os.replace(tmp, ARQ)
     return atual
+
+
+def voz():
+    return carregar()["voz"]
 
 
 def recurso(nome):

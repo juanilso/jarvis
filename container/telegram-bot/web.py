@@ -372,6 +372,15 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/cerebro":
             import cerebro
             return self._json({**cerebro.ler(), "falhas": cerebro.falhas(estado.ler()["projeto"])})
+        if url.path == "/api/voz":  # voz do atendimento (ElevenLabs): chave só mascarada
+            import elevenlabs
+            r = elevenlabs.publico()
+            if elevenlabs.config()["token"]:
+                try:
+                    r["vozes"] = elevenlabs.vozes()
+                except Exception as e:  # noqa: BLE001
+                    r["vozes"], r["erro_vozes"] = [], str(e)[:200]
+            return self._json(r)
         if url.path == "/api/anexo/ver":  # miniatura/arquivo de um anexo enviado (só da pasta de anexos)
             import anexos
             import mimetypes
@@ -822,6 +831,25 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
+        if url.path == "/api/voz/salvar":
+            import elevenlabs
+            try:
+                return self._json(elevenlabs.salvar(dados))
+            except ValueError as e:
+                return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/voz/testar":
+            import elevenlabs
+            try:
+                ogg, origem = elevenlabs.testar()
+            except Exception as e:  # noqa: BLE001
+                return self._json({"erro": str(e)[:200]}, 500)
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/ogg")
+            self.send_header("Content-Length", str(len(ogg)))
+            self.send_header("X-Origem", origem)
+            self.end_headers()
+            self.wfile.write(ogg)
+            return
         if url.path == "/api/mensagem":
             texto = (dados.get("texto") or "").strip()
             if dados.get("anexos"):

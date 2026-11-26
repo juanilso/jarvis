@@ -92,6 +92,10 @@ REGRAS FIXAS
 - [ÁUDIO DO CLIENTE: …] = você ouviu o áudio (é o que ele falou). [IMAGEM DO CLIENTE: …] e [VÍDEO DO CLIENTE: …] =
   você viu (é o que aparece). Responda naturalmente como quem ouviu/viu: não diga que algo foi "transcrito" ou
   "descrito". Se a descrição disser que está ilegível ou incerta, peça para mandar de novo ou escrever.
+- Sua resposta pode ser enviada como mensagem de VOZ (o sistema decide). Escreva sempre do jeito que se fala: frases
+  curtas e naturais. Se o cliente disser que não sabe ler, que tem dificuldade para ler/enxergar ou que prefere áudio,
+  coloque [[AUDIO]] numa linha separada no fim (daí em diante ele recebe áudio). Se pedir para voltar a escrever,
+  coloque [[TEXTO]].
 - "[MÍDIA]" na mensagem = o cliente mandou algo que você NÃO conseguiu ver nem ouvir. Diga isso com naturalidade,
   ligado ao assunto da conversa, e peça para ele escrever o que aparece / o que disse.
 
@@ -448,6 +452,16 @@ def _como_pessoa(chat, texto):
         pass
 
 
+def _marcar_id_robo(r):
+    mid = _id_msg(r)
+    if mid:
+        with _lock:
+            e = _ler_estado()
+            ids = [x for x in e.setdefault("ids_robo", []) if x[1] > time.time() - 600][-50:]
+            e["ids_robo"] = ids + [[mid, time.time()]]
+            _salvar_estado(e)
+
+
 def enviar(chat, texto, proteger=True):
     if proteger:
         _como_pessoa(chat, texto)
@@ -457,14 +471,57 @@ def enviar(chat, texto, proteger=True):
         e["enviadas"][chat] = [h for h in e["enviadas"][chat] if h[1] > time.time() - 600][-10:] + [[_hash(texto), time.time()]]
         _salvar_estado(e)
     r = waha("/api/sendText", {"session": SESSAO, "chatId": chat, "text": texto})
-    mid = _id_msg(r)
-    if mid:
-        with _lock:
-            e = _ler_estado()
-            ids = [x for x in e.setdefault("ids_robo", []) if x[1] > time.time() - 600][-50:]
-            e["ids_robo"] = ids + [[mid, time.time()]]
-            _salvar_estado(e)
+    _marcar_id_robo(r)
     return r
+
+
+def _gravando(chat, ligado=True):
+    try:
+        waha(f"/api/{SESSAO}/presence", {"chatId": chat, "presence": "recording" if ligado else "paused"}, tempo=10)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def enviar_voz(chat, texto):
+    """Responde com mensagem de voz (ElevenLabs; reserva: voz gratuita). Texto junto quando tem link/Pix/código
+    (ou sempre, conforme o painel). Se a voz falhar, manda o texto."""
+    import base64
+    import elevenlabs
+    cfg = C.voz()
+    _gravando(chat)
+    try:
+        ogg, origem = elevenlabs.gerar_ogg(texto)
+    except Exception as e:  # noqa: BLE001
+        _gravando(chat, False)
+        print("atendimento: voz falhou, mando texto:", str(e)[:200], flush=True)
+        return enviar(chat, texto), "texto (a voz falhou)"
+    p = C.protecao()
+    time.sleep(min(random.uniform(float(p.get("atraso_min") or 0), float(p.get("atraso_max") or 0)), 8))
+    _gravando(chat, False)
+    with _lock:
+        e = _ler_estado()
+        e.setdefault("enviadas", {}).setdefault(chat, [])
+        e["enviadas"][chat] = [h for h in e["enviadas"][chat] if h[1] > time.time() - 600][-10:] + [[_hash(texto), time.time()]]
+        _salvar_estado(e)
+    r = waha("/api/sendVoice", {"session": SESSAO, "chatId": chat, "convert": False,
+                                "file": {"mimetype": "audio/ogg; codecs=opus", "filename": "voz.ogg",
+                                         "data": base64.b64encode(ogg).decode()}}, tempo=90)
+    _marcar_id_robo(r)
+    import elevenlabs as el
+    if cfg["texto_junto"] == "sempre" or (cfg["texto_junto"] == "quando_precisa" and el.precisa_texto(texto)):
+        time.sleep(1.5)
+        enviar(chat, texto, proteger=False)
+        return r, f"áudio ({origem}) + texto"
+    return r, f"áudio ({origem})"
+
+
+def _responder_em_audio(e, chat, texto_cliente):
+    modo = C.voz()["modo"]
+    if modo == "nunca":
+        return False
+    if modo == "sempre" or e.get("prefere_audio", {}).get(chat):
+        return True
+    return "[ÁUDIO DO CLIENTE" in (texto_cliente or "")
 
 
 def _evento(e, chat, motivo, texto=""):
@@ -1316,6 +1373,15 @@ def _responder(chat, nome, minha):
         if "[[HUMANO]]" in resposta:
             resposta = resposta.replace("[[HUMANO]]", "").strip() or "Já avisei o atendente, ele te responde em breve. 🙌"
             _chamar_dono(e, chat, nome, "o pedido precisa de uma pessoa")
+        if "[[AUDIO]]" in resposta or "[[TEXTO]]" in resposta:  # o cliente pediu áudio (não sabe ler) ou voltar ao texto
+            pref = e.setdefault("prefere_audio", {})
+            if "[[AUDIO]]" in resposta:
+                pref[chat] = time.time()
+                _evento(e, chat, "🔊 cliente prefere áudio: respostas em voz daqui em diante", texto)
+            else:
+                pref.pop(chat, None)
+            resposta = resposta.replace("[[AUDIO]]", "").replace("[[TEXTO]]", "").strip()
+        em_audio = erro is None and _responder_em_audio(e, chat, texto)
         resposta = sem_marca_ia(resposta)[:1500]
         diario(chat, "cliente", texto)
         diario(chat, "robo", resposta, ficha=ficha or {}, humano=chat in e.get("esperando", {}),
@@ -1327,6 +1393,9 @@ def _responder(chat, nome, minha):
         _salvar_estado(e)
     _lembrar_frase(resposta)
     try:
+        if em_audio:
+            _, como = enviar_voz(chat, resposta)
+            return {"responder": True, "texto": resposta, "enviado": True, "como": como}
         enviar(chat, resposta)
         return {"responder": True, "texto": resposta, "enviado": True}
     except Exception as erro_envio:  # noqa: BLE001

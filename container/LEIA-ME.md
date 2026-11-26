@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.44: atendimento responde em áudio (ElevenLabs)
+
+- O robô do WhatsApp responde com **mensagem de voz**. Modos: quando o cliente manda áudio (padrão), sempre ou nunca.
+- Se o cliente disser que não sabe ler (ou prefere áudio), a IA percebe e passa a responder em áudio só para ele.
+  Se pedir para voltar a escrever, volta ao texto.
+- Links, códigos Pix e números longos não são lidos em voz alta: vão por escrito junto (ou sempre/nunca, no painel).
+  Valores viram fala ("R$ 35,90" → "35 reais e 90 centavos"). Enquanto gera, o cliente vê "gravando áudio…".
+- **ElevenLabs:** painel → WhatsApp → 🔊 Respostas em áudio → cole a chave, escolha a voz da sua conta, o modelo e a
+  velocidade; "▶ Ouvir teste" toca uma amostra. A chave fica em /segredos/elevenlabs.json (600), só mascarada.
+- Sem chave (ou se a ElevenLabs falhar), usa a voz gratuita do Jarvis; se até a voz falhar, manda o texto.
+- Restauração: `versao-1.43.0`.
+
 ## Jarvis 1.43: o atendimento do WhatsApp ouve áudios e vê imagens
 
 - **Áudio** do cliente vira texto (a mesma transcrição dos áudios do Telegram) e a IA responde ao que ele falou.
