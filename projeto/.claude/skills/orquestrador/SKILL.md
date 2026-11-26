@@ -67,6 +67,13 @@ dentro da base de conhecimento. Leia no início (`jarvis-memoria contexto --proj
 prompt), parta do que está lá e só pergunte o que mudou. Anote na hora o que for durável
 (`jarvis-memoria anotar --geral|--projeto <nome> --chave "<assunto>" "<fato>"`), nunca segredos.
 
+## Picsart (imagens, banners e vídeos)
+Se o MCP `picsart-gen-ai` estiver conectado (`/mcp`), use-o para banners, artes de página, remover fundo, aumentar
+resolução e fundos/cenas de vídeo. Antes de gerar, consulte o preço/créditos e escolha o modelo mais barato que
+atende; vídeo custa bem mais que imagem: confirme com o usuário se passar do combinado. Baixe o resultado (vem como
+URL) para a pasta do projeto (ex.: `assets/`) e mostre a prévia. Nada de jogadores reais, escudos/marcas oficiais
+ou pessoas públicas; textos do banner em português, conferidos.
+
 ## Navegador do PC (Chrome do Jarvis)
 Com `/navegador` configurado, as ferramentas `navegador-pc` controlam um Chrome separado no Windows do usuário (ele
 vê tudo). Use para homologar o que só abre lá ou exige o login dele nesse perfil; páginas públicas, use o playwright

@@ -20,6 +20,11 @@ for p in frontend-design canva; do
   claude plugin install "$p@claude-plugins-official" || echo "   (não consegui instalar $p agora; tente de novo depois)"
 done
 
+echo "-> Picsart (MCP oficial hospedado: imagens, banners e vídeos com a sua conta Picsart)"
+claude mcp get picsart-gen-ai >/dev/null 2>&1 || \
+  claude mcp add --scope user --transport http picsart-gen-ai https://api.picsart.com/gen-ai/mcp \
+  || echo "   (não consegui adicionar o Picsart agora; tente de novo depois)"
+
 echo "-> atualizando o plugin Jarvis"
 claude plugin uninstall jarvis@jarvis-marketplace >/dev/null 2>&1 || true
 claude plugin install jarvis@jarvis-marketplace || true
@@ -37,4 +42,7 @@ Pronto.
   copie o endereço inteiro dessa página e rode NA VPS:
      docker compose exec dev curl -s "COLE_O_ENDERECO_AQUI"
   (isso entrega a autorização ao Claude dentro do contêiner).
+- Picsart: mesma coisa. Dentro do Claude rode /mcp, escolha "picsart-gen-ai" e "Authenticate", entre com a sua
+  conta Picsart no PC e, se a página final der erro de "localhost", use o mesmo comando do curl acima.
+  Gerar imagem/vídeo gasta créditos da sua conta Picsart (o Jarvis consulta o preço antes).
 MSG

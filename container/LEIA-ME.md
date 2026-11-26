@@ -111,6 +111,16 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.46: Picsart (banners e vídeos com a sua conta)
+
+- O Jarvis pode usar o **MCP oficial da Picsart** (hospedado pela Picsart, sem chave de API): gera banners e artes
+  das páginas, remove fundo, aumenta resolução e cria fundos/cenas de vídeo, com a sua conta Picsart.
+- Conectar: na VPS `./picsart-configurar.sh` e siga os passos (autoriza uma vez pelo navegador do PC; se a página
+  final der erro de "localhost", o script mostra o comando que conclui).
+- Gerar gasta **créditos da sua conta Picsart**; o Jarvis consulta o preço antes e confirma com você o que for caro
+  (vídeo). A skill de página usa a Picsart para banners (WebP, versões para PC e celular).
+- Restauração: `versao-1.45.0`.
+
 ## Jarvis 1.45: navegador do seu PC (Chrome do Jarvis no Windows, via Tailscale)
 
 - O Jarvis controla um **Chrome separado** no seu Windows para homologar o que criou e buscar dados em sistemas em

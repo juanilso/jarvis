@@ -58,6 +58,11 @@ Botão flutuante de WhatsApp só se o objetivo for conversa.
 - Rastreamento (Meta Pixel, Google Analytics/Tag Manager): só com o ID fornecido pelo usuário; senão, deixe o ponto
   marcado `<!-- ANALYTICS: cole aqui -->`. Nunca invente IDs.
 
+### Imagens e banners
+Precisa de banner/hero, ilustração ou imagem de produto e o MCP `picsart-gen-ai` está conectado? Gere com ele
+(consulte o custo antes), no tamanho certo (hero 1920x800 no PC e versão 1080x1350 para celular), baixe para
+`assets/`, converta para WebP e use `<picture>`/`srcset`. Sem Picsart: imagens livres ou SVG/CSS, nunca link quebrado.
+
 ## 5. SEO e compartilhamento
 `<title>` (≤ 60 caracteres) e `meta description` (≤ 155) próprios; `lang="pt-BR"`; Open Graph e Twitter Card com
 imagem 1200×630; favicon; URL limpa; dados estruturados JSON-LD do tipo certo (LocalBusiness, Product, Event, FAQPage)
