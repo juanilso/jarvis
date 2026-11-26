@@ -14,7 +14,7 @@ _rodando = {}
 TELEFONE = re.compile(r"\b\d{10,13}\b")
 
 PEDIDO = """Você é um treinador de atendimento ao cliente por WhatsApp. Abaixo estão a BASE DE RESPOSTAS que o robô de
-pré-atendimento segue e CONVERSAS reais da última semana (👤 cliente, 🤖 robô, 🙋 dono; [MÍDIA] = imagem/áudio).
+pré-atendimento segue e CONVERSAS reais da última semana (👤 cliente, 🤖 robô, 🙋 dono; [ÁUDIO/IMAGEM/VÍDEO DO CLIENTE: …] = o que ele mandou, já ouvido/visto; [MÍDIA] = mídia que não deu para ler).
 
 Analise as conversas e encontre onde o robô:
 - não entendeu o que o cliente disse, respondeu outra coisa ou ignorou uma pergunta;

@@ -15,6 +15,7 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import atend_config as C
@@ -88,8 +89,11 @@ REGRAS FIXAS
   a resposta ao cliente normalmente e coloque [[HUMANO]] numa linha separada no fim.
 - Depois que a pessoa já foi avisada, continue conversando: tranquilize, diga que já foi avisado e aproveite para
   entender melhor o pedido. Não repita [[HUMANO]].
-- "[MÍDIA]" na mensagem = o cliente mandou imagem, áudio ou vídeo que você NÃO consegue ver nem ouvir. Diga isso com
-  naturalidade, ligado ao assunto da conversa, e peça para ele escrever o que aparece / o que disse.
+- [ÁUDIO DO CLIENTE: …] = você ouviu o áudio (é o que ele falou). [IMAGEM DO CLIENTE: …] e [VÍDEO DO CLIENTE: …] =
+  você viu (é o que aparece). Responda naturalmente como quem ouviu/viu: não diga que algo foi "transcrito" ou
+  "descrito". Se a descrição disser que está ilegível ou incerta, peça para mandar de novo ou escrever.
+- "[MÍDIA]" na mensagem = o cliente mandou algo que você NÃO conseguiu ver nem ouvir. Diga isso com naturalidade,
+  ligado ao assunto da conversa, e peça para ele escrever o que aparece / o que disse.
 
 FORMATO DA SUA SAÍDA (obrigatório, nesta ordem):
 <pensar>
@@ -969,6 +973,109 @@ def diagnostico():
     return {"ok": all(p["ok"] for p in passos), "passos": passos}
 
 
+MIDIA_MAX = 25 * 1024 * 1024
+PEDIDO_IMAGEM = ("Você é os olhos de um atendente de WhatsApp. Descreva em português, objetivamente e em até 6 linhas, "
+                 "o que o cliente mandou: o tipo (print de tela, foto, comprovante, documento, figurinha…), TODO texto "
+                 "importante que aparece (mensagens de erro, valores, datas, nomes de app/plano, códigos), e o que a "
+                 "imagem indica sobre o problema. Não invente: se algo estiver ilegível, diga. Não use saudação.")
+
+
+def _baixar_midia(dados, chat):
+    """Baixa a mídia da mensagem no WAHA (pelo link do evento ou buscando a mensagem pelo id)."""
+    m = dados.get("midia") if isinstance(dados.get("midia"), dict) else {}
+    if not m.get("url") and dados.get("id"):
+        try:
+            j = waha(f"/api/{SESSAO}/chats/{urllib.parse.quote(chat, safe='@.')}/messages/"
+                     f"{urllib.parse.quote(str(dados['id']), safe='')}?downloadMedia=true", tempo=60)
+            m = (j or {}).get("media") or {}
+        except Exception as e:  # noqa: BLE001
+            print("atendimento: mídia não encontrada:", type(e).__name__, flush=True)
+    url = m.get("url") or ""
+    if not url:
+        return None, m
+    u = urllib.parse.urlparse(url)  # o WAHA devolve o próprio endereço interno; usa o WAHA_URL desta linha
+    conteudo = waha(u.path + (f"?{u.query}" if u.query else ""), bruto=True, tempo=90, aceitar="*/*")
+    if len(conteudo) > MIDIA_MAX:
+        raise ValueError("mídia grande demais")
+    return conteudo, m
+
+
+def _quadros_jpeg(caminho, n=1, video=False):
+    """Converte imagem (ou n quadros de um vídeo) em JPEG até 1568 px, em base64."""
+    import base64
+    import subprocess
+    import tempfile
+    saida = []
+    with tempfile.TemporaryDirectory() as tmp:
+        if video:
+            r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", caminho],
+                               capture_output=True, text=True, timeout=60)
+            try:
+                dur = float(r.stdout.strip())
+            except ValueError:
+                dur = 0
+            instantes = [dur * (i + 0.5) / n for i in range(n)] if dur else [0]
+        else:
+            instantes = [None]
+        for i, t in enumerate(instantes):
+            out = os.path.join(tmp, f"{i}.jpg")
+            cmd = ["ffmpeg", "-nostdin", "-loglevel", "error", "-y"] + (["-ss", f"{t:.2f}"] if t is not None else []) + \
+                  ["-i", caminho, "-frames:v", "1", "-vf", "scale='min(1568,iw)':'min(1568,ih)':force_original_aspect_ratio=decrease",
+                   "-q:v", "4", out]
+            if subprocess.run(cmd, capture_output=True, timeout=120).returncode == 0 and os.path.exists(out):
+                with open(out, "rb") as f:
+                    saida.append(base64.b64encode(f.read()).decode())
+    return saida
+
+
+def _ver(imagens, pedido):
+    conteudo = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b}} for b in imagens]
+    conteudo.append({"type": "text", "text": pedido})
+    return _chamar_modelo(PEDIDO_IMAGEM, [{"role": "user", "content": conteudo}], max_tokens=400, forte=False, tempo=90)
+
+
+def _transcrever(caminho):
+    import jarvis_core
+    return jarvis_core.transcrever(caminho)
+
+
+def ler_midia(dados, chat):
+    """Áudio → o que o cliente falou; imagem/vídeo → o que aparece. Devolve o texto para o histórico, ou None."""
+    import tempfile
+    conteudo, m = _baixar_midia(dados, chat)
+    if not conteudo:
+        return None
+    tipo = (m.get("mimetype") or "").split(";")[0].strip().lower()
+    nome_arq = str(m.get("filename") or "")
+    ext = {"audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "image/jpeg": ".jpg", "image/png": ".png",
+           "image/webp": ".webp", "video/mp4": ".mp4"}.get(tipo, os.path.splitext(nome_arq)[1] or ".bin")
+    with tempfile.NamedTemporaryFile(suffix=ext) as f:  # apagado logo depois: a mídia do cliente não fica guardada
+        f.write(conteudo)
+        f.flush()
+        if tipo.startswith("audio/"):
+            fala = _transcrever(f.name)
+            return f"[ÁUDIO DO CLIENTE: {fala}]" if fala else "[ÁUDIO DO CLIENTE: (sem fala que dê para entender)]"
+        if tipo.startswith("image/"):
+            imgs = _quadros_jpeg(f.name)
+            if not imgs:
+                return None
+            figurinha = tipo == "image/webp" and not nome_arq
+            desc = _ver(imgs, "É uma figurinha: diga em uma linha a emoção/ideia dela." if figurinha else "Descreva a imagem.")
+            return f"[{'FIGURINHA' if figurinha else 'IMAGEM'} DO CLIENTE: {desc.strip()}]"
+        if tipo.startswith("video/"):
+            imgs = _quadros_jpeg(f.name, 4, video=True)
+            fala = ""
+            try:
+                fala = _transcrever(f.name)
+            except Exception:  # noqa: BLE001  (vídeo sem áudio)
+                pass
+            desc = _ver(imgs, "São quadros em sequência de um vídeo. Descreva o que acontece.") if imgs else ""
+            return f"[VÍDEO DO CLIENTE: {desc.strip()}" + (f" · Fala no vídeo: {fala}" if fala else "") + "]"
+        if tipo == "application/pdf" or nome_arq:
+            return f"[ARQUIVO DO CLIENTE: {nome_arq or tipo}] (você não abre arquivos: peça para dizer o que precisa)"
+    return None
+
+
 def atender(dados):
     """Processa um evento de mensagem. Retorna {"responder": bool, "texto": str, "motivo": str}."""
     chat = str(dados.get("chat") or "")
@@ -979,6 +1086,19 @@ def atender(dados):
     ts = float(dados.get("timestamp") or time.time())
     if ts > 1e12:
         ts /= 1000
+    if dados.get("tem_midia") and not de_mim and texto != DIAG and time.time() - ts < 300 \
+            and not chat.endswith("@g.us") and "@newsletter" not in chat and not chat.startswith("status@") \
+            and C.recurso("ler_midia") is not False:
+        e_m = _ler_estado()  # antes da trava: transcrever/ver demora e não pode segurar os outros atendimentos
+        if e_m.get("ligado", True) and not bloqueado(chat, telefone, e_m):
+            try:
+                lido = ler_midia(dados, chat)
+            except Exception as e:  # noqa: BLE001
+                lido = None
+                print("atendimento: não consegui ler a mídia:", type(e).__name__, str(e)[:150], flush=True)
+            if lido:
+                texto = (lido + (f"\nLegenda: {texto}" if texto else ""))[:3000]
+                dados = {**dados, "tem_midia": False}
     with _lock:  # registra que o n8n entregou algo (para o diagnóstico)
         e0 = _ler_estado()
         if telefone and chat.endswith("@lid"):  # guarda o telefone do ID interno (para achar bloqueados)

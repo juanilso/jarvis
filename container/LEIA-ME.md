@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.43: o atendimento do WhatsApp ouve áudios e vê imagens
+
+- **Áudio** do cliente vira texto (a mesma transcrição dos áudios do Telegram) e a IA responde ao que ele falou.
+- **Imagem/print/comprovante:** a IA descreve o que aparece (mensagens de erro, valores, datas, nome do app/plano) e
+  responde com base nisso. **Vídeo:** 4 quadros + a fala. Figurinha: entende a emoção. PDF/arquivo: pede para o
+  cliente dizer o que precisa.
+- A mídia é baixada do WAHA, usada e apagada na hora (não fica guardada); no histórico fica só o texto.
+- Vale para os dois números. Liga/desliga no painel: WhatsApp → Recursos → "🎧 Ouvir áudios e ver imagens/vídeos"
+  (ligado por padrão). Cada imagem custa uma chamada curta ao modelo rápido.
+- Restauração: `versao-1.42.0`.
+
 ## Jarvis 1.42: imagens e vídeos para o Jarvis entender a demanda
 
 - **Painel:** botão 📎 no chat (no celular abre câmera/galeria), colar print com Ctrl+V ou arrastar arquivos para a
