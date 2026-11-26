@@ -546,6 +546,13 @@ def tratar(msg):
         elif acao == "site_corrigir":
             import site_previa
             iniciar_pedido(chat_id, site_previa.PROMPT_CORRIGIR, veio_de_audio=False)
+        elif acao == "atendente":
+            import atendente
+            arg_at = texto.partition(" ")[2].strip()
+            m_at = re.match(r"^([12])\s+", arg_at)
+            threading.Thread(target=atendente._seguro, args=(atendente.conversar, arg_at[m_at.end():] if m_at else arg_at,
+                             int(m_at.group(1)) if m_at else 1, "telegram",
+                             lambda t: enviar(chat_id, "📱 Agente de atendimento:\n\n" + t)), daemon=True).start()
         elif acao in core.IAS_DIRETAS:
             rot = core.IAS_DIRETAS[acao]["rotulo"]
             threading.Thread(target=core.rodar_ia, args=(acao, texto.partition(" ")[2].strip(), estado.ler()["projeto"],

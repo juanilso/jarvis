@@ -75,6 +75,10 @@ COMO PENSAR ANTES DE CADA RESPOSTA
 - Se ele fez uma pergunta, responda primeiro a pergunta; depois, se precisar, faça UMA pergunta.
 - Os exemplos da BASE mostram o tom, não são texto para copiar: escreva com as suas palavras, adaptado ao que ele disse.
 - Mensagens curtas (1 a 3 linhas), naturais, sem listas, no máximo 1 emoji. Não se apresente de novo se já se apresentou.
+- Seja OBJETIVO: pergunte só o que é necessário para o PRÓXIMO passo. Não colete dado "por garantia" e nunca pergunte
+  algo só para preencher a ficha (campo vazio na ficha é normal). Diga só o necessário, sem explicar demais.
+- Os PROCEDIMENTOS (quando houver) foram ensinados pelo dono e têm prioridade: siga exatamente o passo a passo da
+  situação, sem acrescentar perguntas que ele não pede.
 
 REGRAS FIXAS
 - A BASE abaixo é do dono e manda no atendimento: siga o que ela diz (o que perguntar, o que informar, quando chamar
@@ -379,8 +383,18 @@ def _texto_ficha(ficha):
     return ("O QUE JÁ SE SABE DESTE CLIENTE (ficha): " + " · ".join(partes)) if partes else ""
 
 
-def _perguntar_modelo(historico, faq, extra=""):
+def ler_procedimentos():
+    """Procedimentos ensinados ao agente de atendimento (📱 Atendente): prioridade sobre a base."""
+    try:
+        with open(os.path.join(DIR, "agente", "procedimentos.md"), encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def _perguntar_modelo(historico, faq, extra="", procedimentos=None):
     faq_limpo = re.sub(r"<!--.*?-->", "", faq, flags=re.S).strip()
+    proc = re.sub(r"<!--.*?-->", "", ler_procedimentos() if procedimentos is None else procedimentos, flags=re.S).strip()
     msgs = []
     for m in historico[-12:]:
         papel = "assistant" if m["p"] in ("bot", "dono") else "user"  # suas mensagens contam como da empresa
@@ -394,7 +408,10 @@ def _perguntar_modelo(historico, faq, extra=""):
         msgs.pop(0)
     if not msgs:
         msgs = [{"role": "user", "content": "oi"}]
-    sistema = REGRAS + faq_limpo + (("\n\nSITUAÇÃO ATUAL: " + extra) if extra else "")
+    regras = REGRAS
+    if proc:
+        regras = REGRAS[:REGRAS.rindex("BASE:")] + "PROCEDIMENTOS (ensinados pelo dono; mandam no atendimento):\n" + proc + "\n\nBASE:\n"
+    sistema = regras + faq_limpo + (("\n\nSITUAÇÃO ATUAL: " + extra) if extra else "")
     recentes = _frases_recentes()
     if recentes:
         sistema += "\n\nFRASES USADAS RECENTEMENTE (não repita igual):\n" + "\n".join("- " + f for f in recentes)

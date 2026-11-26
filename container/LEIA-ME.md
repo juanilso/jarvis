@@ -111,6 +111,20 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.52: agente de atendimento do WhatsApp (você treina conversando)
+
+- **📱 Agente de atendimento**: painel → WhatsApp → "Conversar com o agente", ou `/atendente <mensagem>` no Telegram
+  (`/atendente 2 …` = número 2). É a mesma conversa nos dois lugares, com memória própria.
+- Você ensina em palavras ("na renovação não pergunte o app; peça o comprovante ou o login"). O agente confere as
+  decisões anteriores e a base, **lembra se algo contradiz** o que você já disse (com a data), escreve o
+  **procedimento**, **testa** como o robô responderia antes → depois e só aplica com o seu ok (botão ✅ ou "pode
+  aplicar"). Backup e desfazer sempre; cada decisão fica registrada.
+- Também analisa as conversas reais ("como foi hoje?") e sugere ajustes; não fala com clientes.
+- O robô segue os **procedimentos** com prioridade sobre a base e ficou mais objetivo: pergunta só o necessário para
+  o próximo passo e não pede dado só para preencher a ficha.
+- Arquivos: `<atendimento>/agente/` (procedimentos.md, decisoes.md, versoes/). Ferramenta: `jarvis-atendimento`.
+- O WhatsApp ativo (campanhas para quem já falou com você) fica para a próxima etapa. Restauração: `versao-1.51.0`.
+
 ## Jarvis 1.51: jogadores com o uniforme do time
 
 - O pedido da imagem agora descreve o **uniforme completo** (camisa com o padrão, calção e meião) de ~60 clubes e

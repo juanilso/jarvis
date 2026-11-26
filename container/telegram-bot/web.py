@@ -265,6 +265,15 @@ def iniciar(texto, veio_de_audio):
             elif acao == "site_corrigir":
                 import site_previa
                 return iniciar(site_previa.PROMPT_CORRIGIR, veio_de_audio)
+            elif acao == "atendente":
+                import atendente
+                proj = estado.ler()["projeto"]
+                arg_at = texto.partition(" ")[2].strip()
+                m_at = re.match(r"^([12])\s+", arg_at)
+                threading.Thread(target=atendente._seguro, args=(
+                    atendente.conversar, arg_at[m_at.end():] if m_at else arg_at, int(m_at.group(1)) if m_at else 1,
+                    "painel", lambda t: publicar({"tipo": "info", "texto": "📱 Agente de atendimento:\n\n" + t}, proj)),
+                    daemon=True).start()
             elif acao in core.IAS_DIRETAS:
                 proj = estado.ler()["projeto"]
                 threading.Thread(target=core.rodar_ia, args=(acao, texto.partition(" ")[2].strip(), proj,
@@ -407,6 +416,14 @@ class Handler(BaseHTTPRequestHandler):
             q = urllib.parse.parse_qs(url.query)
             return self._json({"chaves": chaves.lista() + extra, "historico": chaves.historico(),
                                "conexoes": chaves.conexoes() if q.get("conexoes") else None})
+        if url.path == "/api/atendente":
+            import atendente
+            n = self._linha(url)
+            at = atendente.at_linha(n)
+            p = atendente.pendente(at)
+            return self._json({"mensagens": atendente.historico_chat(at), "ocupado": atendente.ocupado(n),
+                               "pendente": ({"motivo": p["motivo"], "qual": p["qual"], "quando": p["quando"]} if p else None),
+                               "procedimentos": atendente.ler_proc(at)})
         if url.path == "/api/jogos/uniformes":
             import jogos
             import jogos_arte
@@ -898,6 +915,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
+        if url.path == "/api/atendente":
+            import atendente
+            n = self._linha(url)
+            texto_at = (dados.get("texto") or "").strip()
+            if not texto_at:
+                return self._json({"erro": "escreva a mensagem"}, 400)
+            if atendente.ocupado(n):
+                return self._json({"erro": "o agente ainda está respondendo a mensagem anterior"}, 409)
+            threading.Thread(target=atendente._seguro, args=(atendente.conversar, texto_at, n, "painel", None),
+                             daemon=True).start()
+            return self._json({"ok": True})
         if url.path.startswith("/api/chaves/"):
             import chaves
             acao = url.path.rsplit("/", 1)[1]

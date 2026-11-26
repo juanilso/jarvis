@@ -58,7 +58,8 @@
       "Bash(jarvis-busca:*)",
       "Bash(jarvis-tendencias:*)",
       "Bash(jarvis-servidor:*)",
-      "Bash(jarvis-memoria:*)"
+      "Bash(jarvis-memoria:*)",
+      "Bash(jarvis-atendimento:*)"
     ],
     "ask": [
       "Bash(composer require:*)",

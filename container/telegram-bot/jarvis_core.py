@@ -200,7 +200,7 @@ class Execucao:
         return False
 
     def rodar(self, estado, texto, responder_audio, ao_evento, compactar=False, cwd=None, usar_sessao=True, projeto=None,
-              sistema=None, extra=None, custo_no_projeto=False):
+              sistema=None, extra=None, custo_no_projeto=False, orquestrador=True):
         """Executa (bloqueante). ao_evento(dict) recebe:
         {"tipo": "agente_inicio"|"agente_fim"|"resposta"|"erro"|"info", ...}
         compactar=True: resume a conversa, encerra a sessão e guarda o resumo como contexto."""
@@ -232,7 +232,7 @@ class Execucao:
         if dec["aviso"]:
             ao_evento({"tipo": "info", "texto": dec["aviso"]})
         if usar_sessao and not compactar:
-            sistema = (sistema + "\n\n" if sistema else "") + dec["sistema"]
+            sistema = (sistema + "\n\n" if sistema else "") + (dec["sistema"] if orquestrador else "")
             try:  # memória contínua: o que o Jarvis já sabe (geral + deste projeto) e a regra de anotar
                 import memoria
                 if cerebro.ler().get("memoria") != "desligada":
@@ -241,21 +241,21 @@ class Execucao:
                 print("memória: não carreguei:", e, flush=True)
             try:  # navegador do PC (Chrome do Jarvis no Windows, via Tailscale)
                 import navegador
-                if navegador.endereco():
+                if orquestrador and navegador.endereco():
                     sistema += "\n\n" + navegador.REGRA
             except Exception as e:  # noqa: BLE001
                 print("navegador:", e, flush=True)
             try:  # servidores cadastrados (homologação/produção): SSH, SFTP e banco na hora
                 import servidores
                 lst = servidores.listar()
-                if lst:
+                if lst and orquestrador:
                     sistema += "\n\n" + servidores.REGRA + "\nCadastrados: " + "; ".join(
                         f"{s['nome']} ({'PRODUÇÃO só leitura' if s['ambiente'] == 'producao' else 'homologação'}"
                         + (f", projeto {s['projeto']}" if s["projeto"] else "") + (f", pasta {s['pasta']}" if s["pasta"] else "")
                         + (", com banco" if s["banco"] else "") + ")" for s in lst)
             except Exception as e:  # noqa: BLE001
                 print("servidores:", e, flush=True)
-        if usar_sessao and not compactar:
+        if usar_sessao and not compactar and orquestrador:
             cmd += ["--append-system-prompt", ORQUESTRADOR]
         if sistema:  # regras extras (ex.: rotinas automáticas, só leitura)
             cmd += ["--append-system-prompt", sistema]
@@ -611,6 +611,7 @@ COMANDOS = [
     ("/guia", "Como usar o Jarvis, com exemplos"),
     ("/ideia", "Guarda uma ideia na base de conhecimento"),
     ("/lembrar", "Procura na base de conhecimento"),
+    ("/atendente", "Converse com o agente de atendimento do WhatsApp: ensine, ajuste, peça análise (/atendente 2 … = número 2)"),
     ("/navegador", "Navegador do seu PC (Chrome do Jarvis via Tailscale): status; /navegador <IP do PC>"),
     ("/servidores", "Servidores de homologação/produção (SSH, SFTP, banco): lista, últimas ações; /servidores testar <nome>"),
     ("/memoria", "O que o Jarvis já sabe (geral e do projeto); /memoria <termo>, anotar, esquecer"),
@@ -882,7 +883,7 @@ def comando(estado, pool, texto):
         if not ok:
             return motivo, None
         return f"📈 Buscando o que estão falando de “{arg}” nos últimos 30 dias… aviso quando terminar.", "tendencias"
-    if cmd in ("/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/sincronizar", "/pesquisar"):
+    if cmd in ("/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/atendente", "/sincronizar", "/pesquisar"):
         import kb  # import tardio (kb depende deste módulo)
         if cmd == "/ideia":
             if not arg:
@@ -890,6 +891,16 @@ def comando(estado, pool, texto):
             titulo = arg.split("\n")[0][:70]
             caminho = kb.salvar("ideias", titulo, arg, tags=["ideia"], projeto=proj)
             return f"💡 Ideia guardada: {caminho}", None
+        if cmd == "/atendente":
+            import atendente
+            texto_cmd = arg.strip()
+            linha_m = re.match(r"^([12])(\s+|$)", texto_cmd)
+            resto = texto_cmd[linha_m.end():].strip() if linha_m else texto_cmd
+            if not resto or resto.lower() in ("status", "ajuda"):
+                return atendente.comando(texto_cmd)[0], None
+            if atendente.ocupado(int(linha_m.group(1)) if linha_m else 1):
+                return "⏳ O agente de atendimento ainda está respondendo a mensagem anterior.", None
+            return "📱 Agente de atendimento: pensando…", "atendente"
         if cmd == "/navegador":
             import navegador
             return navegador.texto(arg), None
