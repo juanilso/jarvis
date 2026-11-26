@@ -42,6 +42,26 @@ def autorizado(cabecalho):
     return hmac.compare_digest(enviado, TOKEN)
 
 
+RECUSA = os.path.join(os.path.dirname(ARQ), "gatilho-recusas.json")
+
+
+def registrar_recusa(motivo):
+    """Guarda a última recusa do gatilho (para o diagnóstico do WhatsApp dizer o motivo exato)."""
+    try:
+        with open(RECUSA, "w", encoding="utf-8") as f:
+            json.dump({"t": time.time(), "motivo": motivo}, f)
+    except OSError:
+        pass
+
+
+def ultima_recusa():
+    try:
+        with open(RECUSA, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
 def registrar(item):
     item = dict(item, quando=item.get("quando") or time.strftime("%Y-%m-%d %H:%M:%S"))
     with _lock:

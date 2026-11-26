@@ -992,6 +992,7 @@ def diagnostico():
         item(False, "Webhook do n8n gravado na sessão", "conecte o WhatsApp primeiro")
     # n8n recebe e repassa ao Jarvis? (manda um evento de teste pelo mesmo caminho do WhatsApp)
     antes = e.get("diag", 0)
+    antes_teste = time.time()
     corpo = {"event": "message.any", "session": SESSAO, "payload": {"id": "diag", "from": "diagnostico@c.us", "fromMe": False,
              "body": DIAG, "timestamp": int(time.time()), "_data": {"notifyName": "diagnóstico"}}}
     try:
@@ -1012,8 +1013,7 @@ def diagnostico():
         while time.time() < fim and _ler_estado().get("diag", 0) <= antes:
             time.sleep(0.5)
         chegou = _ler_estado().get("diag", 0) > antes
-        item(chegou, "n8n repassou ao Jarvis", "ok" if chegou else
-             "o n8n recebeu mas não chamou o Jarvis: veja a aba Execuções do fluxo (erro no nó 'Jarvis responde'?)")
+        item(chegou, "n8n repassou ao Jarvis", "ok" if chegou else motivo_n8n_jarvis(antes_teste))
     u = _ler_estado().get("ultimo_recebido") or {}
     if u.get("t"):
         mins = int((time.time() - u["t"]) // 60)
@@ -1094,6 +1094,42 @@ def _ver(imagens, pedido):
 def _transcrever(caminho):
     import jarvis_core
     return jarvis_core.transcrever(caminho)
+
+
+def motivo_n8n_jarvis(desde):
+    """Por que o n8n não entregou ao Jarvis: recusa de token (vista aqui) ou o erro da última execução no n8n."""
+    import rotinas
+    if not rotinas.TOKEN:
+        return ("o token do gatilho está vazio no Jarvis: na VPS rode ./automacoes-configurar.sh (ele cria o token e "
+                "passa o mesmo para o n8n)")
+    r = rotinas.ultima_recusa()
+    if r.get("t", 0) >= desde - 2:
+        return (f"o Jarvis recusou o n8n: {r.get('motivo')}. O token do n8n (.env.n8n) está diferente do Jarvis "
+                "(.env.claude): na VPS rode ./n8n-token-sincronizar.sh e depois o diagnóstico de novo")
+    try:  # erro real do nó, pela API do n8n (se a chave da API estiver configurada)
+        import vigia_whatsapp as vg
+        caminho = N8N_WEBHOOK.rstrip("/").rsplit("/", 1)[-1]
+        fluxo = next((f for f in vg._n8n_api("GET", "/workflows?limit=200").get("data", [])
+                      if any((n.get("parameters") or {}).get("path") == caminho for n in f.get("nodes", []))), None)
+        if fluxo:
+            ex = (vg._n8n_api("GET", f"/executions?workflowId={fluxo['id']}&limit=1&includeData=true").get("data") or [{}])[0]
+            err = (((ex.get("data") or {}).get("resultData") or {}).get("error") or {})
+            msg = str(err.get("message") or err.get("description") or "")[:200]
+            no = ((err.get("node") or {}).get("name")) or ""
+            if msg:
+                dica = ("o n8n não alcança o painel (jarvisweb fora do ar ou fora da mesma rede do Docker): "
+                        "docker compose --profile web up -d jarvisweb" if re.search(r"ECONNREFUSED|ENOTFOUND|EAI_AGAIN|getaddrinfo", msg)
+                        else "o Jarvis demorou demais para responder (veja os logs do jarvisweb)" if re.search(r"timeout|ETIMEDOUT", msg, re.I)
+                        else "token diferente entre n8n e Jarvis: ./n8n-token-sincronizar.sh" if re.search(r"401|403|token", msg)
+                        else "abra a execução no n8n para ver os detalhes")
+                return f"erro no n8n{(' (nó ' + no + ')') if no else ''}: {msg} → {dica}"
+    except RuntimeError:
+        pass  # sem N8N_API_KEY: cai na dica geral
+    except Exception as e:  # noqa: BLE001
+        print("diagnóstico: não li as execuções do n8n:", type(e).__name__, flush=True)
+    return ("o n8n recebeu mas não chamou o Jarvis. Veja no n8n: fluxo 'Jarvis · Atendimento WhatsApp' → aba "
+            "Executions → a última (vermelha) → nó 'Jarvis responde'. Causa mais comum: token diferente "
+            "(rode ./n8n-token-sincronizar.sh). Para o diagnóstico mostrar o erro sozinho: ./n8n-api-configurar.sh")
 
 
 def ler_midia(dados, chat):

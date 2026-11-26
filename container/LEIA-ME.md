@@ -111,6 +111,14 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.49.1: diagnóstico do WhatsApp diz por que o n8n não chamou o Jarvis
+
+- No passo "n8n repassou ao Jarvis", o diagnóstico agora mostra a causa: token do n8n diferente do Jarvis (o Jarvis
+  registra a recusa), token vazio, ou o erro real do nó "Jarvis responde" pela API do n8n (conexão recusada,
+  tempo esgotado…), com o comando que resolve.
+- Novo `./n8n-token-sincronizar.sh`: confere se o n8n usa o mesmo token do Jarvis, corrige e reinicia só o n8n
+  (não mexe nos fluxos e não mostra o token).
+
 ## Jarvis 1.49: central de chaves e conexões
 
 - Painel → 🧠 Cérebro → **🔑 Chaves e conexões**: adicionar, trocar, testar e remover as chaves das IAs (Gemini,

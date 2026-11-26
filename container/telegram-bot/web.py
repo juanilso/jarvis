@@ -664,6 +664,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._html(LOGIN.replace("<!--erro-->", "<p class='erro'>Senha incorreta.</p>"), 401)
         if url.path == "/api/gatilho":  # rotinas (n8n): autenticação por token, não por cookie
             if not rotinas.autorizado(self.headers.get("Authorization")):
+                rotinas.registrar_recusa("sem token no Jarvis (JARVIS_GATILHO_TOKEN vazio)" if not rotinas.TOKEN
+                                         else "token diferente do Jarvis" if self.headers.get("Authorization")
+                                         else "pedido sem token")
                 time.sleep(1)
                 return self._json({"erro": "token inválido ou gatilho desligado"}, 401)
             try:
