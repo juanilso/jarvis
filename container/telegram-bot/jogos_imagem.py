@@ -204,94 +204,172 @@ def escurecer():
     return escuro
 
 
-CARTAO_Y, CARTAO_H, CARTAO_PASSO = 440, 256, 280  # posição dos cartões (o vídeo anima cada faixa separadamente)
+CARTAO_Y, CARTAO_H, CARTAO_PASSO = 470, 290, 308  # posição dos cartões (o vídeo anima cada faixa separadamente)
+NEON, MARINHO = (181, 250, 49), (5, 14, 34)
+
+
+def _titulo_do_dia(dia):
+    import datetime as _dt
+    hoje = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-3))).date()
+    return "JOGOS DE HOJE" if dia == hoje else "JOGOS DE AMANHÃ" if dia == hoje + _dt.timedelta(days=1) else "JOGOS DO DIA"
+
+
+def _tv(d, x, y, cor):
+    """Iconezinho de TV (o emoji não existe nas fontes do servidor)."""
+    d.rounded_rectangle([x, y, x + 30, y + 21], 4, outline=cor, width=3)
+    d.line([(x + 9, y + 26), (x + 21, y + 26)], fill=cor, width=3)
+
+
+def _bola(img, cx, cy, r):
+    """Bola de futebol simples (branca com gomos pretos)."""
+    import math
+    d = ImageDraw.Draw(img)
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(250, 250, 250), outline=(20, 20, 20), width=3)
+    pent = lambda x0, y0, rr: [(x0 + rr * math.cos(math.radians(-90 + 72 * k)), y0 + rr * math.sin(math.radians(-90 + 72 * k)))  # noqa: E731
+                               for k in range(5)]
+    d.polygon(pent(cx, cy, r * 0.36), fill=(20, 20, 20))
+    for k in range(5):
+        a = math.radians(-90 + 72 * k)
+        px, py = cx + r * 0.36 * math.cos(a), cy + r * 0.36 * math.sin(a)
+        qx, qy = cx + r * 0.78 * math.cos(a), cy + r * 0.78 * math.sin(a)
+        d.line([(px, py), (qx, qy)], fill=(20, 20, 20), width=3)
+        d.polygon(pent(cx + r * 0.95 * math.cos(a), cy + r * 0.95 * math.sin(a), r * 0.2), fill=(20, 20, 20))
+
+
+def _cantos(d, x0, y0, x1, y1, cor, t=6, c=46):
+    """Cantoneiras em destaque (canto de cima à esquerda e de baixo à direita), como no modelo do Canva."""
+    d.line([(x0, y0 + c), (x0, y0), (x0 + c, y0)], fill=cor, width=t, joint="curve")
+    d.line([(x1 - c, y1), (x1, y1), (x1, y1 - c)], fill=cor, width=t, joint="curve")
 
 
 def _pagina_arte(fundo, jogos, dia, cfg, pag, total):
-    """fundo=None: devolve só o texto e os cartões numa camada transparente (RGBA), sem escurecer, para o vídeo."""
+    """Arte no estilo do modelo aprovado no Canva: título grande, data, selo neon e cartões escuros com borda neon.
+    fundo=None: devolve só o texto e os cartões numa camada transparente (RGBA), sem escurecer, para o vídeo."""
     if fundo is None:
         img = Image.new("RGBA", (L, A), (0, 0, 0, 0))
     else:
         img = Image.alpha_composite(fundo.copy().convert("RGBA"), escurecer())
     d = ImageDraw.Draw(img)
-    f_tag, f_tit = _fonte("DejaVuSans-Bold.ttf", 28), _fonte("BebasNeue-Regular.ttf", 168)
-    f_sub, f_data = _fonte("BebasNeue-Regular.ttf", 86), _fonte("DejaVuSans-Bold.ttf", 34)
-    # cabeçalho
-    tag = "FUTEBOL BRASILEIRO" if not any(j.get("internacional") for j in (cfg.get("_jogos_todos") or [])) \
-        else "FUTEBOL NO BRASIL E NO MUNDO"
-    wt = d.textlength(tag, font=f_tag)
-    d.rounded_rectangle([(L - wt) / 2 - 26, 60, (L + wt) / 2 + 26, 112], 26, fill=VERDE)
-    d.text(((L - wt) / 2, 70), tag, font=f_tag, fill=(6, 20, 12))
-    for txt, f, y, cor in ((cfg.get("_titulo") or "DESTAQUES", f_tit, 120, BRANCO),
-                           (cfg.get("_subtitulo") or "DO DIA", f_sub, 280, OURO)):
-        w = d.textlength(txt, font=f)
-        d.text(((L - w) / 2 + 4, y + 5), txt, font=f, fill=(0, 0, 0))
-        d.text(((L - w) / 2, y), txt, font=f, fill=cor)
-    data = f"{DIAS[dia.weekday()]} · {dia.strftime('%d/%m/%Y')}" + (f"  ·  {pag}/{total}" if total > 1 else "")
+    # ---- cabeçalho
+    tit = cfg.get("_titulo") or _titulo_do_dia(dia)
+    f_tit = _fonte("BebasNeue-Regular.ttf", 214)
+    while d.textlength(tit, font=f_tit) > L - 120 and f_tit.size > 120:
+        f_tit = _fonte("BebasNeue-Regular.ttf", f_tit.size - 8)
+    w = d.textlength(tit, font=f_tit)
+    sombra = Image.new("RGBA", (L, A), (0, 0, 0, 0))
+    ImageDraw.Draw(sombra).text(((L - w) / 2 + 6, 48), tit, font=f_tit, fill=(0, 0, 0, 200))
+    img.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(6)))
+    d = ImageDraw.Draw(img)
+    d.text(((L - w) / 2, 40), tit, font=f_tit, fill=(255, 255, 255))
+    d.polygon([(150, 262), (L - 130, 262), (L - 150, 274), (130, 274)], fill=NEON)  # traço neon inclinado
+    data = f"{DIAS[dia.weekday()]} · {dia.strftime('%d/%m')}" + (f"  ·  {pag}/{total}" if total > 1 else "")
+    f_data = _fonte("BebasNeue-Regular.ttf", 72)
     w = d.textlength(data, font=f_data)
-    d.text(((L - w) / 2, 372), data, font=f_data, fill=CIANO)
-    # cartões
+    d.text(((L - w) / 2, 288), data, font=f_data, fill=(255, 255, 255))
+    tag = "FUTEBOL BRASILEIRO" if not any(j.get("internacional") for j in (cfg.get("_jogos_todos") or jogos)) \
+        else "FUTEBOL NO BRASIL E NO MUNDO"
+    f_tag = _fonte("DejaVuSans-Bold.ttf", 28)
+    wt = d.textlength(tag, font=f_tag)
+    d.polygon([((L - wt) / 2 - 40, 386), ((L + wt) / 2 + 52, 386), ((L + wt) / 2 + 40, 434), ((L - wt) / 2 - 52, 434)],
+              fill=NEON)
+    d.text(((L - wt) / 2, 393), tag, font=f_tag, fill=(0, 11, 38))
+    # ---- cartões
+    f_liga, f_time = _fonte("DejaVuSans-Bold.ttf", 26), _fonte("DejaVuSansCondensed-Bold.ttf", 30)
+    f_hora, f_x = _fonte("BebasNeue-Regular.ttf", 132), _fonte("BebasNeue-Regular.ttf", 58)
+    f_tv, f_sig = _fonte("DejaVuSans-Bold.ttf", 26), _fonte("BebasNeue-Regular.ttf", 58)
     y = CARTAO_Y
-    f_liga, f_time = _fonte("DejaVuSans-Bold.ttf", 24), _fonte("DejaVuSansCondensed-Bold.ttf", 30)
-    f_hora, f_tv, f_x = _fonte("BebasNeue-Regular.ttf", 96), _fonte("DejaVuSans-Bold.ttf", 25), _fonte("BebasNeue-Regular.ttf", 44)
+    x0, x1 = 70, L - 70
     for j in jogos:
         h = CARTAO_H
         cartao = Image.new("RGBA", (L, A), (0, 0, 0, 0))
         c = ImageDraw.Draw(cartao)
-        c.rounded_rectangle([50, y, L - 50, y + h], 30, fill=(6, 12, 24, 190), outline=(255, 255, 255, 40), width=2)
+        c.rounded_rectangle([x0, y, x1, y + h], 22, fill=MARINHO + (218,), outline=NEON + (150,), width=3)
+        c.line([(x0 + 40, y + h - 58), (x1 - 40, y + h - 58)], fill=NEON + (70,), width=2)
         img = Image.alpha_composite(img, cartao)
         d = ImageDraw.Draw(img)
-        cor_c, cor_f = _hex(j.get("cor_casa"), (200, 16, 46)), _hex(j.get("cor_fora"), (0, 70, 160))
-        visivel = lambda cor, cor2: cor if sum(cor) > 120 else (cor2 if sum(cor2) > 120 else (235, 235, 235))  # noqa: E731
-        d.rounded_rectangle([50, y + 30, 60, y + h - 30], 5,
-                            fill=visivel(cor_c, _hex(j.get("cor2_casa"), (255, 255, 255))))
-        d.rounded_rectangle([L - 60, y + 30, L - 50, y + h - 30], 5,
-                            fill=visivel(cor_f, _hex(j.get("cor2_fora"), (255, 255, 255))))
+        _cantos(d, x0 - 4, y - 4, x1 + 4, y + h + 4, NEON)
         liga = j["liga"].upper()
         w = d.textlength(liga, font=f_liga)
-        d.text(((L - w) / 2, y + 18), liga, font=f_liga, fill=CIANO)
-        for lado, cx, cor_t in (("casa", 205, cor_c), ("fora", L - 205, cor_f)):
+        d.text(((L - w) / 2, y + 16), liga, font=f_liga, fill=NEON)
+        for lx in ((L - w) / 2 - 90, (L + w) / 2 + 20):
+            d.line([(lx, y + 32), (lx + 70, y + 32)], fill=NEON + (255,), width=2)
+        for lado, cx in (("casa", 232), ("fora", L - 232)):
+            cor = _hex(j.get(f"cor_{lado}"), (40, 60, 90))
+            cy, r = y + 118, 68
             escudo = _escudo(j.get(f"logo_{lado}"), cfg.get("_pasta", "")) if cfg.get("escudos") and cfg.get("_pasta") else None
             if escudo is not None:
-                _colar_escudo(img, cx, y + 112, 74, escudo)
+                _colar_escudo(img, cx, cy, r, escudo)
+                d = ImageDraw.Draw(img)
+                d.ellipse([cx - r - 5, cy - r - 5, cx + r + 5, cy + r + 5], outline=NEON, width=5)
             else:
-                _selo(img, cx, y + 112, 74, cor_t, _hex(j.get(f"cor2_{lado}"), (255, 255, 255)),
-                      j.get(f"sigla_{lado}") or j[lado][:3].upper())
-        d = ImageDraw.Draw(img)
-        for nome_t, cx in ((j["casa"], 205), (j["fora"], L - 205)):
-            t = _caber(d, nome_t.upper(), f_time, 270)
+                d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=cor, outline=NEON, width=5)
+                sig = (j.get(f"sigla_{lado}") or j[lado][:3]).upper()[:4]
+                w = d.textlength(sig, font=f_sig)
+                cx_b = d.textbbox((0, 0), sig, font=f_sig)
+                d.text((cx - w / 2, cy - (cx_b[3] - cx_b[1]) / 2 - cx_b[1]), sig, font=f_sig, fill=_contraste(cor))
+            t = _caber(d, j[lado].upper(), f_time, 300)
             w = d.textlength(t, font=f_time)
-            d.text((cx - w / 2, y + 200), t, font=f_time, fill=BRANCO)
+            d.text((cx - w / 2, y + 194), t, font=f_time, fill=(255, 255, 255))
         if j.get("placar"):
-            topo = "AO VIVO" if j.get("estado") == "in" else "ENCERRADO"
-            meio, cor_meio = j["placar"].upper(), OURO
+            meio, embaixo, cor_meio = j["placar"].upper(), ("AO VIVO" if j.get("estado") == "in" else "FIM"), OURO
         else:
-            topo, meio, cor_meio = "X", j["hora"], BRANCO
-        w = d.textlength(topo, font=f_x)
-        d.text(((L - w) / 2, y + 48), topo, font=f_x, fill=OURO if j.get("placar") else (190, 200, 215))
+            meio, embaixo, cor_meio = j["hora"], "X", (255, 255, 255)
         w = d.textlength(meio, font=f_hora)
-        d.text(((L - w) / 2, y + 88), meio, font=f_hora, fill=cor_meio)
-        canais = " / ".join(j.get("canais") or []) or "A CONFIRMAR"
-        t = _caber(d, canais.upper(), f_tv, 330)
-        w = d.textlength(t, font=f_tv)
-        d.rounded_rectangle([(L - w) / 2 - 18, y + 196, (L + w) / 2 + 18, y + 236], 20,
-                            fill=VERDE if j.get("canais") else (70, 84, 100))
-        d.text(((L - w) / 2, y + 202), t, font=f_tv, fill=(6, 20, 12) if j.get("canais") else BRANCO)
+        d.text(((L - w) / 2, y + 42), meio, font=f_hora, fill=cor_meio)
+        w = d.textlength(embaixo, font=f_x)
+        d.text(((L - w) / 2, y + 168), embaixo, font=f_x, fill=NEON)
+        canais = " · ".join(j.get("canais") or []) or "A CONFIRMAR"
+        t = _caber(d, canais, f_tv, 560)
+        w = d.textlength(t, font=f_tv) + 44
+        _tv(d, (L - w) / 2, y + h - 42, NEON if j.get("canais") else CINZA)
+        d.text(((L - w) / 2 + 44, y + h - 44), t, font=f_tv, fill=NEON if j.get("canais") else CINZA)
         y += CARTAO_PASSO
-    # rodapé
-    marca, rod = _sem_emoji(cfg.get("marca") or ""), _sem_emoji(cfg.get("rodape") or "")
+    # ---- rodapé
+    marca, rod = _sem_emoji(cfg.get("marca") or ""), _sem_emoji(cfg.get("rodape") or "Bom jogo!").strip() or "Bom jogo!"
+    f_rod = _fonte("BebasNeue-Regular.ttf", 96)
+    w = d.textlength(rod, font=f_rod)
+    xr = (L - w - 96) / 2
+    d.text((xr, A - 196), rod, font=f_rod, fill=NEON)
+    _bola(img, int(xr + w + 60), A - 146, 38)
+    d = ImageDraw.Draw(img)
     if marca:
-        f = _fonte("BebasNeue-Regular.ttf", 64)
+        f = _fonte("DejaVuSans-Bold.ttf", 26)
         w = d.textlength(marca.upper(), font=f)
-        d.text(((L - w) / 2, A - 190), marca.upper(), font=f, fill=BRANCO)
-    f = _fonte("DejaVuSans.ttf", 30)
-    w = d.textlength(rod, font=f)
-    d.text(((L - w) / 2, A - (115 if marca else 160)), rod, font=f, fill=CINZA)
+        d.text(((L - w) / 2, A - 86), marca.upper(), font=f, fill=(255, 255, 255))
     nota = "Horários de Brasília · canais sujeitos a alteração"
-    f = _fonte("DejaVuSans.ttf", 22)
+    f = _fonte("DejaVuSans.ttf", 21)
     w = d.textlength(nota, font=f)
-    d.text(((L - w) / 2, A - 62), nota, font=f, fill=CINZA)
+    d.text(((L - w) / 2, A - 48), nota, font=f, fill=CINZA)
     return img if fundo is None else img.convert("RGB")
+
+
+def abertura(jogo, dia, cfg, faixa_escura=True):
+    """Cena de abertura do vídeo: o jogo principal do dia em destaque (camada transparente 1080x1920)."""
+    img = Image.new("RGBA", (L, A), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    f_tag, f_time, f_x = _fonte("DejaVuSans-Bold.ttf", 34), _fonte("BebasNeue-Regular.ttf", 150), _fonte("BebasNeue-Regular.ttf", 110)
+    f_info = _fonte("BebasNeue-Regular.ttf", 84)
+    if faixa_escura:
+        faixa = Image.new("RGBA", (L, A), (0, 0, 0, 0))
+        ImageDraw.Draw(faixa).rectangle([0, 1120, L, 1700], fill=(3, 8, 20, 170))
+        img.alpha_composite(faixa.filter(ImageFilter.GaussianBlur(30)))
+    d = ImageDraw.Draw(img)
+    tag = "JOGO PRINCIPAL DE HOJE"
+    wt = d.textlength(tag, font=f_tag)
+    d.polygon([((L - wt) / 2 - 40, 1110), ((L + wt) / 2 + 52, 1110), ((L + wt) / 2 + 40, 1166), ((L - wt) / 2 - 52, 1166)],
+              fill=NEON)
+    d.text(((L - wt) / 2, 1118), tag, font=f_tag, fill=(0, 11, 38))
+    for k, (txt, f, yy, cor) in enumerate(((_caber(d, jogo["casa"].upper(), f_time, L - 120), f_time, 1190, (255, 255, 255)),
+                                           ("X", f_x, 1340, NEON),
+                                           (_caber(d, jogo["fora"].upper(), f_time, L - 120), f_time, 1440, (255, 255, 255)))):
+        w = d.textlength(txt, font=f)
+        d.text(((L - w) / 2 + 5, yy + 6), txt, font=f, fill=(0, 0, 0))
+        d.text(((L - w) / 2, yy), txt, font=f, fill=cor)
+    info = f"{jogo['hora']} · {' · '.join(jogo.get('canais') or []) or jogo['liga']}".upper()
+    info = _caber(d, info, f_info, L - 100)
+    w = d.textlength(info, font=f_info)
+    d.text(((L - w) / 2, 1610), info, font=f_info, fill=NEON)
+    return img
 
 
 def _desenhar_arte(jogos, dia, cfg, pasta, info):

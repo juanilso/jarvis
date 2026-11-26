@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.50: arte dos jogos no estilo do modelo do Canva + jogadores do jogo principal
+
+- Banner (estilo "arte") redesenhado no visual aprovado no Canva: "JOGOS DE HOJE" grande com traço neon, data,
+  selo neon, cartões escuros com borda e cantoneiras neon, círculos dos times, horário grande, "x" neon, faixa com
+  o ícone de TV e os canais, rodapé "Bom jogo!" com bola. Escudos continuam opcionais (ESPN, sua responsabilidade).
+- Fundo do dia: 2 jogadores FICTÍCIOS (de costas/três-quartos, rosto não aparece), um de cada lado, com camisas que
+  lembram as dos dois times do primeiro jogo: padrão conhecido (listras, faixa, cores) de ~50 clubes brasileiros e
+  internacionais, ou as cores da ESPN. Sem escudo, patrocínio, número ou texto na imagem.
+- Vídeo: abre com a cena "JOGO PRINCIPAL DE HOJE" (times, horário e canal sobre os jogadores) e segue com os
+  cartões; no formato TV os cartões se ajustam para não encostar no rodapé.
+- Restauração: `versao-1.49.2`.
+
 ## Jarvis 1.49.2: correção urgente do atendimento do WhatsApp
 
 - A 1.49.0 quebrou a rota `/api/gatilho` (o n8n entrega as mensagens do WhatsApp e as rotinas por ela): um

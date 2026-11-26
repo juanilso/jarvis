@@ -33,20 +33,58 @@ def nome_cor(hexa):
     return min(_CORES, key=lambda c: sum((a - b) ** 2 for a, b in zip(c[0], (r, g, b))))[1]
 
 
+# Alusão às camisas (cores e padrão, sem escudo/patrocínio/marca). Chave: nome do time sem acento, minúsculo.
+CAMISAS = {
+    "flamengo": "red and black horizontal hoops", "palmeiras": "solid green with white collar",
+    "corinthians": "white with black collar and black trim", "sao paulo": "white with a red and black horizontal chest band",
+    "santos": "plain white with black trim", "fluminense": "maroon, green and white vertical stripes",
+    "botafogo": "black and white vertical stripes", "vasco": "white with a black diagonal sash",
+    "vasco da gama": "white with a black diagonal sash", "gremio": "sky blue, black and white vertical stripes",
+    "internacional": "solid red with white collar", "atletico-mg": "black and white vertical stripes",
+    "atletico mineiro": "black and white vertical stripes", "cruzeiro": "solid royal blue with white trim",
+    "bahia": "white with blue and red details", "fortaleza": "red, blue and white horizontal stripes",
+    "ceara": "black and white vertical stripes", "sport": "red and black horizontal hoops",
+    "athletico-pr": "red and black horizontal hoops", "athletico paranaense": "red and black horizontal hoops",
+    "vitoria": "red and black horizontal hoops", "coritiba": "white with green trim", "juventude": "green and white vertical stripes",
+    "bragantino": "white with red trim", "red bull bragantino": "white with red trim", "mirassol": "yellow with green trim",
+    "goias": "solid green with white trim", "america-mg": "green and black vertical stripes", "cuiaba": "yellow with green trim",
+    "chapecoense": "solid green with white trim", "remo": "solid navy blue", "paysandu": "light blue and white vertical stripes",
+    "brasil": "canary yellow with green collar", "argentina": "sky blue and white vertical stripes",
+    "real madrid": "plain white", "barcelona": "blue and garnet vertical stripes", "liverpool": "solid red",
+    "manchester city": "sky blue", "manchester united": "red with white collar", "arsenal": "red body with white sleeves",
+    "chelsea": "solid royal blue", "bayern munich": "red with white details", "juventus": "black and white vertical stripes",
+    "inter milan": "black and blue vertical stripes", "ac milan": "red and black vertical stripes", "psg": "navy blue with a red vertical stripe",
+    "paris saint-germain": "navy blue with a red vertical stripe", "river plate": "white with a red diagonal sash",
+    "boca juniors": "navy blue with a yellow horizontal chest band", "atletico madrid": "red and white vertical stripes",
+}
+TRAD = {"preto": "black", "branco": "white", "vermelho": "red", "grená": "maroon", "azul": "royal blue",
+        "azul-marinho": "navy blue", "azul-celeste": "sky blue", "verde": "green", "verde-escuro": "dark green",
+        "amarelo": "yellow", "laranja": "orange", "roxo": "purple", "cinza": "grey", "dourado": "gold"}
+
+
+def camisa(jogo, lado):
+    """Descrição em inglês da camisa (alusão): padrão conhecido do clube, senão as cores que a ESPN informa."""
+    import unicodedata
+    nome = unicodedata.normalize("NFKD", (jogo.get(lado) or "").lower()).encode("ascii", "ignore").decode().strip()
+    if nome in CAMISAS:
+        return CAMISAS[nome]
+    c1 = TRAD.get(nome_cor(jogo.get(f"cor_{lado}")), "") or ("red" if lado == "casa" else "blue")
+    c2 = TRAD.get(nome_cor(jogo.get(f"cor2_{lado}")), "")
+    return f"{c1} with {c2} details" if c2 and c2 != c1 else f"solid {c1}"
+
+
 def pedido(jogo):
-    """Texto do pedido de imagem (em inglês, que os modelos de imagem entendem melhor)."""
-    c1 = nome_cor(jogo.get("cor_casa")) or "red"
-    c2 = nome_cor(jogo.get("cor_fora")) or "blue"
-    tr = {"preto": "black", "branco": "white", "vermelho": "red", "grená": "maroon", "azul": "royal blue",
-          "azul-marinho": "navy blue", "azul-celeste": "sky blue", "verde": "green", "verde-escuro": "dark green",
-          "amarelo": "yellow", "laranja": "orange", "roxo": "purple", "cinza": "grey", "dourado": "gold"}
-    return ("Vertical 9:16 sports poster background. A packed football stadium at night with bright floodlights, "
-            "lush green pitch, dramatic light beams and haze. A classic white and black soccer ball glowing in the "
-            "foreground at the bottom. On the left edge a fictional soccer player (generic, not any real person, face "
-            f"in shadow) in a plain {tr.get(c1, c1)} kit; on the right edge another fictional player in a plain "
-            f"{tr.get(c2, c2)} kit, both in dynamic action poses, cut off at the edges. Kits have NO logos, NO crests, "
-            "NO sponsors, NO numbers. Absolutely NO text, letters or watermarks anywhere. The central area is darker "
-            "and clean, left free for text overlay. Cinematic, high detail, vibrant, Brazilian football atmosphere.")
+    """Texto do pedido de imagem (em inglês, que os modelos de imagem entendem melhor): dois jogadores FICTÍCIOS,
+    de costas/três-quartos, um de cada lado, com camisas que lembram as dos times do jogo principal do dia."""
+    return ("Vertical 9:16 dramatic sports poster background, photorealistic. A packed football (soccer) stadium at "
+            "night, bright floodlights, light beams and haze, lush green pitch. Two fictional soccer players (generic, "
+            "not any real person, faces turned away or in shadow) seen from behind / three-quarter back view, standing "
+            "face to face like a matchday duel: one on the LEFT third of the image wearing a soccer jersey that is "
+            f"{camisa(jogo, 'casa')}, and one on the RIGHT third wearing a soccer jersey that is {camisa(jogo, 'fora')}. "
+            "Soccer kits only (shirt, shorts, socks), NOT American football, no helmets, no shoulder pads. Jerseys have "
+            "NO crests, NO logos, NO sponsors, NO numbers, NO names. Absolutely NO text, letters, words or watermarks "
+            "anywhere in the image. The central vertical strip is darker and clean, left free for text overlay. "
+            "Cinematic, high detail, Brazilian matchday atmosphere.")
 
 
 def _http(url, corpo=None, cab=None, tempo=120):

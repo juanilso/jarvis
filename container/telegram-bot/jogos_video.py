@@ -333,6 +333,14 @@ def _escurecer_h(w, h):
 def _paginas(jogos, dia, cfg, pasta, formato):
     """[(itens, segundos)] com itens = (peça, x, y, movimento, início, duração)."""
     saida = []
+    if jogos and cfg.get("video_abertura", True):  # abertura: o jogo principal do dia sobre os 2 jogadores do fundo
+        cena = ji.abertura(jogos[0], dia, cfg, faixa_escura=formato == "vertical").crop((0, 1080, L, 1740))
+        if formato == "vertical":
+            saida.append(([(cena, 0, 1080, "baixo", 0.2, 0.8)], 3.6))
+        else:
+            W, H = FORMATOS["horizontal"]
+            cena = _escala(cena, 0.82)
+            saida.append(([(cena, (W - cena.width) // 2, H - cena.height - 40, "baixo", 0.2, 0.8)], 3.6))
     if formato == "vertical":
         grupos = [jogos[i:i + ji.POR_PAGINA_ARTE] for i in range(0, len(jogos), ji.POR_PAGINA_ARTE)]
         for i, g in enumerate(grupos, 1):
@@ -354,10 +362,12 @@ def _paginas(jogos, dia, cfg, pasta, formato):
             cartoes += _pecas(ji._pagina_arte(None, g[4:], dia, cfg_p, i, len(grupos)))[1]
         cab = _escala(cab, 0.6)
         rod = _escala(rod, 0.5)
-        cartoes = [_escala(p.crop((40, 0, L - 40, p.height)), 0.88) for p, _ in cartoes]
-        cw, ch = cartoes[0].size if cartoes else (880, 236)
         linhas = (len(cartoes) + 1) // 2
         topo, base = 250, H - 108
+        alt = cartoes[0][0].height if cartoes else 300  # cabe tudo entre o cabeçalho e o rodapé, sem encostar
+        fator = min(0.88, (base - topo - 8 * linhas) / max(1, linhas * alt))
+        cartoes = [_escala(p.crop((40, 0, L - 40, p.height)), fator) for p, _ in cartoes]
+        cw, ch = cartoes[0].size if cartoes else (880, 236)
         passo = ch + 8
         y0 = topo + max(0, (base - topo - linhas * passo) // 2)
         itens = [(cab, (W - cab.width) // 2, 0, "cima", 0, 0.5)]
