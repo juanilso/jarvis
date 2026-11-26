@@ -72,6 +72,11 @@ def _video_da_resposta(r):
 
 def omni(texto, imagem_png=None, pasta_tmp="/tmp", proporcao="9:16"):
     """Gera o clipe e devolve os bytes do MP4."""
+    try:
+        import chaves
+        chaves.aplicar()
+    except Exception:  # noqa: BLE001
+        pass
     chave = os.environ.get("GEMINI_API_KEY", "")
     if not chave:
         raise RuntimeError("sem chave do Gemini (GEMINI_API_KEY)")

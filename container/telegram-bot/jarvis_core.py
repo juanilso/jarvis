@@ -1005,6 +1005,11 @@ def comando(estado, pool, texto):
         import ajudantes
         nome = cmd[1:]
         info = IAS_DIRETAS[nome]
+        try:
+            import chaves
+            chaves.aplicar()
+        except Exception:  # noqa: BLE001
+            pass
         if not os.environ.get(info["chave"]):
             return (f"{info['rotulo']} não está ligado. Na VPS: ./ajudantes-configurar.sh e cole a chave "
                     f"({info['onde']})."), None

@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.49: central de chaves e conexões
+
+- Painel → 🧠 Cérebro → **🔑 Chaves e conexões**: adicionar, trocar, testar e remover as chaves das IAs (Gemini,
+  DeepSeek, Ollama, Groq, OpenRouter, Mistral, Grok, NVIDIA, Cloudflare) sem editar arquivo nem reiniciar: vale na
+  hora em todo o Jarvis. ElevenLabs e TMDB aparecem com o status e o lugar onde trocar.
+- Segurança: só o final da chave aparece; trocar/remover pede a senha do painel de novo, fica no histórico e avisa no
+  Telegram (sem a chave). Os endereços dos serviços não são editáveis pelo painel (só no .env da VPS).
+- Chave do painel vale por cima do .env; "Remover" desliga mesmo que esteja no .env; "Voltar ao .env" desfaz.
+- Canva e Picsart: status da conexão (conectado / precisa entrar na conta) e o passo a passo para trocar de conta
+  (`/mcp` → Clear authentication → Authenticate).
+- Restauração: `versao-1.48.0`.
+
 ## Jarvis 1.48: jogos internacionais no banner e no vídeo
 
 - Além dos brasileiros, entram os **internacionais que passam no Brasil**: Libertadores, Sul-Americana, Mundial de

@@ -152,8 +152,17 @@ def cota(nome):
     return int(os.environ.get(f"JARVIS_AJUDANTE_{nome.upper()}_DIA", PROVEDORES[nome][3]))
 
 
+def _chaves():
+    try:  # chaves trocadas pelo painel (🔑 Chaves) valem por cima do .env, na hora
+        import chaves
+        chaves.aplicar()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def disponivel(nome):
     """(ok, motivo)"""
+    _chaves()
     if nome not in PROVEDORES:
         return False, "desconhecido"
     if not os.environ.get(PROVEDORES[nome][0]):
@@ -170,6 +179,7 @@ def disponivel(nome):
 
 
 def configurados():
+    _chaves()
     ordem = [n.strip() for n in os.environ.get("JARVIS_AJUDANTES", "gemini,groq,nvidia,cloudflare,deepseek,ollama,openrouter,mistral,grok").split(",") if n.strip()]
     return [n for n in ordem if n in PROVEDORES and os.environ.get(PROVEDORES[n][0])]
 
@@ -290,7 +300,7 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
             _registrar(nome, "falhas")
             msg = _msg_erro(e.read().decode(errors="replace"))
             if _chave_invalida(e.code, msg):
-                _pausar(nome, 30 * 86400, "chave inválida: gere outra e rode ./ajudantes-configurar.sh")
+                _pausar(nome, 30 * 86400, "chave inválida: troque no painel (🧠 Cérebro → 🔑 Chaves)")
             elif _sem_credito(e.code, msg):
                 _pausar(nome, 6 * 3600, "conta sem crédito/licença")
             tentativas.append(f"{nome}: {_explicar(nome, e.code, msg)}")
@@ -336,7 +346,7 @@ def perguntar(tarefa, contexto="", ia="auto", maximo=4000):
                 _registrar(nome, "falhas")
                 tentativas.append(f"{nome} ({mod}): {_explicar(nome, e.code, msg)}")
                 if _chave_invalida(e.code, msg):
-                    _pausar(nome, 30 * 86400, "chave inválida: gere outra e rode ./ajudantes-configurar.sh")
+                    _pausar(nome, 30 * 86400, "chave inválida: troque no painel (🧠 Cérebro → 🔑 Chaves)")
                     break  # chave errada: outro modelo não resolve
                 if _sem_credito(e.code, msg):
                     _pausar(nome, 6 * 3600, "conta sem crédito/licença")
@@ -401,7 +411,7 @@ def _explicar(nome, code, msg):
     if _sem_credito(code, msg):
         return f"a conta não tem crédito/licença (HTTP {code}): {msg[:140]}"
     if _chave_invalida(code, msg):
-        return f"chave inválida (HTTP {code}): {msg[:100]} · gere outra e rode ./ajudantes-configurar.sh"
+        return f"chave inválida (HTTP {code}): {msg[:100]} · troque no painel (🧠 Cérebro → 🔑 Chaves)"
     if code == 403:
         return f"acesso negado (HTTP 403): {msg[:160]}"
     if code == 429:

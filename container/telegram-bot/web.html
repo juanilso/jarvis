@@ -124,8 +124,14 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 .fmGrade{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.fmGrade button{display:flex;flex-direction:column;gap:4px;padding:6px;text-align:left;font-size:12px;background:#0a1624}
 .fmGrade button.on{border-color:var(--c2);box-shadow:0 0 0 2px #38bdf855}.fmGrade img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:#0b1a28}
 #fmVideos video{max-height:360px;border-radius:10px;border:1px solid var(--ln)}
-#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
+#chaves .caixa{width:min(760px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;display:flex;flex-direction:column;gap:10px}
+#chaves h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0}#chaves>.caixa>label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}
+#chaves .fechar{position:absolute;right:12px;top:10px}#chaves input{background:#0b1a28;color:inherit;border:1px solid var(--ln2);border-radius:6px;min-height:38px;padding:0 10px}#chaves code{font-size:12px;background:#0b1a28;padding:1px 5px;border-radius:4px;word-break:break-all}
+.chG{font-size:11px;letter-spacing:2px;color:var(--c2);margin-top:8px}.chL{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:8px 10px}
+.chL b{font-weight:600;font-size:14px}.chL small{color:var(--m);font-size:12px;display:block}.chL .bt{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.chL .bt button{min-height:32px;padding:4px 10px;font-size:12px}
+.chL .ed{grid-column:1/-1;display:none;gap:6px;flex-wrap:wrap}.chL.editando .ed{display:flex}.chL .ed input{flex:1;min-width:200px}.chOk{color:#86efac}.chNao{color:#fca5a5}
+#chaves,#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#chaves.aberto,#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
 #kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
@@ -458,9 +464,27 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica" id="fmStatus"></div>
   <div id="fmVideos" class="lin"></div>
 </div></div>
+<div id="chaves"><div class="caixa">
+  <button class="fechar" id="chFechar" title="Fechar">✕</button>
+  <h2>🔑 CHAVES E CONEXÕES</h2>
+  <p class="waDica">Troque de conta quando quiser: cole a chave nova e ela vale na hora, sem reiniciar. Só o final aparece aqui.
+    Trocar ou remover pede a senha do painel e te avisa no Telegram. Os endereços dos serviços não mudam por aqui (só no .env da VPS), para ninguém desviar o que o Jarvis envia.</p>
+  <label>Senha do painel (para confirmar trocas)<input id="chSenha" type="password" autocomplete="current-password"></label>
+  <div id="chLista"></div>
+  <div class="chG">CONEXÕES COM LOGIN (CANVA, PICSART)</div>
+  <div id="chCon" class="waDica">⏳ verificando…</div>
+  <div class="waDica"><b>Conectar ou trocar de conta</b> (uma vez, pelo terminal da VPS):<br>
+    1) <code>cd ~/jarvis/container && docker compose exec -it dev claude</code><br>
+    2) digite <code>/mcp</code>, escolha <b>canva</b> (ou <b>picsart-gen-ai</b>). Para trocar de conta: <b>Clear authentication</b> e depois <b>Authenticate</b>.<br>
+    3) abra o link no navegador do PC e entre com a conta que quiser usar.<br>
+    4) se a última página der erro de "localhost", copie o endereço inteiro dela e rode:<br>
+    <code>docker compose exec dev curl -s "COLE_O_ENDERECO"</code></div>
+  <div class="chG">ÚLTIMAS TROCAS</div><div id="chHist" class="waDica"></div>
+</div></div>
 <div id="cerebro"><div class="caixa">
   <button class="fechar" id="cbFechar" title="Fechar">✕</button>
   <h2>🧠 CÉREBRO DO JARVIS</h2>
+  <button id="cbChaves" style="align-self:flex-start">🔑 Chaves e conexões (trocar, testar, remover)</button>
   <p class="waDica">O Jarvis planeja cada demanda e escolhe o modelo e o esforço de cada agente. Aqui você define os limites.</p>
   <label>Modelo do Jarvis (orquestrador)<select id="cbModelo"><option value="opus">Opus 5.5 (recomendado)</option><option value="sonnet">Sonnet 5.5 (mais barato)</option><option value="haiku">Haiku 5.5 (só para testes)</option><option value="fable">Fable 5.2 (o mais forte, sempre)</option></select></label>
   <label>Esforço do Jarvis<select id="cbEsforco"><option value="auto">Automático (alto para planejar e começar; médio para continuar e validar)</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option><option value="xhigh">Extra-alto</option><option value="max">Máximo</option></select></label>
@@ -894,6 +918,28 @@ $("fmLinkBaixar").onclick=async()=>{const u=$("fmLink").value.trim();if(!u||!fmE
   $("fmTrailerInfo").textContent=r.ok?"🎞 trailer baixado: o vídeo vai usar os melhores cortes":"⚠️ "+(r.erro||"não consegui baixar");if(r.ok){fmEsc.trailer=true;$("fmLink").value=""}};
 $("fmGerar").onclick=async()=>{if(!fmEsc)return;await fmSalvarCfg();const r=await api("/api/filmes/gerar",{tipo:fmEsc.tipo,id:fmEsc.id,trailer:true,telegram:$("fmTg").checked});
   if(!r.ok){$("fmStatus").textContent="⚠️ "+(r.erro||"");return}$("fmStatus").textContent="⏳ começando…";clearInterval(fmTimer);fmTimer=setInterval(fmCarregar,2500)};
+async function chCarregar(conexoes){const r=await api("/api/chaves"+(conexoes?"?conexoes=1":""));if(!r||!r.chaves)return;
+  let g="",h="";for(const c of r.chaves){if(c.grupo!==g){g=c.grupo;h+=`<div class="chG">${esc(g.toUpperCase())}</div>`}
+    const st=c.configurada?`<span class="chOk">✅ ${esc(c.final||"configurada")}</span> <small style="display:inline">(${esc(c.origem)})</small>`:`<span class="chNao">⚪ ${c.origem==="desligada no painel"?"desligada no painel":"não configurada"}</span>`;
+    h+=`<div class="chL" data-env="${c.env}"><div><b>${esc(c.nome)}</b><small>${st} · gerar em ${esc(c.onde)}</small></div><div class="bt">`+
+      (c.secao?`<small>troque em ${esc(c.secao)}</small>`:`<button data-a="trocar">${c.configurada?"Trocar":"Adicionar"}</button>`+(c.testavel&&c.configurada?`<button data-a="testar">Testar</button>`:"")+(c.configurada||c.origem==="desligada no painel"?`<button data-a="remover">${c.origem==="desligada no painel"?"Voltar ao .env":"Remover"}</button>`:""))+
+      `</div><div class="ed"><input type="password" placeholder="cole a chave nova" autocomplete="off"><button data-a="salvar">Salvar</button><button data-a="cancelar">Cancelar</button></div><div class="res waDica" style="grid-column:1/-1;margin:0"></div></div>`}
+  $("chLista").innerHTML=h;
+  $("chHist").innerHTML=(r.historico||[]).map(x=>`${esc(x.quando)} · ${esc(x.acao)} · ${esc(x.chave)}`).join("<br>")||"nenhuma troca ainda";
+  if(r.conexoes)$("chCon").innerHTML=r.conexoes.map(c=>`${c.status==="conectado"?"✅":c.status==="não instalado"?"⚪":"⚠️"} <b>${esc(c.nome)}</b>: ${esc(c.status)}`).join("<br>");
+  $("chLista").querySelectorAll(".chL button").forEach(b=>b.onclick=()=>chAcao(b.closest(".chL"),b.dataset.a))}
+async function chAcao(el,a){const env=el.dataset.env,res=el.querySelector(".res");
+  if(a==="trocar"){el.classList.add("editando");el.querySelector(".ed input").focus();return}
+  if(a==="cancelar"){el.classList.remove("editando");return}
+  if(a==="testar"){res.textContent="⏳ testando…";const r=await api("/api/chaves/testar",{env});res.textContent=(r.ok?"✅ ":"❌ ")+(r.texto||r.erro||"");return}
+  const senha=$("chSenha").value;if(!senha){res.textContent="⚠ digite a senha do painel lá em cima para confirmar";$("chSenha").focus();return}
+  if(a==="salvar"){const valor=el.querySelector(".ed input").value.trim();if(!valor){res.textContent="⚠ cole a chave";return}
+    const r=await api("/api/chaves/definir",{env,valor,senha});if(r.erro){res.textContent="⚠ "+r.erro;return}await chCarregar(false);return}
+  if(a==="remover"){const voltar=el.querySelector('[data-a="remover"]').textContent.includes(".env");
+    if(!voltar&&!confirm("Desligar esta chave? O Jarvis para de usar este serviço até você colocar outra."))return;
+    const r=await api("/api/chaves/remover",{env,senha,voltar_env:voltar});if(r.erro){res.textContent="⚠ "+r.erro;return}await chCarregar(false)}}
+$("cbChaves").onclick=()=>{$("cerebro").classList.remove("aberto");$("chaves").classList.add("aberto");$("chCon").textContent="⏳ verificando…";chCarregar(true)};
+$("chFechar").onclick=()=>{$("chaves").classList.remove("aberto");$("chSenha").value=""};
 $("btnCerebro").onclick=cbAbrir;$("cbFechar").onclick=()=>$("cerebro").classList.remove("aberto");
 $("cbSalvar").onclick=async()=>{const r=await api("/api/cerebro",{modelo:$("cbModelo").value,esforco:$("cbEsforco").value,agentes:$("cbAgentes").value,conselho:$("cbConselho").value,escalar:$("cbEscalar").value,memoria:$("cbMemoria").value});
   $("cbMsg").textContent=r.ok?"✅ salvo: vale a partir da próxima mensagem (painel e Telegram)":"⚠️ "+(r.erro||"não salvou")};

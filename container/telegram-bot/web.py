@@ -392,6 +392,21 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(dados_zip)
             return
+        if url.path == "/api/chaves":  # central de chaves: só o final de cada uma
+            import chaves
+            import elevenlabs
+            import filmes
+            extra = [{"env": "ELEVENLABS", "nome": "ElevenLabs (voz do atendimento)", "grupo": "Voz e vídeo",
+                      "final": elevenlabs.publico()["token"], "configurada": bool(elevenlabs.config()["token"]),
+                      "origem": "painel", "onde": "elevenlabs.io/app/settings/api-keys", "testavel": False,
+                      "secao": "WhatsApp → 🔊 Respostas em áudio"},
+                     {"env": "TMDB", "nome": "TMDB (vídeos de filmes e séries)", "grupo": "Voz e vídeo",
+                      "final": filmes.mascarado() if hasattr(filmes, "mascarado") else "",
+                      "configurada": bool(filmes.token()), "origem": "painel", "onde": "themoviedb.org/settings/api",
+                      "testavel": False, "secao": "🎬 Filmes"}]
+            q = urllib.parse.parse_qs(url.query)
+            return self._json({"chaves": chaves.lista() + extra, "historico": chaves.historico(),
+                               "conexoes": chaves.conexoes() if q.get("conexoes") else None})
         if url.path == "/api/voz":  # voz do atendimento (ElevenLabs): chave só mascarada
             import elevenlabs
             r = elevenlabs.publico()
@@ -851,6 +866,32 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
+        if url.path.startswith("/api/chaves/"):
+            import chaves
+            acao = url.path.rsplit("/", 1)[1]
+            env = str(dados.get("env") or "")
+            if acao == "testar":
+                return self._json(chaves.testar(env))
+            if acao in ("definir", "remover"):  # muda chave: confirma a senha do painel de novo
+                if not (SENHA and hmac.compare_digest(str(dados.get("senha") or ""), SENHA)):
+                    return self._json({"erro": "senha do painel incorreta"}, 403)
+                try:
+                    if acao == "definir":
+                        final = chaves.definir(env, dados.get("valor"))
+                    else:
+                        chaves.remover(env, voltar_env=bool(dados.get("voltar_env")))
+                        final = ""
+                except ValueError as e:
+                    return self._json({"erro": str(e)}, 400)
+                nome = chaves.CATALOGO.get(env, (env,))[0]
+                try:
+                    import rotinas
+                    rotinas.avisar_telegram(f"🔑 Chave {'trocada' if acao == 'definir' else 'removida'} pelo painel: "
+                                            f"{nome}" + (f" (final {final})" if final else ""))
+                except Exception:  # noqa: BLE001
+                    pass
+                return self._json({"ok": True, "final": final})
+            return self._json({"erro": "ação desconhecida"}, 404)
         if url.path == "/api/voz/salvar":
             import elevenlabs
             try:

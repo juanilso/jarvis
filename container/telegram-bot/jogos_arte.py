@@ -57,6 +57,11 @@ def _http(url, corpo=None, cab=None, tempo=120):
 
 
 def _gemini(texto):
+    try:
+        import chaves
+        chaves.aplicar()
+    except Exception:  # noqa: BLE001
+        pass
     chave = os.environ.get("GEMINI_API_KEY", "")
     if not chave:
         raise RuntimeError("sem chave do Gemini")
