@@ -1,3 +1,6 @@
 * text=auto eol=lf
 *.sh text eol=lf
 Dockerfile text eol=lf
+pc-windows/*.bat text eol=crlf
+pc-windows/*.ps1 text eol=crlf
+pc-windows/*.txt text eol=crlf
