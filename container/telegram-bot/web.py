@@ -407,6 +407,23 @@ class Handler(BaseHTTPRequestHandler):
             q = urllib.parse.parse_qs(url.query)
             return self._json({"chaves": chaves.lista() + extra, "historico": chaves.historico(),
                                "conexoes": chaves.conexoes() if q.get("conexoes") else None})
+        if url.path == "/api/jogos/uniformes":
+            import jogos
+            import jogos_arte
+            n = urllib.parse.parse_qs(url.query).get("ver", [""])[0]
+            if n:
+                cam = os.path.join(jogos.DIR, jogos_arte.UNIFORMES, jogos_arte._slug_time(n) + ".jpg")
+                if not os.path.exists(cam):
+                    return self._json({"erro": "não encontrado"}, 404)
+                with open(cam, "rb") as f:
+                    dados_img = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", str(len(dados_img)))
+                self.end_headers()
+                self.wfile.write(dados_img)
+                return
+            return self._json({"uniformes": jogos_arte.uniformes(jogos.DIR)})
         if url.path == "/api/voz":  # voz do atendimento (ElevenLabs): chave só mascarada
             import elevenlabs
             r = elevenlabs.publico()
@@ -787,6 +804,18 @@ class Handler(BaseHTTPRequestHandler):
                         return self._json({"ok": False, "erro": str(e)}, 400)
                 return self._json(painel_api.testar())
             return self._json({"erro": "ação inválida"}, 400)
+        if url.path == "/api/jogos/uniforme":  # foto de referência do uniforme de um time (corpo = imagem)
+            import jogos
+            import jogos_arte
+            q = urllib.parse.parse_qs(url.query)
+            if q.get("apagar"):
+                jogos_arte.apagar_uniforme(jogos.DIR, q["apagar"][0])
+                return self._json({"ok": True, "uniformes": jogos_arte.uniformes(jogos.DIR)})
+            try:
+                slug = jogos_arte.salvar_uniforme(jogos.DIR, q.get("time", [""])[0], self._corpo())
+            except Exception as e:  # noqa: BLE001
+                return self._json({"ok": False, "erro": str(e)[:200]}, 400)
+            return self._json({"ok": True, "salvo": slug, "uniformes": jogos_arte.uniformes(jogos.DIR)})
         if url.path == "/api/jogos/musica":  # música de fundo do vídeo dos jogos (o arquivo vem no corpo)
             import jogos
             import jogos_video

@@ -111,6 +111,16 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.51: jogadores com o uniforme do time
+
+- O pedido da imagem agora descreve o **uniforme completo** (camisa com o padrão, calção e meião) de ~60 clubes e
+  seleções, mostra os jogadores de frente/três-quartos (do joelho para cima, rosto na sombra) para o uniforme
+  aparecer inteiro, e põe o uniforme como o mais importante da imagem.
+- **👕 Uniformes de referência** (⚽ Jogos): mande uma foto do uniforme de qualquer time; quando ele estiver no 1º
+  jogo, a foto vai junto para a IA copiar cores, listras, gola, calção e meião (sem escudo, patrocínio, marca e
+  número). Depois use 🎨 Nova arte para ver.
+- Restauração: `versao-1.50.0`.
+
 ## Jarvis 1.50: arte dos jogos no estilo do modelo do Canva + jogadores do jogo principal
 
 - Banner (estilo "arte") redesenhado no visual aprovado no Canva: "JOGOS DE HOJE" grande com traço neon, data,

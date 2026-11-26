@@ -276,6 +276,12 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <label>Limite do vídeo com IA (US$ por mês)<input id="jgVideoLimite" type="number" min="0" max="500" step="1" placeholder="20"></label>
     <label><span><input type="checkbox" id="jgTgAuto"> Ao gerar, mandar no meu Telegram (banner + vídeos + imagem da TV)</span></label>
     <label><span>Formatos: <input type="checkbox" id="jgFmtV"> 📱 Vertical (Status/Reels) &nbsp; <input type="checkbox" id="jgFmtH"> 📺 Horizontal (TV)</span></label>
+    <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:10px">
+    <div class="waDica"><b>👕 Uniformes de referência</b> (opcional): os 2 jogadores do fundo usam o uniforme dos times do 1º jogo. Os clubes mais conhecidos já saem parecidos; para ficar idêntico, mande uma foto do uniforme (camisa da loja, foto do jogo…). Escudo e patrocínio são tirados na arte.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="jgUniTime" placeholder="nome do time como aparece na lista (ex.: Flamengo)" style="flex:1;min-width:220px">
+      <input type="file" id="jgUniArq" accept="image/*" style="max-width:230px"><button id="jgUniEnviar">Enviar</button></div>
+    <div id="jgUniLista" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
     <label>Música de fundo (mp3, m4a, wav ou ogg, até 25 MB)<input type="file" id="jgMusica" accept="audio/*,.mp3,.m4a,.wav,.ogg"></label>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="waDica" id="jgMusicaInfo">sem música</span>
       <button id="jgMusicaApagar" style="display:none">🗑 Tirar música</button></div>
@@ -1003,6 +1009,7 @@ async function jgCarregar(){const j=await api("/api/jogos");if(!j||!j.config)ret
   if(document.activeElement!==$("jgProv"))$("jgProv").value=c.video_provedor||"gemini";if(document.activeElement!==$("jgModGw"))$("jgModGw").value=c.video_modelo_gateway||"";
   $("jgRoteiro").checked=!!c.roteiro_claude;$("jgModGwL").style.display=$("jgProv").value==="gateway"?"":"none";
   if(!$("jg").contains(document.activeElement)){const fm=c.video_formatos||["vertical"];$("jgFmtV").checked=fm.includes("vertical");$("jgTgAuto").checked=c.telegram_ao_gerar!==false;$("jgFmtH").checked=fm.includes("horizontal");$("jgVolume").value=c.musica_volume??70;$("jgVolTxt").textContent=$("jgVolume").value;}
+  jgUni();
   $("jgMusicaInfo").innerHTML=j.musica?'🎵 música enviada · <a href="/api/jogos/video?f=musica" target="_blank">ouvir</a>':"sem música (o animado sai mudo; o de IA sai com a torcida)";$("jgMusicaApagar").style.display=j.musica?"":"none";
   if(j.gerado&&j.gerado!==jgGerado){jgGerado=j.gerado;$("jgTexto").value=j.texto||"";
     $("jgImgs").innerHTML=j.imagens?Array.from({length:j.imagens},(_,i)=>`<a href="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" target="_blank"><img src="/api/jogos/imagem?n=${i+1}&t=${j.gerado}" alt="jogos ${i+1}"></a>`).join(""):'<div class="waDica">sem imagem</div>';
@@ -1035,6 +1042,12 @@ $("alDetectar").onclick=async()=>{if($("alToken").value.trim()){const s=await al
     await alSalvar({grupo:b.dataset.g,grupo_nome:b.dataset.n,para_grupo:true});$("alGrupos").innerHTML=""})};
 $("alTestar").onclick=async()=>{$("alMsg").textContent="⏳ enviando…";const r=await api("/api/whatsapp/acao",{acao:"alerta_testar"});
   $("alMsg").textContent=r.ok?r.resultados.map(x=>`${x[1]?"✅":"❌"} ${x[0]}${x[2]&&x[2]!=="ok"?": "+x[2]:""}`).join(" · "):"❌ "+(r.erro||"erro")};
+async function jgUni(lista){if(!lista){const r=await api("/api/jogos/uniformes");lista=(r&&r.uniformes)||[]}
+  $("jgUniLista").innerHTML=lista.map(n=>`<div style="text-align:center;font-size:12px"><img src="/api/jogos/uniformes?ver=${encodeURIComponent(n)}&t=${Date.now()}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;display:block"><span>${esc(n)}</span> <a href="#" data-n="${esc(n)}">✕</a></div>`).join("")||'<span class="waDica">nenhum enviado</span>';
+  $("jgUniLista").querySelectorAll("a[data-n]").forEach(a=>a.onclick=async e=>{e.preventDefault();const r=await fetch("/api/jogos/uniforme?apagar="+encodeURIComponent(a.dataset.n),{method:"POST"}).then(r=>r.json());jgUni(r.uniformes)})}
+$("jgUniEnviar").onclick=async()=>{const t=$("jgUniTime").value.trim(),f=$("jgUniArq").files[0];if(!t||!f){$("jgMsg").textContent="⚠ escreva o nome do time e escolha a foto";return}
+  const r=await fetch("/api/jogos/uniforme?time="+encodeURIComponent(t),{method:"POST",body:f}).then(r=>r.json());
+  if(!r.ok){$("jgMsg").textContent="⚠ "+(r.erro||"falhou");return}$("jgUniTime").value="";$("jgUniArq").value="";$("jgMsg").textContent="✅ uniforme salvo: use 🎨 Nova arte para ver";jgUni(r.uniformes)};
 $("jgMusica").onchange=async()=>{const f=$("jgMusica").files[0];if(!f)return;$("jgMusicaInfo").textContent="⏳ enviando "+f.name+"…";
   try{const r=await fetch("/api/jogos/musica",{method:"POST",body:f});const j=await r.json();
     $("jgMusicaInfo").textContent=j.ok?`🎵 música salva (${Math.round(j.segundos)} s; repete se o vídeo for maior). Gere os jogos de novo para usar.`:"⚠️ "+(j.erro||"não deu certo");}
