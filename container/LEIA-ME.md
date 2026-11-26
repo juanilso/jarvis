@@ -111,6 +111,19 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.47: skills de design, SEO e segurança
+
+- Revisadas e adicionadas ao `jarvis-extras` (commits revisados em 26/11/2026; atualizar exige nova revisão:
+  `jarvis-extras --atualizar-design`):
+  - **Claude SEO** (AgriciDaniel/claude-seo): `/seo audit <site>`, `/seo page`, `/seo schema`, sitemap. Sem
+    rastreamento; extensões pagas (DataForSEO, Ahrefs…) só se você configurar.
+  - **taste-skill** (Leonxlnx): sites institucionais. **hallmark** (Nutlope): landing pages e "no estilo deste site".
+    **impeccable** (pbakaus): `/impeccable audit`, `polish`, `critique` em telas prontas. O designer usa uma por
+    entrega; o detector automático do impeccable fica desligado (pesa em todos os projetos).
+  - **Segurança:** `/claude-security` (plugin oficial da Anthropic: auditoria completa, confirma achados e propõe
+    patches; informa o custo antes) + `/security-review` (nativo, revisa as mudanças).
+- Instalar: `docker compose exec dev jarvis-extras`. Restauração: `versao-1.46.0`.
+
 ## Jarvis 1.46: Picsart (banners e vídeos com a sua conta)
 
 - O Jarvis pode usar o **MCP oficial da Picsart** (hospedado pela Picsart, sem chave de API): gera banners e artes

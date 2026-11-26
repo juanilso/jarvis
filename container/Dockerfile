@@ -22,6 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Voz no Telegram: transcrição local (faster-whisper) e fala (edge-tts)
 RUN pip3 install --no-cache-dir --break-system-packages faster-whisper edge-tts pyyaml telethon pillow
+# Dependências da skill Claude SEO (análise de páginas, conteúdo e datas); a renderização usa o Playwright já instalado
+RUN pip3 install --no-cache-dir --break-system-packages "beautifulsoup4>=4.15,<5" "requests>=2.34.2,<3" "lxml>=6.1.3,<7" \
+      "lxml_html_clean>=0.4.5,<1" "urllib3>=2.8,<3" "idna>=3.20,<4" "trafilatura>=2.2,<3" "htmldate>=1.11,<2" "courlan>=1.4,<2" || true
+# Impeccable: o detector automático a cada edição fica DESLIGADO (pesa em todos os projetos); o designer chama
+# /impeccable audit|polish quando faz sentido. Para ligar: IMPECCABLE_HOOK_DISABLED=0
+ENV IMPECCABLE_HOOK_DISABLED=1
 
 # GitHub CLI (integração do painel com o GitHub via GH_TOKEN)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \

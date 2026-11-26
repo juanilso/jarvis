@@ -58,6 +58,10 @@ Botão flutuante de WhatsApp só se o objetivo for conversa.
 - Rastreamento (Meta Pixel, Google Analytics/Tag Manager): só com o ID fornecido pelo usuário; senão, deixe o ponto
   marcado `<!-- ANALYTICS: cole aqui -->`. Nunca invente IDs.
 
+### Skills extras (se instaladas)
+Direção visual: landing/página de vendas → `hallmark`; site de empresa → `taste-skill`. Uma só por página.
+Antes de entregar: `/impeccable audit` na página e `/seo page <prévia>` (claude-seo); corrija o que for crítico.
+
 ### Imagens e banners
 Precisa de banner/hero, ilustração ou imagem de produto e o MCP `picsart-gen-ai` está conectado? Gere com ele
 (consulte o custo antes), no tamanho certo (hero 1920x800 no PC e versão 1080x1350 para celular), baixe para

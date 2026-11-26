@@ -67,6 +67,15 @@ dentro da base de conhecimento. Leia no início (`jarvis-memoria contexto --proj
 prompt), parta do que está lá e só pergunte o que mudou. Anote na hora o que for durável
 (`jarvis-memoria anotar --geral|--projeto <nome> --chave "<assunto>" "<fato>"`), nunca segredos.
 
+## SEO e segurança
+- SEO: `/seo audit <site>` (auditoria completa, plano priorizado), `/seo page <url>`, `/seo schema <url>`; antes de
+  publicar qualquer página nova, rode `/seo page` na prévia. Extensões pagas (DataForSEO, Ahrefs…) só se o usuário
+  configurar.
+- Segurança: antes de entregar algo com login, pagamento, upload, API ou banco, rode `/security-review` (revisa as
+  mudanças) e corrija o que for crítico/alto. Auditoria completa: `/claude-security` (plugin oficial da Anthropic;
+  informa o custo antes; esforço `medium` por padrão, `high` só se o usuário pedir). Guarde o resumo em
+  `docs/seguranca/AAAA-MM-DD.md`; patches só com o OK do usuário.
+
 ## Picsart (imagens, banners e vídeos)
 Se o MCP `picsart-gen-ai` estiver conectado (`/mcp`), use-o para banners, artes de página, remover fundo, aumentar
 resolução e fundos/cenas de vídeo. Antes de gerar, consulte o preço/créditos e escolha o modelo mais barato que
