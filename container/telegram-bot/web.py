@@ -372,6 +372,26 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/cerebro":
             import cerebro
             return self._json({**cerebro.ler(), "falhas": cerebro.falhas(estado.ler()["projeto"])})
+        if url.path == "/api/navegador/kit":  # atalho do Chrome do Jarvis para o Windows (zip)
+            import io
+            import zipfile
+            pasta = next((p for p in ("/opt/jarvis/pc-windows",
+                                      os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "pc-windows"))
+                          if os.path.isdir(p)), None)
+            if not pasta:
+                return self._json({"erro": "kit não encontrado"}, 404)
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for n in sorted(os.listdir(pasta)):
+                    z.write(os.path.join(pasta, n), "Chrome-do-Jarvis/" + n)
+            dados_zip = buf.getvalue()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Disposition", 'attachment; filename="Chrome-do-Jarvis.zip"')
+            self.send_header("Content-Length", str(len(dados_zip)))
+            self.end_headers()
+            self.wfile.write(dados_zip)
+            return
         if url.path == "/api/voz":  # voz do atendimento (ElevenLabs): chave só mascarada
             import elevenlabs
             r = elevenlabs.publico()

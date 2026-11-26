@@ -111,6 +111,19 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.45: navegador do seu PC (Chrome do Jarvis no Windows, via Tailscale)
+
+- O Jarvis controla um **Chrome separado** no seu Windows para homologar o que criou e buscar dados em sistemas em
+  que você entrou: abre páginas, clica, preenche, lê o console de erros e tira prints. Você vê tudo ao vivo.
+- Perfil próprio (não é o seu Chrome do dia a dia: banco, e-mail etc. ficam de fora). A porta fica liberada só na
+  rede Tailscale e só enquanto a janela estiver aberta; fechou = acesso encerrado.
+- Instalar no PC: baixe `<endereço do painel>/api/navegador/kit` (ou a pasta `pc-windows/` do repositório),
+  descompacte, abra `Chrome-do-Jarvis.bat` e mande ao Jarvis o comando que aparece (já copiado): `/navegador 100.x.x.x`.
+- `/navegador` mostra se está conectado e as abas abertas · `/navegador desligar`.
+- Regras: aba nova para o trabalho dele; nunca digita senhas, códigos ou cartão, nem conclui pagamento, compra,
+  envio ou exclusão sem você pedir. Só aceita IP da rede Tailscale. Imagem nova: `docker compose build`.
+- Restauração: `versao-1.44.0`.
+
 ## Jarvis 1.44: atendimento responde em áudio (ElevenLabs)
 
 - O robô do WhatsApp responde com **mensagem de voz**. Modos: quando o cliente manda áudio (padrão), sempre ou nunca.

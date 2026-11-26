@@ -1,0 +1,10 @@
+#!/bin/sh
+# Servidor MCP "navegador-pc": Playwright conectado ao Chrome do Jarvis no PC do usuário (via Tailscale).
+# O endereço vem de /navegador <IP> (arquivo jarvis-navegador-pc.json); sem ele, as ferramentas avisam que não há PC.
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/jarvis-navegador-pc.json"
+EP="$(python3 -c 'import json,sys
+try: print(json.load(open(sys.argv[1])).get("endpoint") or "")
+except Exception: print("")' "$CFG" 2>/dev/null)"
+[ -n "$EP" ] || EP="http://127.0.0.1:1"
+D="$(npm root -g)/@playwright/mcp"
+exec node "$D/cli.js" --cdp-endpoint "$EP" --cdp-timeout 10000 --output-dir /tmp/navegador-pc "$@"

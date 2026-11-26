@@ -1,0 +1,16 @@
+CHROME DO JARVIS (Windows)
+
+1. Copie esta pasta (pc-windows) para o seu PC. Ex.: Documentos\Jarvis.
+2. De dois cliques em Chrome-do-Jarvis.bat (pode criar um atalho na area de trabalho).
+   - Abre um Chrome SEPARADO, com perfil proprio (nao e o seu Chrome do dia a dia).
+   - Libera o acesso so para a sua rede Tailscale, e so enquanto ele estiver aberto.
+3. Na primeira vez, mande ao Jarvis (Telegram ou painel) o comando que aparece na tela,
+   ja copiado: /navegador 100.x.x.x
+4. Nessa janela, entre nos sites que o Jarvis vai usar (sistema em homologacao, painel do fornecedor...).
+   O login fica salvo nesse perfil para as proximas vezes.
+5. Para encerrar o acesso: feche o Chrome do Jarvis.
+
+Seguranca:
+- O Jarvis so enxerga o que estiver nesta janela. Banco, e-mail e o seu Chrome normal ficam de fora.
+- Ele nao digita senhas, codigos, dados de cartao, nem conclui pagamentos/compras/envios sem voce pedir.
+- No painel do Tailscale (Access controls), o ideal e que so os seus aparelhos e a VPS estejam na rede.

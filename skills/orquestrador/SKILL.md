@@ -67,6 +67,12 @@ dentro da base de conhecimento. Leia no início (`jarvis-memoria contexto --proj
 prompt), parta do que está lá e só pergunte o que mudou. Anote na hora o que for durável
 (`jarvis-memoria anotar --geral|--projeto <nome> --chave "<assunto>" "<fato>"`), nunca segredos.
 
+## Navegador do PC (Chrome do Jarvis)
+Com `/navegador` configurado, as ferramentas `navegador-pc` controlam um Chrome separado no Windows do usuário (ele
+vê tudo). Use para homologar o que só abre lá ou exige o login dele nesse perfil; páginas públicas, use o playwright
+da VPS. Aba nova para o seu trabalho; nunca digite senhas/códigos/cartão nem conclua pagamento, compra, envio ou
+exclusão sem pedido explícito: pare e peça para ele preencher.
+
 ## Servidores (homologação na hora)
 Com servidores cadastrados (`jarvis-servidor listar`), reproduza e corrija direto na homologação: `ssh` (logs,
 comandos), `sql` (consultas; alteração faz dump das tabelas antes), `baixar`/`enviar` (o arquivo antigo fica em

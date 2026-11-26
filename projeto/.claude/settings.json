@@ -94,7 +94,11 @@
       "mcp__playwright__browser_run_code_unsafe",
       "Read(/segredos-servidores/**)",
       "Edit(/segredos-servidores/**)",
-      "Bash(cat /segredos-servidores:*)"
+      "Bash(cat /segredos-servidores:*)",
+      "mcp__plugin_jarvis_navegador-pc__browser_run_code_unsafe",
+      "mcp__navegador-pc__browser_run_code_unsafe",
+      "mcp__plugin_jarvis_navegador-pc__browser_file_upload",
+      "mcp__navegador-pc__browser_file_upload"
     ]
   },
   "hooks": {

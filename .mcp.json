@@ -3,6 +3,10 @@
     "playwright": {
       "command": "jarvis-playwright-mcp",
       "args": []
+    },
+    "navegador-pc": {
+      "command": "jarvis-navegador-pc-mcp",
+      "args": []
     }
   }
 }

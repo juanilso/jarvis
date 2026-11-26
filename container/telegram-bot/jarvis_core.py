@@ -239,6 +239,12 @@ class Execucao:
                     sistema += "\n\n" + memoria.contexto(projeto)
             except Exception as e:  # noqa: BLE001
                 print("memória: não carreguei:", e, flush=True)
+            try:  # navegador do PC (Chrome do Jarvis no Windows, via Tailscale)
+                import navegador
+                if navegador.endereco():
+                    sistema += "\n\n" + navegador.REGRA
+            except Exception as e:  # noqa: BLE001
+                print("navegador:", e, flush=True)
             try:  # servidores cadastrados (homologação/produção): SSH, SFTP e banco na hora
                 import servidores
                 lst = servidores.listar()
@@ -605,6 +611,7 @@ COMANDOS = [
     ("/guia", "Como usar o Jarvis, com exemplos"),
     ("/ideia", "Guarda uma ideia na base de conhecimento"),
     ("/lembrar", "Procura na base de conhecimento"),
+    ("/navegador", "Navegador do seu PC (Chrome do Jarvis via Tailscale): status; /navegador <IP do PC>"),
     ("/servidores", "Servidores de homologação/produção (SSH, SFTP, banco): lista, últimas ações; /servidores testar <nome>"),
     ("/memoria", "O que o Jarvis já sabe (geral e do projeto); /memoria <termo>, anotar, esquecer"),
     ("/pesquisar", "Pesquisa na internet e salva com as fontes"),
@@ -875,7 +882,7 @@ def comando(estado, pool, texto):
         if not ok:
             return motivo, None
         return f"📈 Buscando o que estão falando de “{arg}” nos últimos 30 dias… aviso quando terminar.", "tendencias"
-    if cmd in ("/ideia", "/lembrar", "/memoria", "/servidores", "/sincronizar", "/pesquisar"):
+    if cmd in ("/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/sincronizar", "/pesquisar"):
         import kb  # import tardio (kb depende deste módulo)
         if cmd == "/ideia":
             if not arg:
@@ -883,6 +890,9 @@ def comando(estado, pool, texto):
             titulo = arg.split("\n")[0][:70]
             caminho = kb.salvar("ideias", titulo, arg, tags=["ideia"], projeto=proj)
             return f"💡 Ideia guardada: {caminho}", None
+        if cmd == "/navegador":
+            import navegador
+            return navegador.texto(arg), None
         if cmd == "/servidores":
             import servidores
             return servidores.texto(arg), None
