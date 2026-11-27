@@ -261,7 +261,42 @@ services:
       - "127.0.0.1:1433:1433"
     mem_limit: 2g
 
+  # Cofre de senhas dos agentes (./cofre-configurar.sh). Vaultwarden = Bitwarden do seu servidor (você gerencia pelo app);
+  # o "cofre" é o único que lê as senhas e faz e-mail/agenda pelos agentes. Ninguém mais monta esses volumes.
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: jarvis-cofre-web
+    profiles: ["cofre"]
+    environment:
+      SIGNUPS_ALLOWED: "${COFRE_CADASTRO:-true}"   # o script desliga depois que você cria a conta
+      DOMAIN: "${COFRE_DOMINIO:-}"
+      SHOW_PASSWORD_HINT: "false"
+    volumes:
+      - cofre-dados:/data
+    ports:
+      - "127.0.0.1:8222:80"   # só pelo Tailscale (tailscale serve), nunca aberto na internet
+    mem_limit: 256m
+    restart: unless-stopped
+
+  cofre:
+    build: ./cofre
+    image: jarvis-cofre:latest
+    container_name: jarvis-cofre
+    profiles: ["cofre"]
+    env_file:   # usa daqui só COFRE_TOKEN, TELEGRAM_BOT_TOKEN/CHAT_ID e JARVIS_GATILHO_TOKEN (para te mandar os códigos)
+      - path: .env.claude
+        required: false
+    environment:
+      COFRE_VAULTWARDEN: http://vaultwarden
+    volumes:
+      - cofre-broker:/segredos-cofre
+    depends_on: [vaultwarden]
+    mem_limit: 384m
+    restart: unless-stopped
+
 volumes:
+  cofre-dados:
+  cofre-broker:
   claude-config:
   atendimento-segredos:
   servidores-segredos:

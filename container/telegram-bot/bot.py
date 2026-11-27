@@ -382,6 +382,11 @@ def iniciar_pedido(chat_id, texto, veio_de_audio):
         return
     if p:  # era um comando: devolve o anexo para a espera
         _anexo_sem_legenda(chat_id, p["caminhos"])
+    import pessoal
+    r_conf = pessoal.confirmacao(texto)  # "ok 123456": confirma no cofre (enviar e-mail etc.) sem passar pela IA
+    if r_conf:
+        enviar(chat_id, r_conf)
+        return
     if estado.ler().get("juliana") and not texto.startswith("/"):  # modo conversa com a Juliana
         para_juliana(chat_id, texto, voz=veio_de_audio)
         return

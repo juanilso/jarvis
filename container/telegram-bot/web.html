@@ -151,9 +151,17 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 #mvoz label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}#mvoz label.mvC{flex-direction:row;align-items:center;gap:8px;color:var(--t)}
 #mvoz select{min-height:38px}#mvoz .lin{display:flex;gap:8px;flex-wrap:wrap}
 .mvF{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13.5px}
+#mpes .caixa{width:min(680px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;display:flex;flex-direction:column;gap:10px}
+#mpes h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0}#mpes .fechar{position:absolute;right:12px;top:10px}
+#mpes label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}#mpes label.mvC{flex-direction:row;align-items:center;gap:8px;color:var(--t)}
+#mpes select{min-height:38px}#mpes .lin{display:flex;gap:8px;flex-wrap:wrap}
+.mvF{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13.5px}
+#mpes .itens div{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--ln);font-size:13.5px}
+#mpes .itens div.feito{opacity:.5;text-decoration:line-through}#mpes textarea{min-height:240px;font:13px/1.5 var(--mono)}
+#mpes .pend{border:1px solid rgba(251,191,36,.45);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13px;white-space:pre-wrap}
 .mvF small{grid-column:1/-1;color:var(--m);font-size:12px}.mvF.ok{border-color:rgba(52,211,153,.5)}.mvF.ok small{color:#86efac}
-#mvoz,#chaves,#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#mvoz.aberto,#chaves.aberto,#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
+#mpes,#mvoz,#chaves,#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#mpes.aberto,#mvoz.aberto,#chaves.aberto,#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
 #kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
@@ -515,6 +523,29 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica" id="fmStatus"></div>
   <div id="fmVideos" class="lin"></div>
 </div></div>
+<div id="mpes"><div class="caixa">
+  <button class="fechar" id="mpFechar" title="Fechar">✕</button>
+  <h2>👤 ASSISTENTE PESSOAL</h2>
+  <p class="waDica">Fale com o Jarvis normalmente: “anota leite e pão”, “o que tenho amanhã?”, “marca dentista terça às 15h”,
+    “tem e-mail importante?”, “responde o fulano dizendo…”, “executa o roteiro de fechamento”.</p>
+  <div class="chG">COFRE DE ACESSOS</div><div id="mpCofre" class="waDica"></div>
+  <div class="chG">CONFIRMAÇÕES PENDENTES</div><div id="mpPend"></div>
+  <div class="lin"><input id="mpCod" inputmode="numeric" maxlength="7" placeholder="código de 6 dígitos" style="max-width:190px">
+    <button id="mpOk">✅ Confirmar</button><button id="mpCancela">🚫 Cancelar</button></div><div id="mpCodMsg" class="waDica"></div>
+  <div class="chG">GOOGLE AGENDA</div><div id="mpGoogle" class="waDica"></div>
+  <div id="mpGoogleFluxo" style="display:none" class="waDica">1. <a id="mpGoogleLink" target="_blank" rel="noopener">Abra este link</a> e autorize.<br>
+    2. A página vai dar erro (é normal). Copie o endereço dela e cole aqui:
+    <div class="lin"><input id="mpGoogleUrl" placeholder="http://127.0.0.1:8765/?state=…&code=…"><button id="mpGoogleFim">Concluir</button></div></div>
+  <div class="chG">LISTA DE COMPRAS</div>
+  <div class="lin"><input id="mpItem" placeholder="leite, pão, café"><button id="mpAdd">＋ Anotar</button><button id="mpLimpar">🗑 Limpar</button></div>
+  <div class="itens" id="mpLista"></div>
+  <div class="chG">ROTEIROS DO TRABALHO</div>
+  <div class="waDica">Escreva o passo a passo uma vez; depois é só dizer “Jarvis, executa o roteiro …”. Marque com <b>[confirmar]</b>
+    os passos em que ele deve parar e pedir o seu ok.</div>
+  <div id="mpRots"></div><div class="lin"><button id="mpNovo">＋ Novo roteiro</button></div>
+  <div id="mpEdit" style="display:none"><label>Título<input id="mpRotTit"></label><textarea id="mpRotTxt"></textarea>
+    <div class="lin"><button id="mpRotSalvar">💾 Salvar</button><button id="mpRotApagar">🗑 Apagar</button><span id="mpRotMsg" class="waDica"></span></div></div>
+</div></div>
 <div id="mvoz"><div class="caixa">
   <button class="fechar" id="mvFechar" title="Fechar">✕</button>
   <h2>🎧 MÃOS LIVRES</h2>
@@ -558,6 +589,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <h2>🧠 CÉREBRO DO JARVIS</h2>
   <button id="cbChaves" style="align-self:flex-start">🔑 Chaves e conexões (trocar, testar, remover)</button>
   <button id="btnMaos" style="align-self:flex-start">🎧 Mãos livres e reconhecimento da minha voz</button>
+  <button id="btnPessoal" style="align-self:flex-start">👤 Assistente pessoal (cofre, agenda, lista, roteiros)</button>
   <p class="waDica">O Jarvis planeja cada demanda e escolhe o modelo e o esforço de cada agente. Aqui você define os limites.</p>
   <label>Modelo do Jarvis (orquestrador)<select id="cbModelo"><option value="opus">Opus 5.5 (recomendado)</option><option value="sonnet">Sonnet 5.5 (mais barato)</option><option value="haiku">Haiku 5.5 (só para testes)</option><option value="fable">Fable 5.2 (o mais forte, sempre)</option></select></label>
   <label>Esforço do Jarvis<select id="cbEsforco"><option value="auto">Automático (alto para planejar e começar; médio para continuar e validar)</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option><option value="xhigh">Extra-alto</option><option value="max">Máximo</option></select></label>
@@ -1495,6 +1527,47 @@ const MV=(()=>{
   $("mvTestar").onclick=()=>gravar($("mvTestar"),"teste");
   $("btnMaos").onclick=()=>{$("cerebro").classList.remove("aberto");$("mvoz").classList.add("aberto");MAOS.pausar(true);$("mvTesteR").textContent="";carregar()};
   $("mvFechar").onclick=()=>{if(gr){gr.r.parar();gr=null}$("mvoz").classList.remove("aberto");MAOS.pausar(false)};
+})();
+
+/* ---------- 👤 assistente pessoal ---------- */
+(()=>{
+  let rotAtual=null;
+  const post=async(a,b)=>(await fetch("/api/pessoal/"+a,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json().catch(()=>({ok:false,erro:"sem conexão"}));
+  async function carregar(){
+    let d={};try{d=await (await fetch("/api/pessoal")).json()}catch(e){}
+    const c=d.cofre||{};
+    $("mpCofre").innerHTML=!d.ligado?"Cofre ainda não ligado. Na VPS: <code>./cofre-configurar.sh</code>":
+      d.erro?"⚠ "+esc(d.erro):!c.configurado?"Cofre ligado, falta o login da conta: rode <code>./cofre-configurar.sh</code> de novo.":
+      c.desbloqueado?`✅ Cofre aberto · ${c.itens} acesso(s) · pastas: ${esc((c.pastas||[]).join(", ")||"nenhuma (crie Pessoal, E-mail, Portais, Google, Servidores)")}`:"⚠ "+esc(c.erro||"cofre trancado");
+    const pend=d.pendentes||[];
+    $("mpPend").innerHTML=pend.length?pend.map(p=>`<div class="pend"><b>${esc(p.criado)} · ${esc(p.agente)}</b>
+${esc(p.resumo)}</div>`).join(""):'<div class="waDica">Nada esperando o seu ok.</div>';
+    $("mpGoogle").innerHTML=c.google?'✅ Conectada. <button id="mpGoogleRe" type="button">reconectar</button>':
+      'Não conectada. Antes, no cofre (pasta <b>Google</b>), crie o item <b>Google</b> com o client_id (usuário) e o client_secret (senha) de um cliente OAuth “App para computador” do Google Cloud. <button id="mpGoogleRe" type="button">🔗 Conectar Google</button>';
+    $("mpGoogleRe").onclick=async()=>{const r=await post("google_iniciar");if(!r.ok){alert(r.erro);return}
+      $("mpGoogleLink").href=r.url;$("mpGoogleFluxo").style.display="block"};
+    desenharLista(d.compras||[]);
+    $("mpRots").innerHTML=(d.roteiros||[]).map(r=>`<div class="mvF"><span>📋 ${esc(r.titulo)}</span><button data-id="${esc(r.id)}">abrir</button></div>`).join("")||'<div class="waDica">Nenhum roteiro ainda.</div>';
+    $("mpRots").querySelectorAll("button").forEach(b=>b.onclick=async()=>{const r=await post("roteiro_ver",{id:b.dataset.id});if(!r.ok)return alert(r.erro);
+      rotAtual=r.id;$("mpRotTit").value=(r.texto.split("\n")[0]||"").replace(/^#\s*/,"");$("mpRotTxt").value=r.texto;$("mpEdit").style.display="block";$("mpRotMsg").textContent=""})}
+  function desenharLista(itens){
+    $("mpLista").innerHTML=itens.length?itens.map(i=>`<div class="${i.feito?"feito":""}"><input type="checkbox" ${i.feito?"checked":""} data-i="${esc(i.item)}"> ${esc(i.item)} <small style="color:var(--m);margin-left:auto">${esc(i.quando||"")}</small></div>`).join(""):'<div class="waDica">Lista vazia.</div>';
+    $("mpLista").querySelectorAll("input").forEach(x=>x.onchange=async()=>{if(x.checked){await post("lista_ok",{itens:x.dataset.i})}carregar()})}
+  $("mpAdd").onclick=async()=>{const v=$("mpItem").value.trim();if(!v)return;await post("lista_add",{itens:v});$("mpItem").value="";carregar()};
+  $("mpItem").onkeydown=e=>{if(e.key==="Enter")$("mpAdd").click()};
+  $("mpLimpar").onclick=async()=>{if(confirm("Limpar a lista de compras?")){await post("lista_limpar");carregar()}};
+  const cod=async a=>{const r=await post(a,{codigo:$("mpCod").value});$("mpCodMsg").textContent=r.texto||r.erro||"";$("mpCod").value="";carregar()};
+  $("mpOk").onclick=()=>cod("confirmar");$("mpCancela").onclick=()=>cod("cancelar");
+  $("mpGoogleFim").onclick=async()=>{const r=await post("google_codigo",{url:$("mpGoogleUrl").value});
+    if(r.ok){$("mpGoogleFluxo").style.display="none";carregar()}else alert(r.erro)};
+  $("mpNovo").onclick=()=>{rotAtual=null;$("mpRotTit").value="";$("mpRotTxt").value="";$("mpEdit").style.display="block";$("mpRotMsg").textContent="";$("mpRotTit").focus()};
+  $("mpRotSalvar").onclick=async()=>{const t=$("mpRotTit").value.trim();if(!t)return alert("Dê um título.");
+    let txt=$("mpRotTxt").value.trim();if(txt&&!txt.startsWith("#"))txt="# "+t+"\n\n"+txt;
+    const r=await post("roteiro_salvar",{titulo:t,texto:txt||null,id:rotAtual});if(!r.ok)return alert(r.erro);rotAtual=r.id;
+    const v=await post("roteiro_ver",{id:r.id});$("mpRotTxt").value=v.texto||"";$("mpRotMsg").textContent="✓ salvo";carregar()};
+  $("mpRotApagar").onclick=async()=>{if(!rotAtual||!confirm("Apagar este roteiro? (fica uma cópia em .versoes)"))return;await post("roteiro_apagar",{id:rotAtual});$("mpEdit").style.display="none";carregar()};
+  $("btnPessoal").onclick=()=>{$("cerebro").classList.remove("aberto");$("mpes").classList.add("aberto");carregar()};
+  $("mpFechar").onclick=()=>$("mpes").classList.remove("aberto");
 })();
 
 /* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */

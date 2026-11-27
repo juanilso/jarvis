@@ -111,6 +111,26 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.59: assistente pessoal + cofre de senhas (Vaultwarden)
+
+**Cofre** (`./cofre-configurar.sh`): um Vaultwarden (o Bitwarden do seu servidor) só com os acessos que os agentes podem usar.
+- Você gerencia pelo site (HTTPS pelo Tailscale, porta 9443) ou pelo app Bitwarden no celular ("auto-hospedado").
+- Pastas: **Pessoal, E-mail, Portais, Google, Servidores**. O agente pessoal usa as 4 primeiras; servidores, a última.
+- Só o contêiner `jarvis-cofre` lê as senhas. Os agentes pedem "entra no e-mail X" e ele entra por eles: nenhuma rota
+  devolve senha, e há registro de tudo (`auditoria.log` dentro do cofre).
+- O que sai para fora (enviar e-mail, apagar compromisso) vira pendência com **código de 6 dígitos** que vai só para você
+  (Telegram e WhatsApp). Responda **"ok 123456"** (texto, voz, Telegram, WhatsApp ou o painel) para fazer; "cancela 123456"
+  para desistir. 5 códigos errados cancelam as pendências. Assim nem um e-mail malicioso faz o agente enviar nada.
+
+**Assistente pessoal** (mesa nova no escritório; fale com o Jarvis normalmente):
+- Lista de compras: "anota leite e pão", "o que falta comprar?".
+- Agenda Google: "o que tenho amanhã?", "marca dentista terça às 15h" (conecte em 🧠 Cérebro › 👤 Assistente pessoal).
+- E-mail (Gmail com senha de app, e-mail da hospedagem por IMAP): ler, resumir, preparar respostas (envio com o seu código).
+  Outlook/Microsoft 365 exige login próprio da Microsoft: fica para a próxima etapa.
+- Roteiros do trabalho: escreva o passo a passo no painel; "executa o roteiro X". Passos com [confirmar] param e perguntam.
+
+Ainda não: login em portais pelo cofre (próxima etapa, num navegador do servidor), Outlook e o agente de servidores.
+
 ## Jarvis 1.58: a Juliana fala com você pelo WhatsApp
 
 Em 📱 WhatsApp → **👩‍💼 A Juliana fala com você pelo WhatsApp**: coloque o seu número e toque em "Mandar um oi de teste".

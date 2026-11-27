@@ -203,6 +203,12 @@ def site_no_painel(modo, arg="", paginas=None):
 
 
 def iniciar(texto, veio_de_audio):
+    import pessoal
+    r_conf = pessoal.confirmacao(texto)  # "ok 123456": confirma no cofre (enviar e-mail etc.) sem passar pela IA
+    if r_conf:
+        publicar({"tipo": "usuario", "texto": texto})
+        publicar({"tipo": "info", "texto": r_conf})
+        return None
     if texto.split() and texto.split()[0].lower() == "/fable" and len(texto.split()) > 1:  # /fable <pedido>: este pedido usa o Fable
         import cerebro
         cerebro.marcar_fable(estado.ler()["projeto"])
@@ -689,6 +695,17 @@ class Handler(BaseHTTPRequestHandler):
                                                      "relatorio", "proposta", "rodando")})
         if url.path == "/api/whatsapp/faq":
             return self._json({"texto": atendimento.ler_faq(), "caminho": atendimento.FAQ})
+        if url.path == "/api/pessoal":  # assistente pessoal: cofre, pendências, lista, roteiros
+            import pessoal
+            out = {"ligado": bool(os.environ.get("COFRE_TOKEN")), "roteiros": pessoal.roteiros(),
+                   "compras": pessoal.lista("compras")}
+            if out["ligado"]:
+                try:
+                    out["cofre"] = pessoal.cofre("/estado")
+                    out["pendentes"] = pessoal.cofre("/pendentes")
+                except pessoal.Erro as e:
+                    out["erro"] = str(e)
+            return self._json(out)
         if url.path == "/api/voz-dono":
             import voz_dono
             return self._json(voz_dono.publico())
@@ -1018,6 +1035,35 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
+        if url.path.startswith("/api/pessoal/"):
+            import pessoal
+            a_p = url.path.rsplit("/", 1)[1]
+            try:
+                if a_p == "google_iniciar":
+                    r = pessoal.cofre("/google/iniciar")
+                elif a_p == "google_codigo":
+                    r = pessoal.cofre("/google/codigo", url=str(dados.get("url") or ""))
+                elif a_p in ("confirmar", "cancelar"):
+                    r = {"texto": pessoal.confirmacao(("ok " if a_p == "confirmar" else "cancela ") + str(dados.get("codigo") or ""))
+                         or "🔐 o código tem 6 dígitos"}
+                elif a_p == "lista_add":
+                    r = {"faltando": pessoal.lista_adicionar(str(dados.get("itens") or ""))}
+                elif a_p == "lista_ok":
+                    r = {"faltando": pessoal.lista_marcar(str(dados.get("itens") or ""), remover=bool(dados.get("remover")))}
+                elif a_p == "lista_limpar":
+                    r = {"faltando": pessoal.lista_limpar()}
+                elif a_p == "roteiro_ver":
+                    r = pessoal.roteiro(str(dados.get("id") or ""))
+                elif a_p == "roteiro_salvar":
+                    r = {"id": pessoal.salvar_roteiro(str(dados.get("titulo") or ""), dados.get("texto"), dados.get("id"))}
+                elif a_p == "roteiro_apagar":
+                    pessoal.apagar_roteiro(str(dados.get("id") or ""))
+                    r = {}
+                else:
+                    return self._json({"ok": False, "erro": "ação desconhecida"}, 404)
+                return self._json(dict(r, ok=True))
+            except pessoal.Erro as e:
+                return self._json({"ok": False, "erro": str(e)}, 400)
         if url.path in ("/api/voz-dono/concluir", "/api/voz-dono/config", "/api/voz-dono/apagar"):
             import voz_dono
             try:

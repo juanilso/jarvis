@@ -886,7 +886,7 @@ def _chat_dono():
     return chat
 
 
-def mandar_ao_dono(texto, aviso=False, voz=False):
+def mandar_ao_dono(texto, aviso=False, voz=False, de=None):
     """A Juliana manda uma mensagem para você no WhatsApp. Devolve (ok, detalhe)."""
     d = C.dono()
     if not d.get("numero"):
@@ -900,7 +900,7 @@ def mandar_ao_dono(texto, aviso=False, voz=False):
         if voz:
             enviar_voz(chat, texto)
         else:
-            enviar(chat, f"{JULIANA}\n{texto}"[:3500], proteger=False)
+            enviar(chat, f"{de or JULIANA}\n{texto}"[:3500], proteger=False)
         if aviso:
             with _lock:
                 e = _ler_estado()
@@ -933,6 +933,11 @@ def _dono_para_juliana(chat, texto, de_mim, dados):
         return {"responder": False, "motivo": "eco da Juliana (conversa com o dono)"}
     if not C.dono().get("conversar", True) or not texto:
         return {"responder": False, "motivo": "conversa do dono (Juliana não responde por aqui)"}
+    import pessoal
+    r_conf = pessoal.confirmacao(re.sub(r"^\[ÁUDIO[^:]*:\s*(.*)\]\s*$", r"\1", texto, flags=re.S))
+    if r_conf:  # "ok 123456": confirmação do cofre (enviar e-mail etc.)
+        enviar(chat, f"🔐 *Jarvis · cofre*\n{r_conf}", proteger=False)
+        return {"responder": False, "motivo": "confirmação do cofre"}
     voz = texto.startswith("[ÁUDIO")
     if voz:
         m = re.match(r"\[ÁUDIO[^:]*:\s*(.*)\]\s*$", texto, re.S)

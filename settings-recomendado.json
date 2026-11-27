@@ -51,6 +51,7 @@
       "Bash(jarvis-busca:*)",
       "Bash(jarvis-tendencias:*)",
       "Bash(jarvis-servidor:*)",
+      "Bash(jarvis-pessoal:*)",
       "Bash(jarvis-memoria:*)",
       "Bash(jarvis-atendimento:*)"
     ],

@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""jarvis-pessoal: ferramenta do assistente pessoal (lista, agenda, e-mail, roteiros, cofre). Sem senhas aqui."""
+import argparse
+import json
+import sys
+
+sys.path.insert(0, "/opt/jarvis-bots")
+import pessoal as P  # noqa: E402
+
+
+def mostrar(x):
+    print(json.dumps(x, ensure_ascii=False, indent=1) if not isinstance(x, str) else x)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="jarvis-pessoal")
+    sub = ap.add_subparsers(dest="area", required=True)
+    # lista
+    li = sub.add_parser("lista").add_subparsers(dest="acao", required=True)
+    for n in ("add", "ok", "tirar"):
+        s = li.add_parser(n)
+        s.add_argument("itens", nargs="+")
+        s.add_argument("--lista", default="compras")
+    for n in ("ver", "limpar"):
+        li.add_parser(n).add_argument("--lista", default="compras")
+    li.add_parser("todas")
+    # agenda
+    ag = sub.add_parser("agenda").add_subparsers(dest="acao", required=True)
+    s = ag.add_parser("ver")
+    s.add_argument("--de")
+    s.add_argument("--ate")
+    s.add_argument("--busca")
+    s = ag.add_parser("criar")
+    s.add_argument("titulo")
+    s.add_argument("inicio", help="AAAA-MM-DDTHH:MM (ou AAAA-MM-DD com --dia-inteiro)")
+    s.add_argument("--fim")
+    s.add_argument("--descricao", default="")
+    s.add_argument("--local", default="")
+    s.add_argument("--lembrete", type=int, default=30)
+    s.add_argument("--dia-inteiro", action="store_true")
+    ag.add_parser("apagar").add_argument("id")
+    # e-mail
+    em = sub.add_parser("email").add_subparsers(dest="acao", required=True)
+    em.add_parser("contas")
+    s = em.add_parser("listar")
+    s.add_argument("--conta")
+    s.add_argument("--todos", action="store_true", help="inclui os já lidos")
+    s.add_argument("--busca")
+    s.add_argument("--dias", type=int, default=7)
+    s.add_argument("--limite", type=int, default=20)
+    s.add_argument("--pasta", default="INBOX")
+    s = em.add_parser("ler")
+    s.add_argument("uid")
+    s.add_argument("--conta")
+    s.add_argument("--pasta", default="INBOX")
+    s = em.add_parser("preparar")
+    s.add_argument("--para", required=True)
+    s.add_argument("--assunto", default="")
+    s.add_argument("--corpo", required=True)
+    s.add_argument("--cc")
+    s.add_argument("--conta")
+    s.add_argument("--responder", help="uid do e-mail que está sendo respondido")
+    # roteiros
+    ro = sub.add_parser("roteiro").add_subparsers(dest="acao", required=True)
+    ro.add_parser("listar")
+    ro.add_parser("ver").add_argument("nome")
+    # cofre e pendências
+    co = sub.add_parser("cofre").add_subparsers(dest="acao", required=True)
+    co.add_parser("itens")
+    co.add_parser("estado")
+    co.add_parser("pendentes")
+    a = ap.parse_args(argv)
+    try:
+        if a.area == "lista":
+            if a.acao == "add":
+                P._marcar("anotando na lista")
+                mostrar({"lista": a.lista, "faltando": P.lista_adicionar(" ".join(a.itens), a.lista)})
+            elif a.acao in ("ok", "tirar"):
+                mostrar({"lista": a.lista, "faltando": P.lista_marcar(" ".join(a.itens), a.lista, remover=a.acao == "tirar")})
+            elif a.acao == "ver":
+                mostrar({"lista": a.lista, "faltando": [i["item"] for i in P.lista(a.lista) if not i.get("feito")],
+                         "comprados": [i["item"] for i in P.lista(a.lista) if i.get("feito")]})
+            elif a.acao == "limpar":
+                P.lista_limpar(a.lista)
+                print("lista limpa")
+            else:
+                mostrar(P.listas())
+        elif a.area == "agenda":
+            P._marcar("mexendo na agenda")
+            if a.acao == "ver":
+                mostrar(P.cofre("/agenda/listar", de=a.de, ate=a.ate, busca=a.busca))
+            elif a.acao == "criar":
+                mostrar(P.cofre("/agenda/criar", titulo=a.titulo, inicio=a.inicio, fim=a.fim, descricao=a.descricao,
+                                local=a.local, lembrete_min=a.lembrete, dia_inteiro=a.dia_inteiro))
+            else:
+                mostrar(P.cofre("/agenda/apagar", id=a.id))
+        elif a.area == "email":
+            P._marcar("lendo e-mails" if a.acao != "preparar" else "preparando um e-mail")
+            if a.acao == "contas":
+                mostrar(P.cofre("/email/contas"))
+            elif a.acao == "listar":
+                mostrar(P.cofre("/email/listar", conta=a.conta, nao_lidos=not a.todos, busca=a.busca, dias=a.dias,
+                                limite=a.limite, pasta=a.pasta))
+            elif a.acao == "ler":
+                mostrar(P.cofre("/email/ler", uid=a.uid, conta=a.conta, pasta=a.pasta))
+            else:
+                mostrar(P.cofre("/email/preparar", para=a.para, assunto=a.assunto, corpo=a.corpo, cc=a.cc, conta=a.conta,
+                                responder_uid=a.responder))
+        elif a.area == "roteiro":
+            if a.acao == "listar":
+                mostrar(P.roteiros())
+            else:
+                P._marcar("seguindo um roteiro")
+                print(P.roteiro(a.nome)["texto"])
+        else:
+            mostrar(P.cofre({"itens": "/itens", "estado": "/estado", "pendentes": "/pendentes"}[a.acao]))
+    except P.Erro as e:
+        print("erro:", e, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
