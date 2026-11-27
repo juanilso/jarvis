@@ -43,7 +43,10 @@ PEND = os.path.join(DIR, "pendentes.json")
 GOOGLE = os.path.join(DIR, "google.json")
 LOG = os.path.join(DIR, "auditoria.log")
 BW = os.environ.get("COFRE_BW", "bw")
-SERVIDOR = os.environ.get("COFRE_VAULTWARDEN", "http://vaultwarden")
+VAULT_INTERNO = os.environ.get("COFRE_VAULTWARDEN", "http://vaultwarden")
+# O Bitwarden CLI só aceita HTTPS: dentro deste contêiner há uma ponte HTTPS (certificado próprio) → Vaultwarden.
+SERVIDOR = "https://localhost:8443"
+TLS = os.path.join(DIR, "tls")
 # quais pastas do cofre cada agente pode usar (nomes das pastas no Vaultwarden)
 PASTAS = {"pessoal": ["Pessoal", "E-mail", "Portais", "Google"], "servidores": ["Servidores"]}
 _trava = threading.RLock()
@@ -89,7 +92,8 @@ class Erro(Exception):
 
 # ------------------------------------------------------------------ Vaultwarden (pelo Bitwarden CLI)
 def _bw(args, sessao=None, entrada_env=None, tempo=60):
-    env = dict(os.environ, BITWARDENCLI_APPDATA_DIR=os.path.join(DIR, "bw"), NODE_NO_WARNINGS="1")
+    env = dict(os.environ, BITWARDENCLI_APPDATA_DIR=os.path.join(DIR, "bw"), NODE_NO_WARNINGS="1",
+               NODE_EXTRA_CA_CERTS=os.path.join(TLS, "cert.pem"))
     if sessao:
         env["BW_SESSION"] = sessao
     env.update(entrada_env or {})
@@ -111,8 +115,11 @@ def _sessao():
             st = json.loads(_bw(["status"]) or "{}")
         except (Erro, ValueError):
             st = {}
-        if st.get("serverUrl") != SERVIDOR and st.get("status") == "unauthenticated":
+        if st.get("serverUrl") != SERVIDOR:
+            if st.get("status") not in (None, "unauthenticated"):
+                _bw(["logout"])
             _bw(["config", "server", SERVIDOR])
+            st["status"] = "unauthenticated"
         if st.get("status") == "unauthenticated" or not st:
             s = _bw(["login", c["email"], "--passwordenv", "COFRE_BW_SENHA", "--raw"], entrada_env=segredo)
         else:
@@ -575,6 +582,66 @@ def estado():
     return out
 
 
+# ------------------------------------------------------------------ ponte HTTPS → Vaultwarden (só para o bw, em localhost)
+def _certificado():
+    os.makedirs(TLS, exist_ok=True)
+    cert, chave = os.path.join(TLS, "cert.pem"), os.path.join(TLS, "chave.pem")
+    if not (os.path.exists(cert) and os.path.exists(chave)):
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "3650", "-subj", "/CN=localhost",
+                        "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1", "-keyout", chave, "-out", cert],
+                       check=True, capture_output=True)
+        os.chmod(chave, 0o600)
+    return cert, chave
+
+
+class Ponte(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *a):
+        pass
+
+    def _repassar(self):
+        import http.client
+        alvo = urllib.parse.urlparse(VAULT_INTERNO)
+        n = int(self.headers.get("Content-Length") or 0)
+        corpo = self.rfile.read(n) if n else None
+        cab = {k: v for k, v in self.headers.items() if k.lower() not in ("host", "connection", "keep-alive", "accept-encoding")}
+        cab["Host"] = alvo.netloc
+        cab["X-Forwarded-Proto"] = "https"
+        try:
+            c = http.client.HTTPConnection(alvo.hostname, alvo.port or 80, timeout=60)
+            c.request(self.command, self.path, body=corpo, headers=cab)
+            r = c.getresponse()
+            dados = r.read()
+        except OSError as e:
+            dados = json.dumps({"message": f"Vaultwarden fora do ar: {e}"}).encode()
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(dados)))
+            self.end_headers()
+            self.wfile.write(dados)
+            return
+        self.send_response(r.status)
+        for k, v in r.getheaders():
+            if k.lower() not in ("transfer-encoding", "connection", "content-length", "keep-alive"):
+                self.send_header(k, v)
+        self.send_header("Content-Length", str(len(dados)))
+        self.end_headers()
+        self.wfile.write(dados)
+        c.close()
+
+    do_GET = do_POST = do_PUT = do_DELETE = do_PATCH = do_HEAD = _repassar
+
+
+def iniciar_ponte():
+    cert, chave = _certificado()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(cert, chave)
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 8443), Ponte)
+    srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+
 # ------------------------------------------------------------------ HTTP
 ROTAS = {
     "/estado": lambda a, d: estado(),
@@ -652,10 +719,11 @@ def configurar():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["configurar"]:
+    if sys.argv[1:] == ["configurar"]:  # roda num processo à parte: usa a ponte do serviço principal (já ligada)
         configurar()
         sys.exit(0)
     os.makedirs(DIR, exist_ok=True)
     os.chmod(DIR, 0o700)
+    iniciar_ponte()
     print("cofre do Jarvis ouvindo na porta 8080", flush=True)
     http.server.ThreadingHTTPServer(("0.0.0.0", 8080), H).serve_forever()

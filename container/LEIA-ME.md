@@ -111,6 +111,12 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.59.1: cofre funciona com o Bitwarden CLI novo (só HTTPS)
+
+O Bitwarden CLI passou a recusar endereço sem HTTPS ("Insecure URL not allowed"). O serviço do cofre agora tem uma ponte
+HTTPS interna (certificado próprio, só em localhost) até o Vaultwarden. Atualize com:
+`docker compose --profile cofre build cofre && docker compose --profile cofre up -d cofre`
+
 ## Jarvis 1.59: assistente pessoal + cofre de senhas (Vaultwarden)
 
 **Cofre** (`./cofre-configurar.sh`): um Vaultwarden (o Bitwarden do seu servidor) só com os acessos que os agentes podem usar.
