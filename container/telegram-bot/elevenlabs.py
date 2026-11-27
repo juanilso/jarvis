@@ -20,7 +20,7 @@ MODELOS = {"eleven_multilingual_v2": "Multilingual v2 (mais natural)",
            "eleven_turbo_v2_5": "Turbo v2.5 (rápido, metade do custo)",
            "eleven_flash_v2_5": "Flash v2.5 (mais rápido e barato)",
            "eleven_v3": "v3 (mais expressivo)"}
-PADRAO = {"token": "", "voz": "", "voz_nome": "", "modelo": "eleven_multilingual_v2", "estabilidade": 0.5,
+PADRAO = {"token": "", "voz": "", "voz_nome": "", "voz_reginaldo": "", "voz_reginaldo_nome": "", "modelo": "eleven_multilingual_v2", "estabilidade": 0.5,
           "velocidade": 1.0}
 _trava = threading.Lock()
 _cache_vozes = {"t": 0, "lista": []}
@@ -39,7 +39,7 @@ def publico():
     t = c["token"]
     return {"token": (t[:4] + "…" + t[-4:]) if len(t) > 12 else ("definido" if t else ""), "voz": c["voz"],
             "voz_nome": c["voz_nome"], "modelo": c["modelo"], "modelos": MODELOS, "estabilidade": c["estabilidade"],
-            "velocidade": c["velocidade"]}
+            "velocidade": c["velocidade"], "voz_reginaldo": c["voz_reginaldo"], "voz_reginaldo_nome": c["voz_reginaldo_nome"]}
 
 
 def salvar(novo):
@@ -56,6 +56,9 @@ def salvar(novo):
         if "voz" in novo:
             c["voz"] = re.sub(r"[^A-Za-z0-9]", "", str(novo["voz"]))[:40]
             c["voz_nome"] = str(novo.get("voz_nome") or "")[:60]
+        if "voz_reginaldo" in novo:
+            c["voz_reginaldo"] = re.sub(r"[^A-Za-z0-9]", "", str(novo["voz_reginaldo"]))[:40]
+            c["voz_reginaldo_nome"] = str(novo.get("voz_reginaldo_nome") or "")[:60]
         if novo.get("modelo") in MODELOS:
             c["modelo"] = novo["modelo"]
         for k, lo, hi in (("estabilidade", 0.0, 1.0), ("velocidade", 0.7, 1.2)):
@@ -145,8 +148,9 @@ def gerar_audio(texto, formato="ogg"):
             return f.read(), origem
 
 
-def gerar_ogg(texto):
-    """Mensagem de voz (OGG/Opus, em bytes) e quem gerou ("elevenlabs" ou "gratuita")."""
+def gerar_ogg(texto, voz=None, gratuita=None):
+    """Mensagem de voz (OGG/Opus, em bytes) e quem gerou ("elevenlabs" ou "gratuita").
+    voz: outra voz da ElevenLabs (ex.: a do Reginaldo); "-" = sem ElevenLabs. gratuita: voz gratuita de reserva."""
     fala = para_fala(texto)
     if not fala:
         raise ValueError("nada para falar")
@@ -154,14 +158,15 @@ def gerar_ogg(texto):
     with tempfile.TemporaryDirectory() as tmp:
         mp3, ogg = os.path.join(tmp, "a.mp3"), os.path.join(tmp, "a.ogg")
         origem = "gratuita"
-        if c["token"] and c["voz"]:
+        id_voz = c["voz"] if voz is None else ("" if voz == "-" else voz)
+        if c["token"] and id_voz:
             try:
                 corpo = {"text": fala, "model_id": c["modelo"], "language_code": "pt",
                          "voice_settings": {"stability": c["estabilidade"], "similarity_boost": 0.75,
                                             "speed": c["velocidade"]}}
                 if c["modelo"] == "eleven_multilingual_v2":
                     corpo.pop("language_code")
-                audio = _req(f"/v1/text-to-speech/{c['voz']}?output_format=mp3_44100_128", corpo, tempo=90,
+                audio = _req(f"/v1/text-to-speech/{id_voz}?output_format=mp3_44100_128", corpo, tempo=90,
                              aceitar="audio/mpeg")
                 with open(mp3, "wb") as f:
                     f.write(audio)
@@ -170,7 +175,7 @@ def gerar_ogg(texto):
                 print("elevenlabs: falhou, usando a voz gratuita:", str(e)[:200], flush=True)
         if origem == "gratuita":
             import jarvis_core
-            if not jarvis_core.gerar_mp3(fala, mp3, voz=os.environ.get("ATENDIMENTO_VOZ_GRATUITA", "pt-BR-FranciscaNeural")):
+            if not jarvis_core.gerar_mp3(fala, mp3, voz=gratuita or os.environ.get("ATENDIMENTO_VOZ_GRATUITA", "pt-BR-FranciscaNeural")):
                 raise RuntimeError("não consegui gerar a voz")
         _para_ogg(mp3, ogg)
         with open(ogg, "rb") as f:

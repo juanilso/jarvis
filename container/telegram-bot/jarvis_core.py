@@ -288,7 +288,7 @@ class Execucao:
                         + (", com banco" if s["banco"] else "") + ")" for s in lst)
             except Exception as e:  # noqa: BLE001
                 print("servidores:", e, flush=True)
-            if orquestrador and os.environ.get("COFRE_TOKEN"):  # assistente pessoal (e-mail, agenda, lista, roteiros)
+            if orquestrador:  # demandas pessoais vão para o Reginaldo (assistente pessoal)
                 import pessoal
                 sistema += "\n\n" + pessoal.REGRA
         if usar_sessao and not compactar and orquestrador:

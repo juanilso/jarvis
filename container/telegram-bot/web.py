@@ -1134,7 +1134,12 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/voz/testar":
             import elevenlabs
             try:
-                ogg, origem = elevenlabs.testar()
+                if urllib.parse.parse_qs(url.query).get("agente", [""])[0] == "reginaldo":
+                    import reginaldo
+                    ogg, origem = reginaldo.gerar_ogg("Oi, Juanilson! Aqui é o Reginaldo, seu assistente pessoal. "
+                                                      "Pode me mandar áudio ou texto que eu cuido do resto.")
+                else:
+                    ogg, origem = elevenlabs.testar()
             except Exception as e:  # noqa: BLE001
                 return self._json({"erro": str(e)[:200]}, 500)
             self.send_response(200)

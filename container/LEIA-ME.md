@@ -111,6 +111,16 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.60: Reginaldo, o assistente pessoal (WhatsApp 2, voz masculina)
+
+- **Reginaldo** é um agente próprio (sessão e memória dele). O Jarvis fica um nível acima: repassa as demandas pessoais
+  (`jarvis-pessoal reginaldo "…"`) e monta a estrutura que faltar; o Reginaldo executa e responde.
+- **WhatsApp 2 vira o número do Reginaldo**: 📱 WhatsApp (número 2) › "Para que serve este número" › *Assistente pessoal*,
+  e coloque o seu WhatsApp. Nesse modo o robô de clientes fica desligado no número 2 e só você é atendido.
+  Áudio seu → resposta em áudio com voz masculina. Os códigos do cofre ("ok 123456") também chegam e são aceitos por lá.
+- **Voz**: 🧠 Cérebro › 🧑‍💼 Reginaldo › Voz do Reginaldo (uma voz masculina da sua ElevenLabs ou a gratuita "Antônio").
+- Passo a passo para cadastrar o e-mail (Gmail: senha de app) e conectar o Google Agenda está na mesma tela.
+
 ## Jarvis 1.59.1: cofre funciona com o Bitwarden CLI novo (só HTTPS)
 
 O Bitwarden CLI passou a recusar endereço sem HTTPS ("Insecure URL not allowed"). O serviço do cofre agora tem uma ponte

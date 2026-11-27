@@ -30,7 +30,7 @@ import jarvis_core as core
 TOKEN = os.environ.get("JARVIS_GATILHO_TOKEN", "").strip()
 ARQ = os.path.join(core.CONFIG_DIR, "rotinas.jsonl")
 ACOES = {"hermes", "jarvis", "pesquisar", "tendencias", "ideia", "avisar", "status", "atender",
-         "pagamento", "avisar_dono_cofre", "painel_consultar", "painel_teste", "atendimento_cmd", "treinar_atendimento", "filme", "jogos",
+         "pagamento", "avisar_dono_cofre", "reginaldo", "painel_consultar", "painel_teste", "atendimento_cmd", "treinar_atendimento", "filme", "jogos",
          "previa", "site_testar"}
 _lock = threading.Lock()
 
@@ -325,6 +325,18 @@ def executar(dados, publicar, pool, estado):
             return 200, dict(painel_api.criar_teste(dados.get("telefone")), ok=True)
         except painel_api.ErroPainel as e:
             return 422, {"ok": False, "erro": str(e)}
+    texto = str(dados.get("texto", ""))[:4000].strip()
+    if acao == "reginaldo":  # o Jarvis repassa uma demanda pessoal ao Reginaldo
+        import reginaldo
+        return 200, {"ok": True, "texto": reginaldo.pedido_do_jarvis(texto)}
+    if acao == "avisar_dono_cofre":  # código de confirmação do cofre → seu WhatsApp (o Telegram o cofre manda direto)
+        import linhas
+        try:
+            import reginaldo
+            ok, det = linhas.modulos(reginaldo.linha_pessoal() or 1)[0].mandar_ao_dono(texto[:3000], de="🔐 *Jarvis · cofre*")
+        except Exception as e:  # noqa: BLE001
+            ok, det = False, str(e)
+        return (200 if ok else 503), {"ok": ok, "detalhe": det}
     rotina = _limpar_nome(dados.get("rotina"))
     texto = str(dados.get("texto", ""))[:4000].strip()
     projeto = str(dados.get("projeto") or estado.ler()["projeto"] or "")
@@ -345,13 +357,6 @@ def executar(dados, publicar, pool, estado):
     if acao == "status":
         ativos = pool.resumo()
         return 200, {"ok": True, "rodando": ativos, "rotinas": listar(5)}
-    if acao == "avisar_dono_cofre":  # código de confirmação do cofre → seu WhatsApp (o Telegram o cofre manda direto)
-        import linhas
-        try:
-            ok, det = linhas.modulos(1)[0].mandar_ao_dono(texto[:3000], de="🔐 *Jarvis · cofre*")
-        except Exception as e:  # noqa: BLE001
-            ok, det = False, str(e)
-        return (200 if ok else 503), {"ok": ok, "detalhe": det}
     if acao == "avisar":
         ok = avisar_telegram(f"🔁 {rotina}\n\n{texto}")
         registrar(dict(base, ok=ok, resultado="aviso enviado" if ok else "Telegram não configurado"))

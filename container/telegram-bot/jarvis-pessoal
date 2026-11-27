@@ -64,6 +64,9 @@ def main(argv=None):
     ro = sub.add_parser("roteiro").add_subparsers(dest="acao", required=True)
     ro.add_parser("listar")
     ro.add_parser("ver").add_argument("nome")
+    # repassar ao Reginaldo (usado pelo Jarvis)
+    s = sub.add_parser("reginaldo", help="repassa uma demanda pessoal ao Reginaldo (ele responde ao dono)")
+    s.add_argument("pedido", nargs="+")
     # cofre e pendências
     co = sub.add_parser("cofre").add_subparsers(dest="acao", required=True)
     co.add_parser("itens")
@@ -106,6 +109,17 @@ def main(argv=None):
             else:
                 mostrar(P.cofre("/email/preparar", para=a.para, assunto=a.assunto, corpo=a.corpo, cc=a.cc, conta=a.conta,
                                 responder_uid=a.responder))
+        elif a.area == "reginaldo":
+            import os
+            import urllib.request
+            tok = os.environ.get("JARVIS_GATILHO_TOKEN", "")
+            if not tok:
+                raise P.Erro("falta o JARVIS_GATILHO_TOKEN (./automacoes-configurar.sh)")
+            req = urllib.request.Request(os.environ.get("JARVIS_GATILHO_URL", "http://jarvisweb:8090/api/gatilho"),
+                                         data=json.dumps({"acao": "reginaldo", "texto": " ".join(a.pedido)}).encode(),
+                                         headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                print(json.loads(r.read()).get("texto", "ok"))
         elif a.area == "roteiro":
             if a.acao == "listar":
                 mostrar(P.roteiros())

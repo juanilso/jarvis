@@ -71,6 +71,7 @@ def carregar():
             "recursos": {**RECURSOS, **{k: bool(v) for k, v in (salvo.get("recursos") or {}).items() if k in RECURSOS}},
             "protecao": {**PROTECAO, **{k: v for k, v in (salvo.get("protecao") or {}).items() if k in PROTECAO}},
             "voz": {**VOZ, **{k: v for k, v in (salvo.get("voz") or {}).items() if v in VOZ_OPCOES.get(k, ())}},
+            "modo": salvo.get("modo") if salvo.get("modo") in ("atendimento", "pessoal") else "atendimento",
             "dono": {**DONO, **{k: v for k, v in (salvo.get("dono") or {}).items() if k in DONO}}}
 
 
@@ -85,6 +86,8 @@ def salvar(novo):
     for k, v in (novo.get("voz") or {}).items():
         if v in VOZ_OPCOES.get(k, ()):
             atual["voz"][k] = v
+    if novo.get("modo") in ("atendimento", "pessoal"):
+        atual["modo"] = novo["modo"]
     for k, v in (novo.get("dono") or {}).items():
         if k == "numero":
             n = re.sub(r"\D", "", str(v or ""))[:15]

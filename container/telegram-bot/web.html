@@ -430,7 +430,12 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica">Com essa opção <b>desligada</b>, o robô continua respondendo mesmo depois de você; para calar uma conversa, escreva
     <code>#eu</code> nela (o cliente vê). Ligada: ele se cala sozinho e volta depois dos minutos sem resposta sua. <code>#bot</code> devolve na hora.</div>
   <div class="waDica">O robô inteiro liga e desliga no botão <b>⏸ Pausar robô</b> lá em cima.</div>
-  <h3>👩‍💼 A JULIANA FALA COM VOCÊ PELO WHATSAPP</h3>
+  <h3>📞 PARA QUE SERVE ESTE NÚMERO</h3>
+  <div class="waCfg"><label>Uso<select id="waModo"><option value="atendimento">Atendimento de clientes (robô + Juliana)</option>
+    <option value="pessoal">Assistente pessoal (Reginaldo): só conversa com você</option></select></label></div>
+  <div class="waDica">No modo assistente pessoal, o robô de clientes fica desligado neste número: só o seu WhatsApp (abaixo)
+    é atendido, pelo Reginaldo. Mensagens de outras pessoas são ignoradas.</div>
+  <h3>👩‍💼 O AGENTE FALA COM VOCÊ PELO WHATSAPP</h3>
   <div class="waCfg">
     <label>Seu WhatsApp (com DDD)<input id="donoNum" inputmode="tel" placeholder="5511999998888"></label>
     <label><input type="checkbox" id="donoAvisos"> Me avisar por lá (cliente precisando de mim, WhatsApp caiu, relatório do treinador)</label>
@@ -525,10 +530,37 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
 </div></div>
 <div id="mpes"><div class="caixa">
   <button class="fechar" id="mpFechar" title="Fechar">✕</button>
-  <h2>👤 ASSISTENTE PESSOAL</h2>
-  <p class="waDica">Fale com o Jarvis normalmente: “anota leite e pão”, “o que tenho amanhã?”, “marca dentista terça às 15h”,
+  <h2>🧑‍💼 REGINALDO · ASSISTENTE PESSOAL</h2>
+  <p class="waDica">Fale com o Reginaldo pelo WhatsApp 2 (texto ou áudio) ou com o Jarvis, que repassa para ele: “anota leite e pão”, “o que tenho amanhã?”, “marca dentista terça às 15h”,
     “tem e-mail importante?”, “responde o fulano dizendo…”, “executa o roteiro de fechamento”.</p>
+  <div class="chG">VOZ DO REGINALDO</div>
+  <div class="lin"><select id="mpVoz" style="max-width:320px"></select><button id="mpVozSalvar">💾 Salvar</button><button id="mpVozOuvir">▶ Ouvir</button></div>
+  <div id="mpVozInfo" class="waDica"></div><audio id="mpVozAudio" controls style="display:none;width:100%"></audio>
   <div class="chG">COFRE DE ACESSOS</div><div id="mpCofre" class="waDica"></div>
+  <details class="waDica"><summary><b>📘 Como cadastrar o seu e-mail (passo a passo)</b></summary><ol>
+    <li><b>Gmail</b>: primeiro gere uma <b>senha de app</b>. No celular ou PC: <i>myaccount.google.com</i> › Segurança ›
+      Verificação em duas etapas (ligue, se estiver desligada) › no fim da página, <b>Senhas de app</b> › nome “Jarvis” › Criar.
+      Aparecem 16 letras: essa é a senha que vai no cofre (a sua senha normal do Gmail não funciona).</li>
+    <li><b>E-mail da hospedagem</b> (contato@seudominio): use a senha normal da caixa.</li>
+    <li>Abra o cofre (site do Vaultwarden pelo Tailscale ou o app Bitwarden) › <b>Novo item › Login</b>:
+      Nome = como você chama a conta (ex.: “Gmail pessoal”), Usuário = o e-mail completo, Senha = a senha acima,
+      Pasta = <b>E-mail</b> › Salvar.</li>
+    <li>Pronto: diga ao Reginaldo “tem e-mail novo?”. Se a hospedagem usar outro servidor, acrescente no item os campos
+      personalizados <code>imap</code> e <code>smtp</code> (ex.: mail.seudominio.com.br).</li></ol></details>
+  <details class="waDica"><summary><b>📘 Como conectar o Google Agenda (passo a passo, uma vez só)</b></summary><ol>
+    <li>No PC, abra <i>console.cloud.google.com</i> com a sua conta Google › no topo, <b>Selecionar projeto › Novo projeto</b>
+      › nome “Jarvis” › Criar (e selecione ele).</li>
+    <li>Menu › <b>APIs e serviços › Biblioteca</b> › procure <b>Google Calendar API</b> › Ativar.</li>
+    <li>Menu › APIs e serviços › <b>Tela de consentimento OAuth</b> (ou “Google Auth Platform”) › Começar: nome do app
+      “Jarvis”, seu e-mail › público <b>Externo</b> › Criar. Depois, em <b>Público-alvo</b>, clique em <b>Publicar app</b>
+      (status “Em produção”). Sem isso o Google desconecta a agenda a cada 7 dias.</li>
+    <li>Menu › APIs e serviços › <b>Credenciais › Criar credenciais › ID do cliente OAuth</b> › tipo
+      <b>App para computador</b> › Criar. Aparecem o <b>ID do cliente</b> e a <b>Chave secreta</b>.</li>
+    <li>No cofre › Novo item › Login: Nome = <b>Google</b>, Usuário = o ID do cliente, Senha = a chave secreta,
+      Pasta = <b>Google</b> › Salvar.</li>
+    <li>Aqui embaixo, clique em <b>Conectar Google</b>, abra o link, escolha a sua conta e autorize (se aparecer
+      “o Google não verificou este app”, clique em <i>Avançado › Acessar Jarvis</i>: o app é seu). A página final vai dar
+      erro: é normal. Copie o endereço dela inteiro e cole no campo que aparece aqui.</li></ol></details>
   <div class="chG">CONFIRMAÇÕES PENDENTES</div><div id="mpPend"></div>
   <div class="lin"><input id="mpCod" inputmode="numeric" maxlength="7" placeholder="código de 6 dígitos" style="max-width:190px">
     <button id="mpOk">✅ Confirmar</button><button id="mpCancela">🚫 Cancelar</button></div><div id="mpCodMsg" class="waDica"></div>
@@ -589,7 +621,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <h2>🧠 CÉREBRO DO JARVIS</h2>
   <button id="cbChaves" style="align-self:flex-start">🔑 Chaves e conexões (trocar, testar, remover)</button>
   <button id="btnMaos" style="align-self:flex-start">🎧 Mãos livres e reconhecimento da minha voz</button>
-  <button id="btnPessoal" style="align-self:flex-start">👤 Assistente pessoal (cofre, agenda, lista, roteiros)</button>
+  <button id="btnPessoal" style="align-self:flex-start">🧑‍💼 Reginaldo, assistente pessoal (voz, cofre, agenda, lista, roteiros)</button>
   <p class="waDica">O Jarvis planeja cada demanda e escolhe o modelo e o esforço de cada agente. Aqui você define os limites.</p>
   <label>Modelo do Jarvis (orquestrador)<select id="cbModelo"><option value="opus">Opus 5.5 (recomendado)</option><option value="sonnet">Sonnet 5.5 (mais barato)</option><option value="haiku">Haiku 5.5 (só para testes)</option><option value="fable">Fable 5.2 (o mais forte, sempre)</option></select></label>
   <label>Esforço do Jarvis<select id="cbEsforco"><option value="auto">Automático (alto para planejar e começar; médio para continuar e validar)</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option><option value="xhigh">Extra-alto</option><option value="max">Máximo</option></select></label>
@@ -1230,6 +1262,7 @@ $("vzOuvir").onclick=async()=>{$("vzInfo").textContent="⏳ gerando o áudio de 
   const a=$("vzAudio");a.src=URL.createObjectURL(await r.blob());a.style.display="";a.play().catch(()=>{});$("vzInfo").textContent="Teste com: "+(r.headers.get("X-Origem")==="elevenlabs"?"ElevenLabs":"voz gratuita (sem ElevenLabs configurada)")};
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
   if(c.voz){$("vzModo").value=c.voz.modo;$("vzTexto").value=c.voz.texto_junto}vzCarregar();
+  $("waModo").value=c.modo||"atendimento";
   if(c.dono){$("donoNum").value=c.dono.numero||"";$("donoAvisos").checked=c.dono.avisos!==false;$("donoConversar").checked=c.dono.conversar!==false}
   $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;$("recVariar").checked=c.recursos.variar!==false;$("recIA").checked=!!c.recursos.ia_caprichada;$("recMidia").checked=c.recursos.ler_midia!==false;$("recJogos").checked=c.recursos.jogos!==false;
   const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prAgrupar").value=p.agrupar_seg??7;$("prMinuto").value=p.max_por_minuto;
@@ -1238,7 +1271,7 @@ async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||
     <button class="waRestaura" data-k="${k}" style="margin-top:4px">↺ voltar ao padrão</button></details>`).join("");
   $("waModelos").querySelectorAll(".waRestaura").forEach(b=>b.onclick=()=>{$("waModelos").querySelector(`textarea[data-k="${b.dataset.k}"]`).value=atPadrao[b.dataset.k]||""})}
 $("donoTestar").onclick=async()=>{$("donoMsg").textContent="⏳ salvando e mandando…";
-  await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked}}});
+  await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{modo:$("waModo").value,dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked}}});
   const r=await api("/api/whatsapp/acao",{acao:"dono_testar"});$("donoMsg").textContent=r&&r.ok?"✔ enviado para "+r.msg+". Responda lá para testar.":"⚠ "+((r&&r.msg)||"falhou")};
 $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa (até 30 s)…";const r=await api("/api/whatsapp/acao",{acao:"diagnostico"});
   $("waDiagRes").innerHTML=(r.passos||[]).map(p=>`<div>${p.ok?"✅":"❌"} <b>${esc(p.titulo)}</b>${p.detalhe?" — "+esc(p.detalhe):""}</div>`).join("")+
@@ -1248,7 +1281,7 @@ $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("text
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,agrupar_seg:$("prAgrupar").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},
     voz:{modo:$("vzModo").value,texto_junto:$("vzTexto").value},mensagens:m,
-    dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked}}});
+    modo:$("waModo").value,dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked}}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
 async function waAbrirLinha(){$("wa").classList.add("aberto");cfgCarregar();atCarregar();trCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)}
@@ -1566,7 +1599,17 @@ ${esc(p.resumo)}</div>`).join(""):'<div class="waDica">Nada esperando o seu ok.<
     const r=await post("roteiro_salvar",{titulo:t,texto:txt||null,id:rotAtual});if(!r.ok)return alert(r.erro);rotAtual=r.id;
     const v=await post("roteiro_ver",{id:r.id});$("mpRotTxt").value=v.texto||"";$("mpRotMsg").textContent="✓ salvo";carregar()};
   $("mpRotApagar").onclick=async()=>{if(!rotAtual||!confirm("Apagar este roteiro? (fica uma cópia em .versoes)"))return;await post("roteiro_apagar",{id:rotAtual});$("mpEdit").style.display="none";carregar()};
-  $("btnPessoal").onclick=()=>{$("cerebro").classList.remove("aberto");$("mpes").classList.add("aberto");carregar()};
+  async function vozes(){let v={};try{v=await (await fetch("/api/voz")).json()}catch(e){}
+    const ops=(v.vozes||[]).map(x=>`<option value="${esc(x.id)}"${x.id===v.voz_reginaldo?" selected":""}>${esc(x.nome)}${x.info?" — "+esc(x.info):""}</option>`).join("");
+    $("mpVoz").innerHTML=`<option value="">Voz gratuita masculina (Antônio)</option>`+ops;
+    $("mpVozInfo").textContent=v.token?"Escolha uma voz masculina da sua conta ElevenLabs (as da lista têm a descrição de gênero).":"Sem chave da ElevenLabs: usa a voz gratuita masculina."}
+  $("mpVozSalvar").onclick=async()=>{const o=$("mpVoz").selectedOptions[0];
+    const r=await (await fetch("/api/voz/salvar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({voz_reginaldo:$("mpVoz").value,voz_reginaldo_nome:o&&$("mpVoz").value?o.textContent.split(" — ")[0]:""})})).json().catch(()=>({erro:"sem conexão"}));
+    $("mpVozInfo").textContent=r.erro?"⚠ "+r.erro:"✓ voz salva"};
+  $("mpVozOuvir").onclick=async()=>{$("mpVozInfo").textContent="⏳ gerando…";const r=await fetch("/api/voz/testar?agente=reginaldo",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+    if(!r.ok){$("mpVozInfo").textContent="⚠ falhou";return}const a=$("mpVozAudio");a.src=URL.createObjectURL(await r.blob());a.style.display="";a.play().catch(()=>{});
+    $("mpVozInfo").textContent="Teste com: "+(r.headers.get("X-Origem")==="elevenlabs"?"ElevenLabs":"voz gratuita masculina")};
+  $("btnPessoal").onclick=()=>{$("cerebro").classList.remove("aberto");$("mpes").classList.add("aberto");carregar();vozes()};
   $("mpFechar").onclick=()=>$("mpes").classList.remove("aberto");
 })();
 

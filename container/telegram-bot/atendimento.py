@@ -499,7 +499,7 @@ def _gravando(chat, ligado=True):
         pass
 
 
-def enviar_voz(chat, texto):
+def enviar_voz(chat, texto, gerador=None):
     """Responde com mensagem de voz (ElevenLabs; reserva: voz gratuita). Texto junto quando tem link/Pix/código
     (ou sempre, conforme o painel). Se a voz falhar, manda o texto."""
     import base64
@@ -507,7 +507,7 @@ def enviar_voz(chat, texto):
     cfg = C.voz()
     _gravando(chat)
     try:
-        ogg, origem = elevenlabs.gerar_ogg(texto)
+        ogg, origem = (gerador or elevenlabs.gerar_ogg)(texto)
     except Exception as e:  # noqa: BLE001
         _gravando(chat, False)
         print("atendimento: voz falhou, mando texto:", str(e)[:200], flush=True)
@@ -818,7 +818,7 @@ def _avisar_dono(texto, whatsapp=None):
     import rotinas
     rotulo = NOME or (linhas.nome(1) if linhas.ativa(2) else "")
     rotinas.avisar_telegram(f"【{rotulo}】 {texto}" if rotulo else texto)
-    if whatsapp is not False:
+    if whatsapp is not False and C.carregar().get("modo") != "pessoal":
         threading.Thread(target=lambda: mandar_ao_dono(whatsapp or _sem_comandos(texto), aviso=True), daemon=True).start()
 
 
@@ -900,7 +900,7 @@ def mandar_ao_dono(texto, aviso=False, voz=False, de=None):
         if voz:
             enviar_voz(chat, texto)
         else:
-            enviar(chat, f"{de or JULIANA}\n{texto}"[:3500], proteger=False)
+            enviar(chat, f"{de or (REGINALDO if C.carregar().get('modo') == 'pessoal' else JULIANA)}\n{texto}"[:3500], proteger=False)
         if aviso:
             with _lock:
                 e = _ler_estado()
@@ -914,7 +914,7 @@ def mandar_ao_dono(texto, aviso=False, voz=False, de=None):
 
 def _eco_dono(e, chat, texto, dados):
     """Mensagem que a própria Juliana mandou voltando (na conversa com você mesmo, tudo chega como 'sua')."""
-    if texto.startswith(JULIANA) or str(dados.get("origem") or "").lower() == "api":
+    if texto.startswith((JULIANA, REGINALDO, "🔐 *Jarvis")) or str(dados.get("origem") or "").lower() == "api":
         return True
     ids = {x[0] for x in e.get("ids_robo", [])}
     mid = str(dados.get("id") or "")
@@ -923,8 +923,39 @@ def _eco_dono(e, chat, texto, dados):
     return _hash(texto) in {x[0] for x in e.get("enviadas", {}).get(chat, []) if x[1] > time.time() - 600}
 
 
-def _dono_para_juliana(chat, texto, de_mim, dados):
-    """Você escreveu (ou mandou áudio) na conversa com a Juliana: vai para ela, e ela responde por lá."""
+REGINALDO = "🧑‍💼 *Reginaldo*"
+
+
+def _para_reginaldo(chat, texto, voz):
+    import reginaldo
+    if reginaldo.ocupado():
+        enviar(chat, f"{REGINALDO}\nSó um instante, estou terminando a sua mensagem anterior.", proteger=False)
+        return {"responder": False, "motivo": "Reginaldo ocupado"}
+
+    def rodar():
+        try:
+            final = reginaldo.conversar(texto, "whatsapp", voz=voz)
+        except Exception as x:  # noqa: BLE001
+            enviar(chat, f"{REGINALDO}\n⚠ Não consegui agora ({type(x).__name__}). Tenta de novo em instantes?", proteger=False)
+            return
+        falado, _, detalhes = final.partition("\n---")
+        if voz and falado.strip():
+            try:
+                enviar_voz(chat, falado.strip(), gerador=reginaldo.gerar_ogg)
+            except Exception:  # noqa: BLE001
+                enviar(chat, f"{REGINALDO}\n{falado.strip()}", proteger=False)
+            if detalhes.strip():
+                time.sleep(1.5)
+                enviar(chat, f"{REGINALDO} · detalhes\n{detalhes.strip()}"[:3500], proteger=False)
+        else:
+            enviar(chat, f"{REGINALDO}\n{final.replace(chr(10) + '---', chr(10) + chr(10) + '📋', 1)}"[:3500], proteger=False)
+    threading.Thread(target=rodar, daemon=True).start()
+    return {"responder": False, "motivo": "mensagem sua para o Reginaldo"}
+
+
+def _dono_para_juliana(chat, texto, de_mim, dados, agente="juliana"):
+    """Você escreveu (ou mandou áudio) na conversa com a Juliana (ou com o Reginaldo, no número pessoal):
+    vai para o agente, e ele responde por lá."""
     e = _ler_estado()
     proprio = _norm_tel(_meu_numero(e)) == _norm_tel(C.dono().get("numero"))
     if de_mim and not proprio:
@@ -942,6 +973,8 @@ def _dono_para_juliana(chat, texto, de_mim, dados):
     if voz:
         m = re.match(r"\[ÁUDIO[^:]*:\s*(.*)\]\s*$", texto, re.S)
         texto = (m.group(1) if m else texto).strip()
+    if agente == "reginaldo":
+        return _para_reginaldo(chat, texto, voz)
     import atendente
     if atendente.ocupado(LINHA):
         enviar(chat, f"{JULIANA}\nSó um instante, ainda estou terminando a sua mensagem anterior. 🙏", proteger=False)
@@ -1418,6 +1451,10 @@ def atender(dados):
         return {"responder": False, "motivo": "ignorado (grupo, status ou canal)"}
     if time.time() - ts > 300:  # histórico reenviado na reconexão: não é conversa de agora (vale para você também)
         return {"responder": False, "motivo": "mensagem antiga (reconexão)"}
+    if C.carregar().get("modo") == "pessoal":  # número do assistente pessoal: só você conversa (com o Reginaldo)
+        if e_dono(chat, telefone):
+            return _dono_para_juliana(chat, texto, de_mim, dados, agente="reginaldo")
+        return {"responder": False, "motivo": "número do assistente pessoal: só responde a você"}
     if e_dono(chat, telefone):  # a sua conversa com a Juliana (nunca é tratada como cliente)
         return _dono_para_juliana(chat, texto, de_mim, dados)
     with _lock:

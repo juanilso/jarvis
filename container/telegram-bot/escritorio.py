@@ -17,7 +17,7 @@ _trava = threading.Lock()
 FIXAS = {
     "jarvis": ("Jarvis", "Gerente: recebe seus pedidos e distribui o trabalho", "#38bdf8", "comando"),
     "juliana": ("Juliana", "Atendimento do WhatsApp", "#4ade80", "atendimento"),
-    "pessoal": ("Assistente pessoal", "E-mail, agenda, lista de compras e roteiros do trabalho", "#2dd4bf", "comando"),
+    "pessoal": ("Reginaldo", "Assistente pessoal: e-mail, agenda, compras e roteiros (WhatsApp 2)", "#2dd4bf", "comando"),
     "jogos": ("Designer de jogos", "Banner e vídeo dos jogos do dia", "#facc15", "conteudo"),
     "filmes": ("Editor de vídeo", "Vídeos de filmes e séries", "#f472b6", "conteudo"),
     "n8n": ("Rotinas", "Agenda e dispara as rotinas do n8n", "#34d399", "automacao"),
@@ -204,7 +204,10 @@ def situacao(ctx):
     try:
         import pessoal
         at_p = pessoal.atividade()
-        if not os.environ.get("COFRE_TOKEN"):
+        import reginaldo
+        if reginaldo.ocupado():
+            st["pessoal"] = {"estado": "trabalhando", "texto": at_p.get("acao") or "atendendo você"}
+        elif not os.environ.get("COFRE_TOKEN"):
             st["pessoal"] = {"estado": "desligado", "texto": "cofre não ligado (./cofre-configurar.sh)"}
         elif agora - (at_p.get("t") or 0) < 90:
             st["pessoal"] = {"estado": "trabalhando", "texto": at_p.get("acao") or "trabalhando"}
