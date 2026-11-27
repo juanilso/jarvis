@@ -83,6 +83,31 @@ def responder_hermes(chat_id, tipo, texto):
         falar(chat_id, texto, hermes=True)
 
 
+def responder_juliana(chat_id, texto, audio=""):
+    """Resposta da Juliana: o áudio (voz do atendimento) primeiro, depois o texto."""
+    if audio and os.path.exists(audio):
+        with tempfile.TemporaryDirectory() as tmp:
+            ogg = os.path.join(tmp, "juliana.ogg")
+            try:
+                subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", audio, "-c:a", "libopus", "-b:a", "32k", ogg],
+                               check=True, capture_output=True, timeout=120)
+                tg_upload("sendVoice", "voice", ogg, chat_id=chat_id)
+            except Exception as e:  # noqa: BLE001
+                print("juliana: erro no áudio:", e, flush=True)
+    enviar(chat_id, "📱 Juliana:\n\n" + texto)
+
+
+def para_juliana(chat_id, texto, voz):
+    """Modo conversa (/juliana): a mensagem vai para a Juliana em vez do Jarvis."""
+    import atendente
+    linha = estado.ler().get("juliana") or 1
+    if atendente.ocupado(linha):
+        enviar(chat_id, "⏳ A Juliana ainda está respondendo a mensagem anterior.")
+        return
+    threading.Thread(target=atendente._seguro, args=(atendente.conversar, texto, linha, "telegram",
+                     lambda t, audio="": responder_juliana(chat_id, t, audio)), kwargs={"voz": voz}, daemon=True).start()
+
+
 def falar(chat_id, texto, hermes=False):
     with tempfile.TemporaryDirectory() as tmp:
         mp3, ogg = os.path.join(tmp, "r.mp3"), os.path.join(tmp, "resposta.ogg")
@@ -357,6 +382,9 @@ def iniciar_pedido(chat_id, texto, veio_de_audio):
         return
     if p:  # era um comando: devolve o anexo para a espera
         _anexo_sem_legenda(chat_id, p["caminhos"])
+    if estado.ler().get("juliana") and not texto.startswith("/"):  # modo conversa com a Juliana
+        para_juliana(chat_id, texto, voz=veio_de_audio)
+        return
     est = estado.ler()
     if not est["projeto"]:
         enviar(chat_id, "Escolha um projeto antes: /projetos e depois /projeto <nome>")
@@ -383,6 +411,9 @@ def tratar_audio(chat_id, msg):
         enviar(chat_id, "Não entendi o áudio. Pode repetir?")
         return
     enviar(chat_id, f"📝 Entendi: “{texto}”")
+    if estado.ler().get("juliana") and not re.match(r"^\s*/", texto):  # modo conversa com a Juliana
+        para_juliana(chat_id, texto, voz=True)
+        return
     m = re.match(r"^\s*(ideia|anota|anote|anotar)\b[\s:,.-]*(.+)", texto, re.I | re.S)
     if m:  # "ideia: ..." por voz vira /ideia
         enviar(chat_id, core.comando(estado, pool, "/ideia " + m.group(2).strip())[0])
@@ -516,7 +547,7 @@ def tratar(msg):
     if texto.split()[0].split("@")[0].lower() == "/planejar":  # atalho para o planejamento (skill planejar-projeto)
         texto = "/jarvis:planejar" + texto[len(texto.split()[0]):]
     if texto.split()[0].split("@")[0].lower() in ("/compactar", "/modelo", "/custo", "/ajuda", "/novo", "/status",
-                                                  "/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/pesquisar", "/sincronizar", "/guia",
+                                                  "/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/juliana", "/atendente", "/pesquisar", "/sincronizar", "/guia",
                                                   "/modelos", "/hermes", "/ollama", "/deepseek", "/cerebro", "/esforco", "/equipe", "/conselho", "/escalar", "/fable", "/filme", "/tendencias",
                                                   "/atendimento", "/assumir", "/devolver", "/jogos", "/whatsapp", "/treinar", "/bloquear", "/desbloquear", "/bloqueados",
                                                   "/print", "/testar", "/previa", "/piloto",
@@ -552,7 +583,7 @@ def tratar(msg):
             m_at = re.match(r"^([12])\s+", arg_at)
             threading.Thread(target=atendente._seguro, args=(atendente.conversar, arg_at[m_at.end():] if m_at else arg_at,
                              int(m_at.group(1)) if m_at else 1, "telegram",
-                             lambda t: enviar(chat_id, "📱 Agente de atendimento:\n\n" + t)), daemon=True).start()
+                             lambda t, audio="": responder_juliana(chat_id, t, audio)), daemon=True).start()
         elif acao in core.IAS_DIRETAS:
             rot = core.IAS_DIRETAS[acao]["rotulo"]
             threading.Thread(target=core.rodar_ia, args=(acao, texto.partition(" ")[2].strip(), estado.ler()["projeto"],

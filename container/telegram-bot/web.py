@@ -272,7 +272,7 @@ def iniciar(texto, veio_de_audio):
                 m_at = re.match(r"^([12])\s+", arg_at)
                 threading.Thread(target=atendente._seguro, args=(
                     atendente.conversar, arg_at[m_at.end():] if m_at else arg_at, int(m_at.group(1)) if m_at else 1,
-                    "painel", lambda t: publicar({"tipo": "info", "texto": "📱 Agente de atendimento:\n\n" + t}, proj)),
+                    "painel", lambda t, audio="": publicar({"tipo": "info", "texto": "📱 Juliana:\n\n" + t}, proj)),
                     daemon=True).start()
             elif acao in core.IAS_DIRETAS:
                 proj = estado.ler()["projeto"]
@@ -416,6 +416,20 @@ class Handler(BaseHTTPRequestHandler):
             q = urllib.parse.parse_qs(url.query)
             return self._json({"chaves": chaves.lista() + extra, "historico": chaves.historico(),
                                "conexoes": chaves.conexoes() if q.get("conexoes") else None})
+        if url.path == "/api/atendente/voz":
+            import atendente
+            q = urllib.parse.parse_qs(url.query)
+            cam = atendente.arquivo_voz(self._linha(url), q.get("n", [""])[0])
+            if not cam:
+                return self._json({"erro": "não encontrado"}, 404)
+            with open(cam, "rb") as f:
+                dados_v = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/mpeg")
+            self.send_header("Content-Length", str(len(dados_v)))
+            self.end_headers()
+            self.wfile.write(dados_v)
+            return
         if url.path == "/api/atendente":
             import atendente
             n = self._linha(url)
@@ -864,7 +878,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": msg})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
-        if url.path == "/api/audio":
+        if url.path in ("/api/audio", "/api/atendente/audio"):
             sufixo = ".mp4" if "mp4" in (self.headers.get("Content-Type") or "") else ".webm"
             with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as f:
                 f.write(self._corpo())
@@ -878,6 +892,14 @@ class Handler(BaseHTTPRequestHandler):
                 os.unlink(caminho)
             if not texto:
                 return self._json({"erro": "Não entendi o áudio. Pode repetir?"}, 400)
+            if url.path == "/api/atendente/audio":  # conversa por voz com a Juliana
+                import atendente
+                n = self._linha(url)
+                if atendente.ocupado(n):
+                    return self._json({"texto": texto, "erro": "a Juliana ainda está respondendo"}, 409)
+                threading.Thread(target=atendente._seguro, args=(atendente.conversar, texto, n, "painel", None),
+                                 kwargs={"voz": True}, daemon=True).start()
+                return self._json({"texto": texto})
             erro = iniciar(texto, veio_de_audio=True)
             return self._json({"texto": texto, "erro": erro})
 
@@ -919,12 +941,13 @@ class Handler(BaseHTTPRequestHandler):
             import atendente
             n = self._linha(url)
             texto_at = (dados.get("texto") or "").strip()
+            voz_at = bool(dados.get("voz"))
             if not texto_at:
                 return self._json({"erro": "escreva a mensagem"}, 400)
             if atendente.ocupado(n):
                 return self._json({"erro": "o agente ainda está respondendo a mensagem anterior"}, 409)
             threading.Thread(target=atendente._seguro, args=(atendente.conversar, texto_at, n, "painel", None),
-                             daemon=True).start()
+                             kwargs={"voz": voz_at}, daemon=True).start()
             return self._json({"ok": True})
         if url.path.startswith("/api/chaves/"):
             import chaves

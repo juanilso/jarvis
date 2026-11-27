@@ -611,7 +611,8 @@ COMANDOS = [
     ("/guia", "Como usar o Jarvis, com exemplos"),
     ("/ideia", "Guarda uma ideia na base de conhecimento"),
     ("/lembrar", "Procura na base de conhecimento"),
-    ("/atendente", "Converse com o agente de atendimento do WhatsApp: ensine, ajuste, peça análise (/atendente 2 … = número 2)"),
+    ("/juliana", "Conversa com a Juliana (agente de atendimento do WhatsApp), por áudio ou texto; /juliana sair volta ao Jarvis"),
+    ("/atendente", "Mensagem avulsa para a Juliana (agente de atendimento): /atendente <texto> (/atendente 2 … = número 2)"),
     ("/navegador", "Navegador do seu PC (Chrome do Jarvis via Tailscale): status; /navegador <IP do PC>"),
     ("/servidores", "Servidores de homologação/produção (SSH, SFTP, banco): lista, últimas ações; /servidores testar <nome>"),
     ("/memoria", "O que o Jarvis já sabe (geral e do projeto); /memoria <termo>, anotar, esquecer"),
@@ -883,7 +884,7 @@ def comando(estado, pool, texto):
         if not ok:
             return motivo, None
         return f"📈 Buscando o que estão falando de “{arg}” nos últimos 30 dias… aviso quando terminar.", "tendencias"
-    if cmd in ("/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/atendente", "/sincronizar", "/pesquisar"):
+    if cmd in ("/ideia", "/lembrar", "/memoria", "/servidores", "/navegador", "/atendente", "/juliana", "/sincronizar", "/pesquisar"):
         import kb  # import tardio (kb depende deste módulo)
         if cmd == "/ideia":
             if not arg:
@@ -891,6 +892,21 @@ def comando(estado, pool, texto):
             titulo = arg.split("\n")[0][:70]
             caminho = kb.salvar("ideias", titulo, arg, tags=["ideia"], projeto=proj)
             return f"💡 Ideia guardada: {caminho}", None
+        if cmd == "/juliana":  # modo conversa: tudo (texto ou áudio) vai para a Juliana até /juliana sair
+            import atendente
+            a_j = arg.strip()
+            e_j = estado.ler()
+            if a_j.lower() in ("sair", "parar", "fim", "tchau"):
+                e_j.pop("juliana", None)
+                estado.salvar(e_j)
+                return "👋 Saí do modo conversa com a Juliana. Agora suas mensagens voltam para o Jarvis.", None
+            if a_j in ("", "1", "2"):
+                e_j["juliana"] = int(a_j or 1)
+                estado.salvar(e_j)
+                return (f"📱 Modo conversa com a {atendente.NOME} ligado"
+                        + (f" (número {a_j})" if a_j == "2" else "") + ". Fale por áudio ou escreva: ela responde "
+                        "com a mesma voz do atendimento. Para voltar ao Jarvis: /juliana sair"), None
+            cmd, arg = "/atendente", a_j
         if cmd == "/atendente":
             import atendente
             texto_cmd = arg.strip()
@@ -899,8 +915,8 @@ def comando(estado, pool, texto):
             if not resto or resto.lower() in ("status", "ajuda"):
                 return atendente.comando(texto_cmd)[0], None
             if atendente.ocupado(int(linha_m.group(1)) if linha_m else 1):
-                return "⏳ O agente de atendimento ainda está respondendo a mensagem anterior.", None
-            return "📱 Agente de atendimento: pensando…", "atendente"
+                return f"⏳ A {atendente.NOME} ainda está respondendo a mensagem anterior.", None
+            return f"📱 {atendente.NOME}: pensando…", "atendente"
         if cmd == "/navegador":
             import navegador
             return navegador.texto(arg), None

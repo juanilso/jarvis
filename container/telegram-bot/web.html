@@ -105,7 +105,7 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 .atgM.dono{align-self:flex-end;background:#0e3b2e;border:1px solid #1f6b52}.atgM.agente{align-self:flex-start;background:#0b1a28;border:1px solid var(--ln2)}
 .atgM small{display:block;color:var(--m);font-size:11px;margin-top:4px}
 #atgPend{display:none;border:1px solid #fbbf24;border-radius:8px;padding:8px 10px;font-size:13px;gap:8px;align-items:center;flex-wrap:wrap}#atgPend.tem{display:flex}
-#atgForm{display:flex;gap:8px}#atgTexto{flex:1;min-height:48px;max-height:160px;background:#0b1a28;color:inherit;border:1px solid var(--ln2);border-radius:8px;padding:10px;font:inherit;resize:vertical}
+#atgForm{display:flex;gap:8px}#atgMic.gravando{background:#7f1d1d;border-color:#ef4444}.atgM audio{display:block;width:100%;max-width:340px;margin-top:6px;height:36px}#atgTexto{flex:1;min-height:48px;max-height:160px;background:#0b1a28;color:inherit;border:1px solid var(--ln2);border-radius:8px;padding:10px;font:inherit;resize:vertical}
 #atg a{color:var(--c2)}#atgProc{max-height:30vh;overflow:auto;white-space:pre-wrap;font-size:12px;color:var(--m);border:1px solid var(--ln);border-radius:8px;padding:8px;display:none}
 #wa .caixa{width:min(900px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #wa h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#wa h3{font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);margin:16px 0 8px}
@@ -356,17 +356,17 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
 </div></div>
 <div id="atg"><div class="caixa">
   <button class="fechar" id="atgFechar" title="Fechar">✕</button>
-  <h2>📱 AGENTE DE ATENDIMENTO</h2>
-  <div class="waDica">Ensine como você quer o atendimento, peça análise das conversas, corrija o que não gostou. Ele lembra de tudo (a mesma conversa do <code>/atendente</code> no Telegram), avisa se algo contradiz o que você já definiu e só aplica depois do seu ok. <a href="#" id="atgVerProc">ver procedimentos atuais</a></div>
+  <h2>📱 JULIANA · AGENTE DE ATENDIMENTO</h2>
+  <div class="waDica">Fale com ela por áudio (🎙️, ela responde com a mesma voz do atendimento) ou escreva. Ensine como você quer o atendimento, peça análise das conversas, corrija o que não gostou. Ele lembra de tudo (a mesma conversa do <code>/juliana</code> no Telegram), avisa se algo contradiz o que você já definiu e só aplica depois do seu ok. <a href="#" id="atgVerProc">ver procedimentos atuais</a></div>
   <div id="atgProc"></div>
   <div id="atgMsgs"></div>
   <div id="atgPend">⏳ <span id="atgPendTxt"></span><button id="atgOk" class="prim">✅ Pode aplicar</button><button id="atgNao">Descartar</button></div>
-  <div id="atgForm"><textarea id="atgTexto" placeholder="Ex.: na renovação não pergunte qual aplicativo; todos usam o mesmo login. Só peça o comprovante ou o login."></textarea><button id="atgEnviar" class="prim">Enviar</button></div>
+  <div id="atgForm"><button id="atgMic" title="Falar com a Juliana (clique para começar e para enviar)" style="width:56px;font-size:22px">🎙️</button><textarea id="atgTexto" placeholder="Ex.: na renovação não pergunte qual aplicativo; todos usam o mesmo login. Só peça o comprovante ou o login."></textarea><button id="atgEnviar" class="prim">Enviar</button></div>
 </div></div>
 <div id="wa"><div class="caixa">
   <button class="fechar" id="waFechar">✕</button>
   <h2>WHATSAPP · ATENDIMENTO</h2>
-  <button id="waAgente" class="prim" style="margin:0 0 10px">📱 Conversar com o agente de atendimento</button>
+  <button id="waAgente" class="prim" style="margin:0 0 10px">📱 Conversar com a Juliana (agente de atendimento)</button>
   <div id="waLinhas" style="display:none;gap:6px;margin:-4px 0 10px;flex-wrap:wrap"></div>
   <div class="topo">
     <div id="waQr">carregando…</div>
@@ -1178,21 +1178,37 @@ $("trAplicar").onclick=async()=>{if(!confirm("Trocar a base de respostas pela su
   const r=await api("/api/whatsapp/acao",{acao:"treino_aplicar"});$("trMsg").textContent=r.msg||"";const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";trCarregar()};
 $("trDescartar").onclick=async()=>{const r=await api("/api/whatsapp/acao",{acao:"treino_descartar"});$("trMsg").textContent=r.msg||"";trCarregar()};
 function waFechar(){$("wa").classList.remove("aberto");clearInterval(waTimer)}
-let atgTimer=null,atgVistos=-1;
+let atgTimer=null,atgVistos=-1,atgTocados=new Set(),atgPrimeira=true,atgGrav=null,atgPed=[],atgT0=0,atgTimerG=null;
 function atgUrl(){return "/api/atendente"+(waLinha!==1?"?linha="+waLinha:"")}
 async function atgCarregar(){const r=await api(atgUrl());if(!r||!r.mensagens)return;
   if(r.mensagens.length!==atgVistos||r.ocupado){atgVistos=r.mensagens.length;
     $("atgMsgs").innerHTML=(r.mensagens.length?"":'<div class="waDica">Comece contando como você quer o atendimento, ou peça: "analise as conversas de hoje".</div>')+
-      r.mensagens.map(m=>`<div class="atgM ${m.quem}">${esc(m.texto)}<small>${new Date(m.t*1000).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${m.origem==="telegram"?" · Telegram":""}</small></div>`).join("")+
-      (r.ocupado?'<div class="atgM agente">⏳ pensando…</div>':"");$("atgMsgs").scrollTop=1e9}
+      r.mensagens.map(m=>`<div class="atgM ${m.quem}">${m.voz?"🎙️ ":""}${esc(m.texto)}${m.audio?`<audio controls preload="none" src="/api/atendente/voz?n=${encodeURIComponent(m.audio)}${waLinha!==1?"&linha="+waLinha:""}" data-a="${esc(m.audio)}"></audio>`:""}<small>${new Date(m.t*1000).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${m.origem==="telegram"?" · Telegram":""}</small></div>`).join("")+
+      (r.ocupado?'<div class="atgM agente">⏳ Juliana pensando…</div>':"");$("atgMsgs").scrollTop=1e9;
+    const ult=r.mensagens[r.mensagens.length-1];  /* resposta nova em áudio: toca sozinha */
+    if(ult&&ult.audio&&!atgTocados.has(ult.audio)){atgTocados.add(ult.audio);if(!atgPrimeira){const el=$("atgMsgs").querySelector(`audio[data-a="${ult.audio}"]`);if(el)el.play().catch(()=>{})}}
+    r.mensagens.forEach(m=>m.audio&&atgTocados.add(m.audio));atgPrimeira=false}
   $("atgPend").classList.toggle("tem",!!r.pendente);if(r.pendente)$("atgPendTxt").textContent="Proposta esperando seu ok: "+r.pendente.motivo;
   $("atgProc").textContent=r.procedimentos||"(ainda não há procedimentos: o robô segue só a base)";
   $("atgEnviar").disabled=r.ocupado;clearTimeout(atgTimer);if($("atg").classList.contains("aberto"))atgTimer=setTimeout(atgCarregar,r.ocupado?2500:8000)}
 async function atgMandar(t){t=(t||"").trim();if(!t)return;const r=await api(atgUrl(),{texto:t});
   if(r.erro){alert(r.erro);return}$("atgTexto").value="";atgVistos=-1;setTimeout(atgCarregar,400)}
-$("waAgente").onclick=()=>{$("atg").classList.add("aberto");atgVistos=-1;atgCarregar();setTimeout(()=>$("atgTexto").focus(),100)};
+$("waAgente").onclick=()=>{$("atg").classList.add("aberto");atgVistos=-1;atgPrimeira=true;atgCarregar();setTimeout(()=>$("atgTexto").focus(),100)};
 $("atgFechar").onclick=()=>{$("atg").classList.remove("aberto");clearTimeout(atgTimer)};
 $("atgEnviar").onclick=()=>atgMandar($("atgTexto").value);
+$("atgMic").onclick=async()=>{
+  if(atgGrav&&atgGrav.state==="recording"){atgGrav.stop();return}
+  if(!navigator.mediaDevices){alert("O microfone só funciona em HTTPS (Tailscale) ou localhost.");return}
+  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});
+    const tipo=MediaRecorder.isTypeSupported("audio/webm")?"audio/webm":"audio/mp4";
+    atgGrav=new MediaRecorder(st,{mimeType:tipo});atgPed=[];atgGrav.ondataavailable=e=>atgPed.push(e.data);
+    atgGrav.onstop=async()=>{st.getTracks().forEach(t=>t.stop());clearInterval(atgTimerG);$("atgMic").classList.remove("gravando");$("atgMic").textContent="⏳";
+      const r=await fetch("/api/atendente/audio"+(waLinha!==1?"?linha="+waLinha:""),{method:"POST",headers:{"Content-Type":tipo},body:new Blob(atgPed,{type:tipo})});
+      const j=await r.json().catch(()=>({erro:"falhou"}));$("atgMic").textContent="🎙️";
+      if(j.erro)alert(j.texto?`Entendi “${j.texto}”, mas: ${j.erro}`:j.erro);atgVistos=-1;setTimeout(atgCarregar,400)};
+    atgGrav.start();atgT0=Date.now();$("atgMic").classList.add("gravando");
+    atgTimerG=setInterval(()=>{$("atgMic").textContent=Math.floor((Date.now()-atgT0)/1000)+"s"},500);
+  }catch(e){alert("Não consegui acessar o microfone: "+e.message)}};
 $("atgTexto").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey&&innerWidth>700){e.preventDefault();atgMandar($("atgTexto").value)}};
 $("atgOk").onclick=()=>atgMandar("Ok, pode aplicar.");$("atgNao").onclick=()=>atgMandar("Não aplique, pode descartar essa proposta.");
 $("atgVerProc").onclick=e=>{e.preventDefault();const p=$("atgProc");p.style.display=p.style.display==="block"?"none":"block"};

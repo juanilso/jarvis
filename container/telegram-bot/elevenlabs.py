@@ -130,6 +130,21 @@ def _para_ogg(origem, destino):
                     "-c:a", "libopus", "-b:a", "32k", "-application", "voip", destino], check=True, timeout=120)
 
 
+def gerar_audio(texto, formato="ogg"):
+    """Áudio em bytes no formato pedido ("ogg" = mensagem de voz; "mp3" = toca em qualquer navegador)."""
+    ogg, origem = gerar_ogg(texto)
+    if formato == "ogg":
+        return ogg, origem
+    with tempfile.TemporaryDirectory() as tmp:
+        a, b = os.path.join(tmp, "a.ogg"), os.path.join(tmp, "a.mp3")
+        with open(a, "wb") as f:
+            f.write(ogg)
+        subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", a, "-c:a", "libmp3lame", "-b:a", "96k", b],
+                       check=True, timeout=120)
+        with open(b, "rb") as f:
+            return f.read(), origem
+
+
 def gerar_ogg(texto):
     """Mensagem de voz (OGG/Opus, em bytes) e quem gerou ("elevenlabs" ou "gratuita")."""
     fala = para_fala(texto)

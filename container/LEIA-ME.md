@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.53: Juliana, a agente de atendimento, conversa por voz
+
+- O agente de atendimento agora é a **Juliana**, e você conversa com ela **por áudio**: ela responde com a **mesma voz
+  do atendimento** (ElevenLabs; sem chave, a voz gratuita). Fala só a parte de conversa; detalhes (trecho que muda,
+  teste antes/depois) vão por escrito.
+- **Telegram:** `/juliana` liga o modo conversa (áudio ou texto vão para ela; `/juliana 2` = número 2) e
+  `/juliana sair` volta ao Jarvis. `/atendente <texto>` continua para mensagem avulsa.
+- **Painel:** WhatsApp → "Conversar com a Juliana": botão 🎙️ para falar; a resposta em áudio toca sozinha e fica
+  no histórico. A conversa é a mesma do Telegram.
+- Restauração: `versao-1.52.0`.
+
 ## Jarvis 1.52: agente de atendimento do WhatsApp (você treina conversando)
 
 - **📱 Agente de atendimento**: painel → WhatsApp → "Conversar com o agente", ou `/atendente <mensagem>` no Telegram

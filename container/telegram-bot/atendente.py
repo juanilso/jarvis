@@ -29,7 +29,9 @@ Formato: "## Situação" e, embaixo, o que fazer, em frases curtas e diretas.
 
 """
 
-AGENTE = """Você é o AGENTE DE ATENDIMENTO do WhatsApp do usuário (número {linha}). Você não atende os clientes
+NOME = "Juliana"
+AGENTE = """Você é a JULIANA, a agente de atendimento do WhatsApp do usuário (número {linha}); você é mulher e fala
+no feminino. Você não atende os clientes
 diretamente: quem atende é o robô, que segue os PROCEDIMENTOS e a BASE que você mantém. Seu papel é ser o
 supervisor/treinador desse robô junto com o dono: conversar com ele, entender como ele quer que o atendimento seja,
 transformar isso em procedimentos claros e acompanhar as conversas reais para melhorar sempre.
@@ -59,6 +61,12 @@ diferentes.
 
 Estilo do robô que você deve buscar: direto, humano, curto; pergunta só o necessário para o PRÓXIMO passo; nunca
 coleta dado "por garantia"; uma pergunta por vez; sem menu quando o cliente já disse o que quer.
+
+Conversa por voz: quando a mensagem começar com [POR VOZ], o dono está falando com você por áudio e a sua resposta
+vai virar áudio (com a mesma voz do atendimento). Responda como numa conversa falada: natural, calorosa, frases
+curtas, sem listas, sem diff, sem códigos e sem emojis; no máximo umas 5 frases. Se precisar mostrar detalhes (o
+trecho que muda, o teste antes/depois), diga em uma frase que deixou os detalhes por escrito e coloque-os depois de
+uma linha com apenas "---" (o que vem depois do --- não é falado).
 
 Regras: responda ao dono em português do Brasil, curto e organizado. Nunca invente preço, prazo ou política: pergunte
 a ele. Você não envia mensagens para clientes. Nunca mostre telefones de clientes. Mexa só nos arquivos do atendimento
@@ -235,17 +243,46 @@ def historico_chat(at, n=60):
         return []
 
 
-def _anotar_chat(at, quem, texto, origem):
+def _anotar_chat(at, quem, texto, origem, voz=False, audio=""):
+    reg = {"t": time.time(), "quem": quem, "texto": texto, "origem": origem}
+    if voz:
+        reg["voz"] = True
+    if audio:
+        reg["audio"] = audio
     with open(_arq_conversa(at), "a", encoding="utf-8") as f:
-        f.write(json.dumps({"t": time.time(), "quem": quem, "texto": texto, "origem": origem}, ensure_ascii=False) + "\n")
+        f.write(json.dumps(reg, ensure_ascii=False) + "\n")
 
 
 def ocupado(linha):
     return _ocupado.get(int(linha or 1), 0) > time.time()
 
 
-def conversar(texto, linha=1, origem="painel", avisar=None):
-    """Manda a mensagem do dono para o agente (bloqueante). avisar(texto) recebe a resposta. Devolve a resposta."""
+def falar(at, texto):
+    """Gera a voz da Juliana (mesma voz do atendimento) para a parte falada da resposta. Devolve o nome do mp3."""
+    import elevenlabs
+    falado = texto.split("\n---", 1)[0].strip()
+    if not falado:
+        return ""
+    mp3, _ = elevenlabs.gerar_audio(falado, "mp3")
+    nome = f"voz-{int(time.time() * 1000)}.mp3"
+    pasta_voz = os.path.join(pasta(at), "voz")
+    os.makedirs(pasta_voz, exist_ok=True)
+    with open(os.path.join(pasta_voz, nome), "wb") as f:
+        f.write(mp3)
+    for velho in sorted(os.listdir(pasta_voz))[:-40]:  # guarda só os últimos 40 áudios
+        os.remove(os.path.join(pasta_voz, velho))
+    return nome
+
+
+def arquivo_voz(linha, nome):
+    at = at_linha(linha)
+    c = os.path.join(pasta(at), "voz", os.path.basename(nome))
+    return c if os.path.isfile(c) else ""
+
+
+def conversar(texto, linha=1, origem="painel", avisar=None, voz=False):
+    """Manda a mensagem do dono para a Juliana (bloqueante). avisar(texto, audio_mp3_ou_vazio) recebe a resposta.
+    voz=True: o dono falou por áudio e a resposta volta também em áudio."""
     import jarvis_core as core
     linha = int(linha or 1)
     at = at_linha(linha)
@@ -253,7 +290,7 @@ def conversar(texto, linha=1, origem="painel", avisar=None):
         if ocupado(linha):
             raise RuntimeError("o agente ainda está respondendo a mensagem anterior")
         _ocupado[linha] = time.time() + 900
-    _anotar_chat(at, "dono", texto, origem)
+    _anotar_chat(at, "dono", texto, origem, voz=voz)
     resposta, erros = [], []
 
     def ev(e):
@@ -263,14 +300,20 @@ def conversar(texto, linha=1, origem="painel", avisar=None):
             erros.append(e.get("texto", "erro"))
     try:
         est = core.Estado(f"atendente-{linha}")
-        core.Execucao().rodar(est, texto, False, ev, cwd=pasta(at), projeto=f"atendente-{linha}",
+        core.Execucao().rodar(est, ("[POR VOZ] " if voz else "") + texto, False, ev, cwd=pasta(at), projeto=f"atendente-{linha}",
                               sistema=AGENTE.format(linha=linha), orquestrador=False)
     finally:
         _ocupado.pop(linha, None)
     final = "\n\n".join(resposta).strip() or ("⚠ " + "; ".join(erros) if erros else "(sem resposta)")
-    _anotar_chat(at, "agente", final, origem)
+    audio = ""
+    if voz and resposta:
+        try:
+            audio = falar(at, final)
+        except Exception as e:  # noqa: BLE001
+            print("juliana: não consegui gerar a voz:", type(e).__name__, str(e)[:150], flush=True)
+    _anotar_chat(at, "agente", final.replace("\n---", "\n\n📋", 1), origem, audio=audio)
     if avisar:
-        avisar(final)
+        avisar(final.replace("\n---", "\n\n📋", 1), os.path.join(pasta(at), "voz", audio) if audio else "")
     return final
 
 
@@ -285,22 +328,24 @@ def comando(arg, origem="telegram", avisar=None):
     if not arg or arg.lower() in ("status", "ajuda"):
         p = pendente(at)
         dec = [x for x in _ler(_arquivo(at, "decisoes")).splitlines() if x.startswith("- ")][-5:]
-        return ("📱 Agente de atendimento" + (f" (número {linha})" if linha != 1 else "") + "\n"
+        return (f"📱 {NOME}, agente de atendimento" + (f" (número {linha})" if linha != 1 else "") + "\n"
                 + ("⏳ Proposta esperando seu ok: " + p["motivo"] + "\n" if p else "")
                 + ("Últimas decisões:\n" + "\n".join(dec) if dec else "Ainda não há decisões registradas.")
-                + "\n\nConverse: /atendente <o que você quer ajustar ou perguntar>  (número 2: /atendente 2 …)"), None
+                + "\n\nConverse: /juliana (entra no modo conversa: texto ou ÁUDIO vão para ela, e ela responde por voz)"
+                  "\nou /juliana <mensagem> · número 2: /juliana 2 … · sair do modo: /juliana sair"), None
     if ocupado(linha):
         return "⏳ O agente ainda está respondendo a sua mensagem anterior.", None
     threading.Thread(target=lambda: _seguro(conversar, arg, linha, origem, avisar), daemon=True).start()
-    return "📱 Agente de atendimento: pensando…", None
+    return f"📱 {NOME}: pensando…", None
 
 
-def _seguro(f, *a):
+def _seguro(f, *a, **k):
     try:
-        f(*a)
+        f(*a, **k)
     except Exception as e:  # noqa: BLE001
-        if a and len(a) >= 4 and a[3]:
-            a[3](f"⚠ {type(e).__name__}: {str(e)[:200]}")
+        avisar = a[3] if len(a) >= 4 else k.get("avisar")
+        if avisar:
+            avisar(f"⚠ {type(e).__name__}: {str(e)[:200]}", "")
 
 
 # ------------------------------------------------------------------ linha de comando (para o próprio agente)
