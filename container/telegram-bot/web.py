@@ -454,7 +454,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(dados_img)
                 return
-            return self._json({"uniformes": jogos_arte.uniformes(jogos.DIR)})
+            return self._json({"uniformes": jogos_arte.uniformes(jogos.DIR), "descricoes": jogos_arte.descricoes()})
         if url.path == "/api/voz":  # voz do atendimento (ElevenLabs): chave só mascarada
             import elevenlabs
             r = elevenlabs.publico()
@@ -949,6 +949,13 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=atendente._seguro, args=(atendente.conversar, texto_at, n, "painel", None),
                              kwargs={"voz": voz_at}, daemon=True).start()
             return self._json({"ok": True})
+        if url.path == "/api/jogos/uniforme_texto":  # descrição do uniforme de um time (corrigir/apagar)
+            import jogos_arte
+            try:
+                jogos_arte.salvar_descricao(str(dados.get("time") or ""), str(dados.get("texto") or ""))
+            except ValueError as e:
+                return self._json({"erro": str(e)}, 400)
+            return self._json({"ok": True, "descricoes": jogos_arte.descricoes()})
         if url.path.startswith("/api/chaves/"):
             import chaves
             acao = url.path.rsplit("/", 1)[1]

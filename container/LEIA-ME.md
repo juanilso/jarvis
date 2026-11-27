@@ -111,6 +111,18 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.54: uniforme de qualquer time + escudos na abertura
+
+- Os 2 jogadores do fundo são genéricos (não existem) e vestem o uniforme dos times do 1º jogo. Agora isso vale para
+  **qualquer time** (Série B/C/D, estaduais, internacionais): na 1ª vez que o time aparece, o Claude descreve o
+  uniforme principal (cores, padrão, gola, calção, meião) e o Jarvis guarda. Time que nem o Claude conhece usa as
+  cores da ESPN.
+- Painel → ⚽ Jogos → 👕 Uniformes → "Uniformes descritos · corrigir": veja e corrija qualquer descrição (a sua vale
+  por cima de tudo). Foto de referência continua opcional para ficar idêntico.
+- Com "Escudos dos times" ligado, os escudos oficiais (ESPN) aparecem nos cartões e, agora, também na abertura do
+  vídeo, dos dois lados do X.
+- Restauração: `versao-1.53.0`.
+
 ## Jarvis 1.53: Juliana, a agente de atendimento, conversa por voz
 
 - O agente de atendimento agora é a **Juliana**, e você conversa com ela **por áudio**: ela responde com a **mesma voz

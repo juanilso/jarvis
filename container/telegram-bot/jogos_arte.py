@@ -8,6 +8,7 @@ import base64
 import io
 import json
 import os
+import time as time_mod
 import re
 import urllib.error
 import urllib.request
@@ -101,12 +102,78 @@ TRAD = {"preto": "black", "branco": "white", "vermelho": "red", "grená": "maroo
         "amarelo": "yellow", "laranja": "orange", "roxo": "purple", "cinza": "grey", "dourado": "gold"}
 
 
-def camisa(jogo, lado):
-    """Descrição em inglês do uniforme (alusão): padrão conhecido do clube, senão as cores que a ESPN informa."""
+DESCRICOES = "descricoes.json"  # uniformes descritos (pelo Claude ou corrigidos por você), por time
+
+
+def _pasta_uni():
+    try:
+        import jogos
+        return os.path.join(jogos.DIR, UNIFORMES)
+    except Exception:  # noqa: BLE001
+        return os.path.join(os.environ.get("JARVIS_WORKSPACE", "/workspace"), ".jarvis-jogos", UNIFORMES)
+
+
+def descricoes():
+    try:
+        with open(os.path.join(_pasta_uni(), DESCRICOES), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def salvar_descricao(time, texto, origem="você"):
+    d = descricoes()
+    chave = _slug_time(time)
+    if not chave:
+        raise ValueError("diga o nome do time")
+    if texto.strip():
+        d[chave] = {"time": time, "texto": " ".join(texto.split())[:400], "origem": origem,
+                    "quando": time_mod.strftime("%Y-%m-%d")}
+    else:
+        d.pop(chave, None)
+    os.makedirs(_pasta_uni(), exist_ok=True)
+    tmp = os.path.join(_pasta_uni(), DESCRICOES + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, os.path.join(_pasta_uni(), DESCRICOES))
+    return chave
+
+
+def descrever_uniforme(time, liga=""):
+    """Pede ao Claude (gateway) a descrição do uniforme principal atual do time: vale para QUALQUER clube (Série D,
+    internacionais…). Fica guardada; você pode corrigir no painel."""
+    import jogos_video
+    sistema = ("You describe soccer kits for an image generator. Reply with ONE line in English, max 30 words, "
+               "describing the CURRENT HOME kit of the club: shirt base color and pattern (stripes/hoops/sash/band and "
+               "their colors), collar/trim colors, shorts color, socks color. No crest, sponsor or brand names. "
+               "If you do not know this club, reply exactly: UNKNOWN")
+    t = jogos_video.claude_texto(sistema, f"Club: {time}" + (f" (competition: {liga})" if liga else ""), max_tokens=120)
+    t = " ".join(t.split()).strip(" .\"'")
+    if not t or "UNKNOWN" in t.upper() or len(t) < 12:
+        return ""
+    salvar_descricao(time, t, "Claude")
+    return t
+
+
+def camisa(jogo, lado, auto=True):
+    """Descrição em inglês do uniforme (alusão). Ordem: a que você corrigiu/o Claude descreveu → lista conhecida →
+    o Claude descreve agora (e guarda) → as cores que a ESPN informa."""
     import unicodedata
     nome = unicodedata.normalize("NFKD", (jogo.get(lado) or "").lower()).encode("ascii", "ignore").decode().strip()
+    salvo = descricoes().get(_slug_time(jogo.get(lado)))
+    if salvo and salvo.get("origem") == "você":
+        return salvo["texto"]
     if nome in CAMISAS:
         return CAMISAS[nome]
+    if salvo:
+        return salvo["texto"]
+    if auto and jogo.get(lado):
+        try:
+            t = descrever_uniforme(jogo[lado], jogo.get("liga", ""))
+            if t:
+                return t
+        except Exception as e:  # noqa: BLE001
+            print("uniforme: o Claude não descreveu", jogo.get(lado), type(e).__name__, flush=True)
     c1 = TRAD.get(nome_cor(jogo.get(f"cor_{lado}")), "") or ("red" if lado == "casa" else "blue")
     c2 = TRAD.get(nome_cor(jogo.get(f"cor2_{lado}")), "")
     return (f"{c1} shirt with {c2} collar and trims, {c2} shorts, {c1} socks" if c2 and c2 != c1

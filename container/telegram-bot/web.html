@@ -287,10 +287,13 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <label><span><input type="checkbox" id="jgTgAuto"> Ao gerar, mandar no meu Telegram (banner + vídeos + imagem da TV)</span></label>
     <label><span>Formatos: <input type="checkbox" id="jgFmtV"> 📱 Vertical (Status/Reels) &nbsp; <input type="checkbox" id="jgFmtH"> 📺 Horizontal (TV)</span></label>
     <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:10px">
-    <div class="waDica"><b>👕 Uniformes de referência</b> (opcional): os 2 jogadores do fundo usam o uniforme dos times do 1º jogo. Os clubes mais conhecidos já saem parecidos; para ficar idêntico, mande uma foto do uniforme (camisa da loja, foto do jogo…). Escudo e patrocínio são tirados na arte.</div>
+    <div class="waDica"><b>👕 Uniformes</b>: os 2 jogadores do fundo são genéricos (não existem) e vestem o uniforme dos times do 1º jogo. Qualquer time (Série D, internacionais…) é descrito sozinho pelo Claude na 1ª vez e fica guardado abaixo; se algum sair errado, corrija o texto. Para ficar idêntico, mande uma foto do uniforme. Para os escudos aparecerem, ligue "Escudos dos times".</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="jgUniTime" placeholder="nome do time como aparece na lista (ex.: Flamengo)" style="flex:1;min-width:220px">
       <input type="file" id="jgUniArq" accept="image/*" style="max-width:230px"><button id="jgUniEnviar">Enviar</button></div>
     <div id="jgUniLista" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    <details><summary style="cursor:pointer;font-size:13px">Uniformes descritos (<span id="jgDescN">0</span>) · corrigir</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><input id="jgDescTime" placeholder="time" style="width:160px"><input id="jgDescTxt" placeholder="ex.: camisa branca com faixa diagonal preta, calção preto, meião branco" style="flex:1;min-width:220px"><button id="jgDescSalvar">Salvar</button></div>
+      <div id="jgDescLista" style="font-size:12px;max-height:240px;overflow:auto"></div></details>
     </div>
     <label>Música de fundo (mp3, m4a, wav ou ogg, até 25 MB)<input type="file" id="jgMusica" accept="audio/*,.mp3,.m4a,.wav,.ogg"></label>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="waDica" id="jgMusicaInfo">sem música</span>
@@ -1062,7 +1065,12 @@ $("alDetectar").onclick=async()=>{if($("alToken").value.trim()){const s=await al
     await alSalvar({grupo:b.dataset.g,grupo_nome:b.dataset.n,para_grupo:true});$("alGrupos").innerHTML=""})};
 $("alTestar").onclick=async()=>{$("alMsg").textContent="⏳ enviando…";const r=await api("/api/whatsapp/acao",{acao:"alerta_testar"});
   $("alMsg").textContent=r.ok?r.resultados.map(x=>`${x[1]?"✅":"❌"} ${x[0]}${x[2]&&x[2]!=="ok"?": "+x[2]:""}`).join(" · "):"❌ "+(r.erro||"erro")};
-async function jgUni(lista){if(!lista){const r=await api("/api/jogos/uniformes");lista=(r&&r.uniformes)||[]}
+function jgDesc(d){d=d||{};const ks=Object.keys(d).sort();$("jgDescN").textContent=ks.length;
+  $("jgDescLista").innerHTML=ks.map(k=>`<div style="padding:4px 0;border-bottom:1px solid var(--ln)"><b>${esc(d[k].time)}</b> <small style="color:var(--m)">(${esc(d[k].origem)})</small> — ${esc(d[k].texto)} <a href="#" data-t="${esc(d[k].time)}" data-x="${esc(d[k].texto)}">editar</a></div>`).join("")||"nenhum ainda (aparecem conforme os times entram no 1º jogo)";
+  $("jgDescLista").querySelectorAll("a[data-t]").forEach(a=>a.onclick=e=>{e.preventDefault();$("jgDescTime").value=a.dataset.t;$("jgDescTxt").value=a.dataset.x;$("jgDescTxt").focus()})}
+$("jgDescSalvar").onclick=async()=>{const r=await api("/api/jogos/uniforme_texto",{time:$("jgDescTime").value.trim(),texto:$("jgDescTxt").value.trim()});
+  if(r.erro){$("jgMsg").textContent="⚠ "+r.erro;return}$("jgMsg").textContent="✅ uniforme salvo: use 🎨 Nova arte para ver";$("jgDescTime").value="";$("jgDescTxt").value="";jgDesc(r.descricoes)};
+async function jgUni(lista){if(!lista){const r=await api("/api/jogos/uniformes");lista=(r&&r.uniformes)||[];jgDesc(r&&r.descricoes)}
   $("jgUniLista").innerHTML=lista.map(n=>`<div style="text-align:center;font-size:12px"><img src="/api/jogos/uniformes?ver=${encodeURIComponent(n)}&t=${Date.now()}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;display:block"><span>${esc(n)}</span> <a href="#" data-n="${esc(n)}">✕</a></div>`).join("")||'<span class="waDica">nenhum enviado</span>';
   $("jgUniLista").querySelectorAll("a[data-n]").forEach(a=>a.onclick=async e=>{e.preventDefault();const r=await fetch("/api/jogos/uniforme?apagar="+encodeURIComponent(a.dataset.n),{method:"POST"}).then(r=>r.json());jgUni(r.uniformes)})}
 $("jgUniEnviar").onclick=async()=>{const t=$("jgUniTime").value.trim(),f=$("jgUniArq").files[0];if(!t||!f){$("jgMsg").textContent="⚠ escreva o nome do time e escolha a foto";return}

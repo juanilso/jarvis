@@ -365,6 +365,12 @@ def abertura(jogo, dia, cfg, faixa_escura=True):
         w = d.textlength(txt, font=f)
         d.text(((L - w) / 2 + 5, yy + 6), txt, font=f, fill=(0, 0, 0))
         d.text(((L - w) / 2, yy), txt, font=f, fill=cor)
+    if cfg.get("escudos") and cfg.get("_pasta"):  # escudos (opcionais) dos dois lados do X
+        for lado, cx in (("casa", 300), ("fora", L - 300)):
+            esc_img = _escudo(jogo.get(f"logo_{lado}"), cfg["_pasta"])
+            if esc_img is not None:
+                _colar_escudo(img, cx, 1392, 70, esc_img)
+        d = ImageDraw.Draw(img)
     info = f"{jogo['hora']} · {' · '.join(jogo.get('canais') or []) or jogo['liga']}".upper()
     info = _caber(d, info, f_info, L - 100)
     w = d.textlength(info, font=f_info)
