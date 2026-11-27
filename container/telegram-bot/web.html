@@ -58,7 +58,13 @@ audio{width:100%;margin-top:6px;height:34px;filter:invert(.85) hue-rotate(160deg
 .vazio{color:var(--m);font-size:12.5px}
 footer{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--ln);padding-bottom:max(10px,env(safe-area-inset-bottom))}
 textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
-#mic,#enviar,#clipe{width:50px;height:46px;font-size:20px;padding:0}
+#mic,#enviar,#clipe,#maos{width:50px;height:46px;font-size:20px;padding:0}
+#maos.on{border-color:rgba(52,211,153,.55);background:rgba(52,211,153,.10)}
+#maos.aberta{border-color:var(--ok);background:rgba(52,211,153,.28);animation:pl 1.4s infinite}
+#maos.falando{border-color:var(--er);background:rgba(251,113,133,.25)}
+#maos.pausa{opacity:.55}
+#maosAviso{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:50;font-size:13px;padding:6px 12px;border-radius:18px;
+  background:rgba(6,20,32,.92);border:1px solid rgba(52,211,153,.5);color:#c9f7e3;display:none;pointer-events:none;max-width:92vw;text-align:center}
 #anexosFila{display:none;gap:8px;padding:8px 14px 0;flex-wrap:wrap;border-top:1px solid var(--ln)}#anexosFila.tem{display:flex}
 .anx{position:relative;width:64px;height:64px;border:1px solid var(--ln2);border-radius:8px;overflow:hidden;background:#06111b;display:flex;align-items:center;justify-content:center;font-size:24px}
 .anx img,.anx video{width:100%;height:100%;object-fit:cover}.anx .x{position:absolute;top:2px;right:2px;width:20px;height:20px;min-height:0;padding:0;border-radius:50%;font-size:11px;line-height:20px;background:#000a}
@@ -731,6 +737,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <button id="clipe" title="Anexar imagem, vídeo ou arquivo (também dá para colar com Ctrl+V ou arrastar)">📎</button>
     <input type="file" id="clipeArq" multiple accept="image/*,video/*,.pdf,.txt,.csv,.json,.zip,.sql,.log,.docx,.xlsx" hidden>
     <button id="mic" title="Gravar áudio (clique para começar e para enviar)">🎙️</button>
+    <button id="maos" title="Mãos livres: diga “Jarvis, …” e fale a demanda, sem apertar nada">🎧</button>
     <textarea id="texto" placeholder="Fale ou escreva a demanda… ( / para comandos)"></textarea>
     <button id="enviar" title="Enviar">➤</button>
   </footer>
@@ -793,10 +800,11 @@ async function painel(){
 let hermesFala=false;
 function tocar(src,el,quem){
   const a=document.createElement("audio");a.controls=true;a.src=src;el.appendChild(a);
+  if(window.MAOS)MAOS.respostaComAudio(a);
   if(ctx&&ctx.state==="running"){try{const s=ctx.createMediaElementSource(a);s.connect(analyser);}catch(e){}}
   a.onplay=()=>{hermesFala=quem==="hermes";setModo("falando",hermesFala?"Hermes":"")};
   a.onended=a.onpause=()=>{hermesFala=false;setModo(ocupado?"pensando":"espera")};
-  if(carregado)a.play().catch(()=>{});
+  if(carregado)a.play().catch(()=>{if(window.MAOS)MAOS.respostaSemAudio()});
 }
 let runDet=null,inicioRun=0,ver=0;
 function linhaFeed(t){const f=$("feed");const d=document.createElement("div");d.className="fl";d.textContent=t;f.appendChild(d);while(f.children.length>5)f.firstChild.remove()}
@@ -815,7 +823,7 @@ function mostrar(ev){
   if(ev.tipo==="usuario")add("msg eu",esc(ev.texto)+htmlAnexos(ev.anexos)+h);
   else if(ev.tipo==="agente_inicio"){add("ev",`${ev.emoji} ${esc(ev.agente)} › ${esc(ev.descricao)}`);agente(ev);if(carregado)setModo("pensando",`${ev.agente}: ${ev.descricao}`)}
   else if(ev.tipo==="agente_fim"){add("ev "+(ev.erro?"erro":"ok"),`${ev.emoji} ${esc(ev.agente)} ${ev.erro?"✕ erro":"✓ concluiu"} (${ev.segundos}s)`);agente(ev)}
-  else if(ev.tipo==="erro")add("msg jv err","⚠ "+esc(ev.texto)+h);
+  else if(ev.tipo==="erro"){add("msg jv err","⚠ "+esc(ev.texto)+h);if(window.MAOS)MAOS.respostaSemAudio()}
   else if(ev.tipo==="sistema")add("ev",esc(ev.texto));
   else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+miniPrints(ev)+h);if(carregado)painel()}
   else if(ev.tipo==="ollama"){add("msg jv ollama",'<div class="quem">🦙 OLLAMA</div>'+fmt(ev.texto)+h)}
@@ -824,7 +832,7 @@ function mostrar(ev){
   else if(ev.tipo==="resposta"){
     const custo=ev.custo?`<div class="hora">custo US$ ${Number(ev.custo).toFixed(4)}</div>`:"";
     const d=add("msg jv",(ev.erro?"⚠ ":"")+fmt(ev.texto)+miniPrints(ev)+custo+h);
-    if(ev.voz)tocar(ev.voz,d);
+    if(ev.voz)tocar(ev.voz,d);else if(window.MAOS)MAOS.respostaSemAudio();
     if(carregado)painel();
   }
 }
@@ -1303,6 +1311,84 @@ $("mic").onclick=async()=>{
     timerG=setInterval(()=>{$("mic").textContent=Math.floor((Date.now()-t0)/1000)+"s"},500);
   }catch(e){add("ev erro","Não consegui acessar o microfone: "+esc(e.message))}
 };
+
+/* ---------- mãos livres: "Jarvis, ..." sem apertar o microfone ----------
+   O navegador fica ouvindo; quando você fala, grava só aquele trecho e manda para o servidor transcrever.
+   Só vira pedido se começar com "Jarvis" ou se a conversa estiver aberta (logo depois de ele responder).
+   Enquanto ele pensa e fala, não escuta (para não ouvir a própria voz). "Pode dormir" fecha a conversa. */
+window.MAOS=(()=>{
+  const JANELA=45000,PREROLL=0.45,FIM_SIL=1.3,MAX_SEG=60,MIN_SEG=0.55;
+  let st=null,ac=null,proc=null,ligado=false,estadoM="off",abertaAte=0,esperando=false,esperaDesde=0,wl=null;
+  let piso=0.004,falando=false,acima=0,silencio=0,buf=[],pre=[],durFala=0,tAviso=null;
+  const btn=$("maos"),av=document.createElement("div");av.id="maosAviso";document.body.appendChild(av);
+  function aviso(t,ms){av.textContent=t;av.style.display=t?"block":"none";clearTimeout(tAviso);if(t&&ms)tAviso=setTimeout(()=>{av.style.display="none"},ms)}
+  function bip(fs,dur=0.09){try{const c=ac||new AudioContext();let t=c.currentTime;fs.forEach(f=>{const o=c.createOscillator(),g=c.createGain();
+    o.frequency.value=f;o.type="sine";g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.18,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dur+0.02);t+=dur+0.03})}catch(e){}}
+  const aberta=()=>Date.now()<abertaAte;
+  function pintar(){btn.className=!ligado?"":esperando?"on pausa":falando?"on falando":aberta()?"on aberta":"on";
+    btn.title=!ligado?"Mãos livres: diga “Jarvis, …” e fale a demanda, sem apertar nada":esperando?"Mãos livres: esperando o Jarvis responder":
+      aberta()?"Conversa aberta: pode falar direto (sem dizer Jarvis)":"Mãos livres ligado: diga “Jarvis, …”"}
+  function abrir(){abertaAte=Date.now()+JANELA;pintar()}
+  function wav(amostras,taxa){ // reamostra para 16 kHz mono 16 bits
+    const alvo=16000,r=taxa/alvo,n=Math.floor(amostras.length/r),b=new ArrayBuffer(44+n*2),v=new DataView(b);
+    const s=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+    s(0,"RIFF");v.setUint32(4,36+n*2,true);s(8,"WAVE");s(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+    v.setUint32(24,alvo,true);v.setUint32(28,alvo*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,"data");v.setUint32(40,n*2,true);
+    for(let i=0;i<n;i++){let x=amostras[Math.floor(i*r)];x=Math.max(-1,Math.min(1,x));v.setInt16(44+i*2,x<0?x*0x8000:x*0x7fff,true)}
+    return new Blob([b],{type:"audio/wav"})}
+  async function enviar(pedacos){
+    const total=pedacos.reduce((a,p)=>a+p.length,0),tudo=new Float32Array(total);let o=0;pedacos.forEach(p=>{tudo.set(p,o);o+=p.length});
+    esperando=true;esperaDesde=Date.now();pintar();aviso("⏳ entendendo…");
+    let j={};try{const r=await fetch("/api/audio?maos=1&aberta="+(aberta()?1:0),{method:"POST",headers:{"Content-Type":"audio/wav"},body:wav(tudo,ac.sampleRate)});j=await r.json()}catch(e){j={acao:"ignorar"}}
+    if(j.acao==="pedido"&&!j.erro){bip([660,880]);aviso("🗣 "+j.texto,5000);abertaAte=0;return} // continua esperando a resposta
+    esperando=false;
+    if(j.acao==="pedido"&&j.erro){bip([330,250],0.15);aviso("⚠ "+j.erro,6000);abrir()}
+    else if(j.acao==="chamou"){bip([520,780]);aviso("🎧 Pode falar…",4000);abrir()}
+    else if(j.acao==="dormir"){bip([700,450]);aviso("💤 Até já. Me chame com “Jarvis”.",4000);abertaAte=0}
+    else aviso("");
+    pintar()}
+  function processar(e){
+    const x=e.inputBuffer.getChannelData(0);
+    if(esperando){if(Date.now()-esperaDesde>15*60000){esperando=false;pintar()}return} // nunca fica preso
+    let s=0;for(let i=0;i<x.length;i++)s+=x[i]*x[i];const rms=Math.sqrt(s/x.length),seg=x.length/ac.sampleRate;
+    const lim=Math.max(piso*3.2,0.012);const copia=new Float32Array(x);
+    if(!falando){
+      pre.push(copia);while(pre.length*seg>PREROLL)pre.shift();
+      if(rms>lim){if(++acima>=2){falando=true;buf=pre.slice();pre=[];silencio=0;durFala=0;pintar()}}
+      else{acima=0;piso=piso*0.97+rms*0.03}
+      return}
+    buf.push(copia);durFala+=seg;
+    silencio=rms<lim*0.7?silencio+seg:0;
+    if(silencio>=FIM_SIL||durFala>=MAX_SEG){falando=false;acima=0;const fala=durFala-silencio;pintar();
+      if(fala>=MIN_SEG)enviar(buf);buf=[]}
+  }
+  async function ligar(){
+    if(!navigator.mediaDevices){add("ev erro","O mãos livres precisa de HTTPS (Tailscale) ou localhost.");return}
+    try{st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+    catch(e){add("ev erro","Não consegui acessar o microfone: "+esc(e.message));return}
+    ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state!=="running")await ac.resume();
+    const src=ac.createMediaStreamSource(st);proc=ac.createScriptProcessor(4096,1,1);const mudo=ac.createGain();mudo.gain.value=0;
+    src.connect(proc);proc.connect(mudo);mudo.connect(ac.destination);proc.onaudioprocess=processar;
+    ligado=true;esperando=false;falando=false;abertaAte=0;prepararAudio();
+    try{wl=await navigator.wakeLock.request("screen")}catch(e){}
+    bip([520,780]);aviso("🎧 Mãos livres ligado. Diga “Jarvis, …”",5000);pintar();
+    try{localStorage.setItem("jarvisMaos","1")}catch(e){}}
+  function desligar(){ligado=false;esperando=false;falando=false;abertaAte=0;
+    try{proc&&(proc.onaudioprocess=null);st&&st.getTracks().forEach(t=>t.stop());ac&&ac.close()}catch(e){}
+    st=ac=proc=null;try{wl&&wl.release()}catch(e){}wl=null;aviso("");pintar();
+    try{localStorage.removeItem("jarvisMaos")}catch(e){}}
+  btn.onclick=()=>ligado?desligar():ligar();
+  document.addEventListener("visibilitychange",async()=>{if(ligado&&document.visibilityState==="visible"&&!wl){try{wl=await navigator.wakeLock.request("screen")}catch(e){}}});
+  let tocando=false;document.addEventListener("play",()=>tocando=true,true);document.addEventListener("ended",()=>tocando=false,true);document.addEventListener("pause",()=>tocando=false,true);
+  setInterval(()=>{if(!ligado)return;if(!esperando&&!falando)pintar();
+    if(esperando&&!ocupado&&!tocando&&Date.now()-esperaDesde>25000)retomar()},1000); // pedido que não gerou resposta: volta a ouvir
+  function retomar(){if(!ligado||!esperando)return;esperando=false;abrir();bip([880],0.06);aviso("🎧 Pode responder…",3000)}
+  try{if(localStorage.getItem("jarvisMaos"))aviso("🎧 Toque no fone para voltar ao mãos livres",6000)}catch(e){}
+  return{respostaComAudio(a){if(!ligado||!esperando)return;a.addEventListener("ended",retomar);a.addEventListener("error",retomar);
+           a.addEventListener("pause",()=>{if(a.ended||!a.currentTime)return;setTimeout(()=>{if(a.paused)retomar()},800)})},
+         respostaSemAudio(){if(ligado&&esperando)setTimeout(retomar,300)},get ligado(){return ligado}}
+})();
 
 /* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */
 const cv=$("orb"),g=cv.getContext("2d"),buf=new Uint8Array(128);

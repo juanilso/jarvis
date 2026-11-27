@@ -111,6 +111,20 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.56: mãos livres (fale "Jarvis, …" sem apertar nada)
+
+No painel, toque no **🎧** (ao lado do microfone) uma vez. A partir daí:
+- Diga **"Jarvis, …"** e a demanda (ou só "Jarvis", espere o bipe e fale). Ele entende sozinho quando você terminou de falar (~1 s de silêncio).
+- A resposta vem em áudio (com 🔊 em *auto*). Enquanto ele pensa e fala, o microfone fica em pausa, para não ouvir a própria voz.
+- Quando ele termina de falar, a **conversa fica aberta por 45 s**: responda direto, sem dizer "Jarvis" de novo.
+- **"Pode dormir"**, "tchau" ou "encerra a conversa" fecham a conversa; volta a esperar o "Jarvis".
+- Bipes: subindo = estou ouvindo / entendi o pedido; descendo = dormi; grave = deu erro.
+- O botão fica verde piscando com a conversa aberta, vermelho enquanto você fala e apagado enquanto ele responde.
+- A tela do celular não apaga enquanto o mãos livres está ligado. Deixe a aba do Jarvis aberta.
+- Só o trecho em que alguém falou vai para o servidor (transcrição local, sem serviço externo). TV ou conversa ao lado
+  sem "Jarvis" é descartada; com a conversa aberta, qualquer fala vira pedido, então feche com "pode dormir" se for sair.
+- Precisa de HTTPS (o endereço do Tailscale) ou localhost, como o microfone normal.
+
 ## Jarvis 1.55.1: VPS com pouca memória
 
 - `telegram` e `jarvisweb` aceitam limite de memória no `.env` (`JARVIS_MEM_TELEGRAM`, `JARVIS_MEM_WEB`).

@@ -133,7 +133,7 @@ def _carregar_audio(caminho):
     return np.frombuffer(bruto, dtype=np.float32)
 
 
-def transcrever(caminho):
+def transcrever(caminho, dica=None):
     audio = _carregar_audio(caminho)
     if audio.size < 1600:  # menos de 0,1 s
         return ""
@@ -142,8 +142,40 @@ def transcrever(caminho):
             from faster_whisper import WhisperModel  # carregado só quando necessário
             _whisper["model"] = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8",  # não ocupa a VPS toda
                                              cpu_threads=int(os.environ.get("JARVIS_WHISPER_THREADS") or max(1, (os.cpu_count() or 2) // 2)))
-        segmentos, _ = _whisper["model"].transcribe(audio, language="pt", vad_filter=True)
+        extra = {"initial_prompt": dica} if dica else {}  # dica: ajuda a reconhecer "Jarvis" no modo mãos livres
+        segmentos, _ = _whisper["model"].transcribe(audio, language="pt", vad_filter=True, **extra)
         return " ".join(s.text.strip() for s in segmentos).strip()
+
+
+# ------------------------------------------------------------------ modo mãos livres
+_NOME = r"(?:jarvis|jarves|jarvi|javis|jarbas|jarviz|djarvis|charvis|harvis|jervis|jarbis)"
+_FANTASMAS = ("amara.org", "legendas pela comunidade", "obrigado por assistir", "inscreva-se", "legenda adriana",
+              "transcrição", "tradução e legendas")
+_DORMIR = re.compile(r"\b(pode (?:dormir|descansar|parar de ouvir)|encerra(?:r)? (?:a )?conversa|até mais|tchau|"
+                     r"pode desligar|valeu,? (?:é )?só isso|era só isso)\b", re.I)
+
+
+def maos_livres(texto, aberta):
+    """Decide o que fazer com uma fala captada sem apertar o microfone.
+    aberta=True: a conversa está aberta (ele acabou de responder), então não precisa dizer "Jarvis".
+    Devolve (acao, texto): ("ignorar"|"chamou"|"dormir"|"pedido", texto_limpo)."""
+    t = (texto or "").strip()
+    baixo = t.lower()
+    if len(re.sub(r"\W", "", baixo)) < 2 or any(f in baixo for f in _FANTASMAS):  # ruído que o whisper "inventa"
+        return "ignorar", ""
+    m = re.search(r"^\W*(?:(?:ei|ô|oi|olá|ok|e aí|fala|bom dia|boa tarde|boa noite)\W+)?" + _NOME + r"\b\W*", baixo)
+    chamou = bool(m)
+    resto = t[m.end():].strip() if m else t
+    if not chamou and not aberta:
+        if re.search(r"\b" + _NOME + r"\b", baixo):  # chamou no meio da frase ("...né, Jarvis?")
+            chamou, resto = True, re.sub(r"\s+([?.!,])", r"\1", re.sub(r"\s*,?\s*\b" + _NOME + r"\b\s*,?", " ", t, flags=re.I)).strip()
+        else:
+            return "ignorar", ""
+    if _DORMIR.search(resto) and len(resto.split()) <= 6:
+        return "dormir", resto
+    if not re.sub(r"\W", "", resto):
+        return "chamou", ""
+    return "pedido", resto[:1].upper() + resto[1:]
 
 
 def limpar_para_fala(texto):

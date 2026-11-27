@@ -887,17 +887,28 @@ class Handler(BaseHTTPRequestHandler):
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
         if url.path in ("/api/audio", "/api/atendente/audio"):
-            sufixo = ".mp4" if "mp4" in (self.headers.get("Content-Type") or "") else ".webm"
+            tipo_ct = self.headers.get("Content-Type") or ""
+            sufixo = ".mp4" if "mp4" in tipo_ct else ".wav" if "wav" in tipo_ct else ".webm"
+            q_a = urllib.parse.parse_qs(url.query)
+            maos = url.path == "/api/audio" and q_a.get("maos", ["0"])[0] == "1"
             with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as f:
                 f.write(self._corpo())
                 caminho = f.name
             try:
-                texto = core.transcrever(caminho)
+                texto = core.transcrever(caminho, dica="Jarvis." if maos else None)
             except Exception as e:  # noqa: BLE001
                 print("erro na transcrição:", e, flush=True)
+                if maos:
+                    return self._json({"acao": "ignorar", "erro": "falha na transcrição"})
                 return self._json({"erro": "Não consegui transcrever o áudio."}, 500)
             finally:
                 os.unlink(caminho)
+            if maos:  # mãos livres: só age se chamaram o Jarvis (ou se a conversa está aberta)
+                acao_m, pedido_m = core.maos_livres(texto, q_a.get("aberta", ["0"])[0] == "1")
+                if acao_m != "pedido":
+                    return self._json({"acao": acao_m, "texto": texto})
+                erro = iniciar(pedido_m, veio_de_audio=True)
+                return self._json({"acao": "pedido", "texto": pedido_m, "erro": erro})
             if not texto:
                 return self._json({"erro": "Não entendi o áudio. Pode repetir?"}, 400)
             if url.path == "/api/atendente/audio":  # conversa por voz com a Juliana
