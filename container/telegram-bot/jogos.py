@@ -287,7 +287,7 @@ def _arq(dia):
     return os.path.join(DIR, f"{dia.isoformat()}.json")
 
 
-def gerar(forcar=False, canais=None, baixar=_baixar, rodar=None):
+def _gerar(forcar=False, canais=None, baixar=_baixar, rodar=None):
     """Monta (ou reaproveita) os jogos de hoje. Devolve dict com jogos, texto, imagens (caminhos) e avisos."""
     dia = hoje()
     os.makedirs(DIR, exist_ok=True)
@@ -369,3 +369,16 @@ def enviar_telegram(d):
     rotinas.avisar_telegram_album(itens)
     rotinas.avisar_telegram("📋 Texto pronto para os grupos do WhatsApp (copie a próxima mensagem inteira):")
     rotinas.avisar_telegram(d["texto"])  # com *negrito* e _itálico_ no formato do WhatsApp
+
+
+STATUS = {"rodando": False, "desde": 0, "ultimo": 0}  # para o escritório (designer de jogos trabalhando ou não)
+
+
+def gerar(*a, **k):
+    import pesado
+    STATUS.update(rodando=True, desde=time.time())
+    try:
+        with pesado.um_por_vez():
+            return _gerar(*a, **k)
+    finally:
+        STATUS.update(rodando=False, ultimo=time.time())

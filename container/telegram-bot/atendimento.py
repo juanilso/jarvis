@@ -1469,7 +1469,7 @@ def resumo():
     return {"ligado": e.get("ligado", True), "aguardando": aguardando, "mensagens_hoje": hoje.get("mensagens", 0),
             "respostas_hoje": hoje.get("respostas", 0), "humano_hoje": hoje.get("humano", 0),
             "configurado": bool(WAHA_KEY), "faq": FAQ, "eventos": list(reversed(e.get("eventos", [])))[:12],
-            "fila": fila_resumo()}
+            "fila": fila_resumo(), "ultimo_t": (e.get("ultimo_recebido") or {}).get("t") or 0}
 
 
 def ligar(valor):

@@ -1,0 +1,19 @@
+#!/bin/bash
+# ffmpeg "gentil": instalado como /usr/local/bin/ffmpeg (vem antes do /usr/bin/ffmpeg no PATH).
+# Vídeo pesado não pode travar a VPS: roda com prioridade baixa (nice/ionice) e com núcleos limitados, para o
+# painel, o Telegram e o atendimento do WhatsApp continuarem respondendo enquanto o vídeo é feito.
+# Ajuste: JARVIS_FFMPEG_THREADS (padrão: metade dos núcleos, no mínimo 1) e JARVIS_FFMPEG_NICE (padrão 15).
+REAL=/usr/bin/ffmpeg
+N="${JARVIS_FFMPEG_THREADS:-}"
+if [ -z "$N" ]; then N=$(( $(nproc 2>/dev/null || echo 2) / 2 )); [ "$N" -lt 1 ] && N=1; fi
+PRIO=(nice -n "${JARVIS_FFMPEG_NICE:-15}")
+command -v ionice >/dev/null 2>&1 && PRIO=(ionice -c3 "${PRIO[@]}")
+if [ "$#" -ge 2 ]; then
+  ultimo="${@: -1}"
+  if [ "$ultimo" = "-" ] || [ "${ultimo#-}" = "$ultimo" ]; then   # último argumento é a saída: limita a codificação também
+    set -- -threads "$N" -filter_threads "$N" "${@:1:$#-1}" -threads "$N" "$ultimo"
+  else
+    set -- -threads "$N" "$@"
+  fi
+fi
+exec "${PRIO[@]}" "$REAL" "$@"

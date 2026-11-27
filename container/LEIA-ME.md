@@ -111,6 +111,27 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.55: escritório com bonequinhos + vídeo não trava mais a VPS
+
+**🏢 Escritório** (botão no painel ou `/escritorio`): planta em pixel art onde cada agente é um funcionário na mesa.
+- Quem está trabalhando digita, a tela acende e aparece o balão; quem está livre às vezes vai tomar café na copa.
+  Quando o Jarvis passa um trabalho, uma folha 📄 voa da mesa dele para a do agente. `!` amarelo = precisa de você
+  (ex.: cliente esperando no WhatsApp).
+- Os status são reais: projetos rodando, agentes do time de dev, Juliana (WhatsApp), jogos, filmes, rotinas do n8n,
+  Hermes, DeepSeek e Ollama.
+- **＋ Nova mesa**: crie setores/funções novos (ex.: "Grupo de benefícios"). Entram como **vaga** (pontilhado amarelo),
+  com anotações do que vão fazer; viram agente de verdade quando você pedir ao Jarvis. Já vêm vagas sugeridas
+  (YouTube, conversão, redes sociais, tráfego pago, e-mail), que dá para renomear ou apagar.
+- Fica salvo em `jarvis-escritorio.json` na config do Claude.
+
+**Vídeo pesado não derruba mais o servidor**
+- Todo `ffmpeg` roda com prioridade baixa (`nice`/`ionice`) e usando metade dos núcleos (`JARVIS_FFMPEG_THREADS`).
+- O reconhecimento de voz também usa metade dos núcleos (`JARVIS_WHISPER_THREADS`).
+- Um vídeo por vez: se o de jogos estiver rodando, o de filme espera na fila.
+- `telegram` e `jarvisweb` ficam limitados a 1 núcleo (`JARVIS_CPUS_VIDEO` no `.env`; não passe do número de núcleos da VPS).
+- Se ainda travar, veja a memória: `free -h`. A soma dos `mem_limit` do compose passa de 20 GB; numa VPS menor,
+  desligue o que não usa (ex.: `sqlserver`) e confira se existe swap.
+
 ## Jarvis 1.54: uniforme de qualquer time + escudos na abertura
 
 - Os 2 jogadores do fundo são genéricos (não existem) e vestem o uniforme dos times do 1º jogo. Agora isso vale para

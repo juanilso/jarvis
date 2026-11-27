@@ -3,186 +3,256 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#05090f">
+<meta name="theme-color" content="#0b1220">
 <title>Jarvis · Escritório</title>
 <style>
-:root{--bg:#05090f;--pn:rgba(10,24,38,.72);--ln:rgba(56,189,248,.22);--ln2:rgba(56,189,248,.5);--c:#38bdf8;--c2:#7dd3fc;
---t:#d6f1ff;--m:#6b8aa3;--ok:#34d399;--er:#fb7185;--ou:#ffc45a;--mono:ui-monospace,"Cascadia Code",Consolas,monospace}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--t);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-body{background-image:linear-gradient(rgba(56,189,248,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.04) 1px,transparent 1px);background-size:32px 32px}
-a{color:var(--c2)}
-header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--ln);max-width:1500px;margin:0 auto}
-.logo{font-family:var(--mono);letter-spacing:.35em;font-size:16px;color:var(--c2);margin-right:auto}
-.logo small{display:block;letter-spacing:.12em;font-size:10px;color:var(--m)}
+:root{--bg:#0b1220;--pn:#111a2c;--ln:#24324d;--ln2:#3b5480;--c:#38bdf8;--t:#e2ecff;--m:#7d8fb0;--ok:#34d399;--er:#fb7185;--ou:#fbbf24;
+--mono:ui-monospace,"Cascadia Code",Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--t);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln);max-width:1500px;margin:0 auto}
+.logo{font:600 15px var(--mono);letter-spacing:.3em;color:var(--c);margin-right:auto}
+.logo small{display:block;letter-spacing:.1em;font-size:10px;color:var(--m);font-weight:400}
 .pill{font:11px var(--mono);padding:4px 9px;border:1px solid var(--ln);border-radius:20px;color:var(--m)}
-.pill.on{color:var(--ok);border-color:rgba(52,211,153,.4)}.pill.ouro{color:var(--ou);border-color:rgba(255,196,90,.45)}
-.btn{font:inherit;color:var(--t);background:rgba(8,20,32,.9);border:1px solid var(--ln);border-radius:6px;padding:6px 10px;text-decoration:none;cursor:pointer}
-.btn:hover{border-color:var(--ln2)}
-main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:14px 16px;max-width:1500px;margin:0 auto}
+.pill.on{color:var(--ok);border-color:rgba(52,211,153,.45)}
+.btn{font:inherit;font-size:13px;color:var(--t);background:#16223a;border:1px solid var(--ln);border-radius:7px;padding:6px 11px;text-decoration:none;cursor:pointer}
+.btn:hover{border-color:var(--ln2)}.btn.pri{background:#0e4a6b;border-color:#1d7fae}.btn.per{color:var(--er)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:14px;max-width:1500px;margin:0 auto}
 @media(max-width:1000px){main{grid-template-columns:1fr}}
-h2{margin:0 0 10px;font:500 11px var(--mono);letter-spacing:.2em;color:var(--c);text-transform:uppercase}
-/* planta do escritório */
-.planta{position:relative;border:1px solid var(--ln);border-radius:12px;padding:14px;background:
-  radial-gradient(ellipse at 50% 0%,rgba(56,189,248,.08),transparent 60%),
-  repeating-linear-gradient(0deg,rgba(56,189,248,.05) 0 1px,transparent 1px 48px),
-  repeating-linear-gradient(90deg,rgba(56,189,248,.05) 0 1px,transparent 1px 48px),rgba(6,14,24,.8)}
-.salas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-@media(max-width:760px){.salas{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.sala{position:relative;border:1px solid var(--ln);border-radius:10px;padding:10px 10px 8px;background:rgba(9,22,35,.85);
-  min-height:168px;display:flex;flex-direction:column;transition:border-color .4s,box-shadow .4s;--cor:var(--c)}
-.sala .porta{position:absolute;bottom:-1px;left:50%;width:34px;height:3px;margin-left:-17px;background:var(--bg)}
-.sala h3{margin:0;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--m)}
-.sala .papel{font-size:11px;color:var(--m);margin-bottom:4px}
-.sala.ativa{border-color:var(--cor);box-shadow:0 0 22px -6px var(--cor),inset 0 0 30px -18px var(--cor)}
-.sala.ativa h3{color:var(--cor)}
-.sala.ok{border-color:rgba(52,211,153,.5)}.sala.erro{border-color:rgba(251,113,133,.6)}
-.mesa{position:relative;height:72px;margin:4px 0}
-.mesa svg{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:150px;height:72px;overflow:visible}
-.tampo{fill:#0d2233;stroke:#24455e}.pe{stroke:#24455e;stroke-width:2}
-.monitor{fill:#071420;stroke:#2b4a60;stroke-width:1.4}.tela{fill:#0a1a28;transition:fill .4s}
-.sala.ativa .tela{fill:var(--cor);opacity:.85;animation:tela 1.6s infinite}
-@keyframes tela{0%,100%{opacity:.6}50%{opacity:.95}}
-.codigo{stroke:#04111c;stroke-width:1.6;opacity:0}.sala.ativa .codigo{opacity:.9;animation:dig 1.2s infinite}
-.codigo:nth-of-type(2){animation-delay:.3s}.codigo:nth-of-type(3){animation-delay:.6s}
-@keyframes dig{0%{stroke-dasharray:0 40}60%,100%{stroke-dasharray:40 0}}
-.rb .cab,.rb .corpo,.rb .orelha{fill:#0a1824;stroke:#2b4a60;stroke-width:1.4}.rb .olho,.rb .ant{fill:#1e3a4f}.rb .haste,.rb .boca{stroke:#2b4a60;stroke-width:1.4}
-.sala.ativa .rb .cab,.sala.ativa .rb .corpo,.sala.ativa .rb .orelha{stroke:var(--cor)}
-.sala.ativa .rb .olho,.sala.ativa .rb .ant{fill:var(--cor)}.sala.ativa .rb{animation:bob .9s ease-in-out infinite}
-.sala.ok .rb .olho{fill:var(--ok)}.sala.erro .rb .olho{fill:var(--er)}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
-.balao{font-size:11px;line-height:1.35;color:var(--t);background:rgba(56,189,248,.08);border:1px solid var(--ln);border-radius:8px;
-  padding:5px 7px;min-height:32px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.sala:not(.ativa) .balao{color:var(--m);background:transparent;border-style:dashed}
-.rodape{display:flex;justify-content:space-between;margin-top:5px;font:10px var(--mono);color:var(--m)}
-.sala.ativa .rodape .tempo{color:var(--cor)}
-/* salas especiais */
-.comando{grid-column:span 2;--cor:#7dd3fc}
-.comando .cerebro{height:104px;width:124px;margin:0 auto;background:url(/static/cerebro.jpg?v=180) center 40%/150% no-repeat;filter:saturate(.6) brightness(.55);transition:filter .5s;
-  -webkit-mask:radial-gradient(closest-side,#000 55%,transparent 100%);mask:radial-gradient(closest-side,#000 55%,transparent 100%)}
-.comando.ativa .cerebro{filter:none;animation:pulsa 1.8s infinite}
-@keyframes pulsa{0%,100%{filter:brightness(.9)}50%{filter:brightness(1.25) drop-shadow(0 0 10px #38bdf8)}}
-.consultoria{grid-column:span 2;--cor:var(--ou)}
-.consultoria .hermes{height:104px;width:124px;margin:0 auto;background:url(/static/hermes.jpg?v=180) center 38%/150% no-repeat;filter:grayscale(.7) brightness(.45);transition:filter .5s;
-  -webkit-mask:radial-gradient(closest-side,#000 55%,transparent 100%);mask:radial-gradient(closest-side,#000 55%,transparent 100%)}
-.consultoria.ativa .hermes{filter:none;animation:pulsaO 1.8s infinite}
-@keyframes pulsaO{0%,100%{filter:brightness(.9)}50%{filter:brightness(1.2) drop-shadow(0 0 10px #ffc45a)}}
-.consultoria.desligado{opacity:.55}
-.automacao{grid-column:span 2;--cor:var(--ok)}
-.recepcao{grid-column:1/-1;--cor:#4ade80;min-height:auto}.recepcao .linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
-.recepcao .num{border:1px solid var(--ln);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--m)}.recepcao .num b{font-size:16px;color:var(--t);margin-right:4px}
-.recepcao .fila{font-size:12px;color:var(--ou)}
-.relogio{display:flex;align-items:center;gap:12px;margin:6px 0}
-.relogio svg{width:58px;height:58px;flex:none}.relogio .aro{fill:none;stroke:#24455e;stroke-width:2}
-.relogio .pont{stroke:var(--m);stroke-width:2;stroke-linecap:round;transform-origin:30px 30px}
-.automacao.ativa .relogio .aro{stroke:var(--ok)}.automacao.ativa .pont{stroke:var(--ok)}
-.relogio .pont.min{animation:gira 6s linear infinite}.relogio .pont.hora{animation:gira 72s linear infinite}
-@keyframes gira{to{transform:rotate(360deg)}}
-.automacao .info{font-size:12px;color:var(--m)}.automacao .info b{color:var(--t);font-weight:600}
-.lista{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.chip{font:10px var(--mono);padding:2px 7px;border-radius:12px;border:1px solid var(--ln);color:var(--c2)}
-/* quadro de rotinas */
-.quadro{border:1px solid var(--ln);border-radius:12px;padding:12px;background:var(--pn);align-self:start;position:sticky;top:10px}
-.rot{border-bottom:1px dashed rgba(56,189,248,.12);padding:8px 2px}
-.rot .lin{display:flex;gap:8px;align-items:baseline}
-.rot .st{font-size:13px;width:16px;flex:none}
-.rot .nm{font-weight:600;font-size:13px}.rot .q{margin-left:auto;font:10px var(--mono);color:var(--m);white-space:nowrap}
-.rot .ac{font:10px var(--mono);color:var(--m);text-transform:uppercase;letter-spacing:.08em}
-.rot details{font-size:12px;color:#b6d3e6;margin-top:3px}.rot summary{cursor:pointer;color:var(--m);font-size:11px}
-.rot pre{white-space:pre-wrap;font:12px/1.45 system-ui,sans-serif;margin:6px 0 0;max-height:240px;overflow:auto}
+h2{margin:0 0 8px;font:600 11px var(--mono);letter-spacing:.18em;color:var(--m);text-transform:uppercase}
+.planta{border:1px solid var(--ln);border-radius:12px;background:#0a101c;padding:8px;overflow:hidden}
+canvas{display:block;width:100%;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--m);margin-top:8px}
+.leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+aside{display:flex;flex-direction:column;gap:14px}
+.card{border:1px solid var(--ln);border-radius:12px;padding:12px;background:var(--pn)}
+.det .nm{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px}
+.det .nm i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.det .fn{color:var(--m);font-size:13px}.det .st{margin:8px 0;padding:8px;border-radius:8px;background:#0b1424;font-size:13px}
+.tag{font:10px var(--mono);padding:2px 7px;border-radius:10px;border:1px solid var(--ln);color:var(--m);text-transform:uppercase}
+.tag.trabalhando{color:var(--ok);border-color:rgba(52,211,153,.5)}.tag.atencao,.tag.vaga{color:var(--ou);border-color:rgba(251,191,36,.5)}
+.tag.erro{color:var(--er);border-color:rgba(251,113,133,.5)}
+.ativos div{font-size:13px;padding:5px 0;border-bottom:1px dashed var(--ln);cursor:pointer}.ativos div:last-child{border:0}
 .vazio{color:var(--m);font-size:13px}
-.dica{font-size:12px;color:var(--m);margin-top:10px;border-top:1px solid var(--ln);padding-top:10px}
-code{font:12px var(--mono);color:var(--c2)}
+form label{display:block;font-size:12px;color:var(--m);margin-top:8px}
+form input,form select,form textarea{width:100%;font:inherit;font-size:13px;color:var(--t);background:#0b1424;border:1px solid var(--ln);border-radius:7px;padding:7px}
+form input[type=color]{height:34px;padding:2px 4px;cursor:pointer}
+form textarea{min-height:70px;resize:vertical}.linha{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.rot{border-bottom:1px dashed var(--ln);padding:7px 0;font-size:13px}.rot:last-child{border:0}
+.rot .q{float:right;font:10px var(--mono);color:var(--m)}.rot .ac{font:10px var(--mono);color:var(--m);text-transform:uppercase}
+.rot details{font-size:12px;color:#b9c8e6}.rot pre{white-space:pre-wrap;font:12px/1.45 system-ui;max-height:220px;overflow:auto;margin:4px 0 0}
+.msg{font-size:12px;margin-top:6px}.msg.er{color:var(--er)}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">ESCRITÓRIO<small>jarvis · agentes · rotinas</small></div>
-  <span class="pill" id="pRod">—</span><span class="pill" id="pHer">Hermes</span><span class="pill" id="pN8n">n8n</span>
+  <div class="logo">ESCRITÓRIO<small>jarvis · sua equipe trabalhando</small></div>
+  <span class="pill" id="pRod">—</span><span class="pill" id="pN8n">n8n</span>
+  <button class="btn pri" id="novaMesa">＋ Nova mesa</button>
   <a class="btn" id="abrirN8n" target="_blank" rel="noopener">⚙ n8n</a>
   <a class="btn" href="/">← painel</a>
 </header>
 <main>
   <section>
-    <h2>Planta</h2>
-    <div class="planta"><div class="salas" id="salas"></div></div>
+    <div class="planta"><canvas id="cv" aria-label="Planta do escritório: clique em uma mesa para ver detalhes"></canvas></div>
+    <div class="leg"><span><i style="background:var(--ok)"></i>trabalhando</span><span><i style="background:#64748b"></i>livre (às vezes vai tomar um café)</span>
+      <span><i style="background:var(--ou)"></i>precisa de você / vaga</span><span><i style="background:#334155"></i>desligado</span>
+      <span>📄 = Jarvis passando um trabalho</span></div>
   </section>
-  <aside class="quadro">
-    <h2>Quadro de rotinas</h2>
-    <div id="rotinas"><div class="vazio">carregando…</div></div>
-    <div class="dica">Rotinas são criadas no <b>n8n</b> (⚙ no topo). Elas chamam o Jarvis ou o Hermes pelo gatilho seguro:
-      o Jarvis em rotina só analisa, testa e relata, sem alterar código.</div>
+  <aside>
+    <div class="card det" id="det"><h2>Detalhes</h2><div class="vazio">Clique em uma mesa.</div></div>
+    <div class="card"><h2>Trabalhando agora</h2><div class="ativos" id="ativos"><div class="vazio">—</div></div></div>
+    <div class="card"><h2>Quadro de rotinas</h2><div id="rotinas"><div class="vazio">carregando…</div></div></div>
   </aside>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const EQUIPE=[
-  ["arquiteto","Planeja e quebra o trabalho","#7dd3fc"],["explorador","Lê e mapeia o código","#f0abfc"],
-  ["desenvolvedor","Escreve o código","#93c5fd"],["dba","Bancos e migrations","#5eead4"],
-  ["android","App Android","#a3e635"],["designer","Telas e sites","#f9a8d4"],
-  ["testador","Testa tudo","#fdba74"],["revisor","Revisa antes de entregar","#c4b5fd"],
-  ["deploy","Prepara a publicação","#fde68a"],["documentador","Docs e memória","#67e8f9"]];
-const RB=`<g class="rb" transform="translate(57 2)"><line class="haste" x1="18" y1="3" x2="18" y2="8"/><circle class="ant" cx="18" cy="2" r="2.4"/>
- <rect class="orelha" x="2" y="13" width="4" height="7" rx="1.5"/><rect class="orelha" x="30" y="13" width="4" height="7" rx="1.5"/>
- <rect class="cab" x="6" y="8" width="24" height="17" rx="5"/><circle class="olho" cx="13" cy="16" r="2.6"/><circle class="olho" cx="23" cy="16" r="2.6"/>
- <line class="boca" x1="14" y1="21" x2="22" y2="21"/><rect class="corpo" x="10" y="27" width="16" height="12" rx="3"/></g>`;
-const MESA=`<svg viewBox="0 0 150 72">${RB}<rect class="tampo" x="8" y="44" width="134" height="8" rx="2"/>
- <line class="pe" x1="18" y1="52" x2="18" y2="72"/><line class="pe" x1="132" y1="52" x2="132" y2="72"/>
- <rect class="monitor" x="94" y="16" width="44" height="28" rx="2"/><rect class="tela" x="97" y="19" width="38" height="22" rx="1"/>
- <line class="codigo" x1="100" y1="25" x2="126" y2="25"/><line class="codigo" x1="100" y1="30" x2="132" y2="30"/><line class="codigo" x1="100" y1="35" x2="118" y2="35"/>
- <rect class="monitor" x="113" y="44" width="6" height="0"/></svg>`;
-function tempo(s){s=Math.max(0,s|0);return s<60?s+"s":Math.floor(s/60)+"m"+String(s%60).padStart(2,"0")+"s"}
-function montar(){
-  $("salas").innerHTML=
-   `<div class="sala comando" id="s-jarvis"><h3>Sala de comando · Jarvis</h3><div class="papel">Orquestra os agentes e fala com você</div>
-     <div class="cerebro"></div><div class="lista" id="projAtivos"></div><span class="porta"></span></div>
-    <div class="sala consultoria" id="s-hermes"><h3>Consultoria · Hermes</h3><div class="papel">Pesquisa, segunda opinião e teste real</div>
-     <div class="hermes"></div><div class="balao" id="b-hermes">—</div><span class="porta"></span></div>`+
-   EQUIPE.map(([n,p,c])=>`<div class="sala" id="s-${n}" style="--cor:${c}"><h3>${n}</h3><div class="papel">${p}</div>
-     <div class="mesa">${MESA}</div><div class="balao" id="b-${n}">livre</div>
-     <div class="rodape"><span id="p-${n}"></span><span class="tempo" id="t-${n}"></span></div><span class="porta"></span></div>`).join("")+
-   `<div class="sala automacao" id="s-n8n"><h3>Automação · n8n</h3><div class="papel">Rotinas agendadas e alertas</div>
-     <div class="relogio"><svg viewBox="0 0 60 60"><circle class="aro" cx="30" cy="30" r="26"/><line class="pont hora" x1="30" y1="30" x2="30" y2="16"/>
-     <line class="pont min" x1="30" y1="30" x2="30" y2="9"/></svg><div class="info" id="i-n8n">—</div></div><span class="porta"></span></div>`+
-   `<div class="sala recepcao" id="s-recepcao"><h3>Recepção · WhatsApp</h3><div class="papel">Atendimento automático dos clientes</div>
-     <div class="linha" id="i-recepcao">—</div><span class="porta"></span></div>`;
-  const h=location.hostname;$("abrirN8n").href=`${location.protocol}//${h}:5678/`;
+const ORDEM=["comando","atendimento","conteudo","crescimento","consultoria","automacao","dev"];
+let W=640;const SLOT_W=70,SLOT_H=62,COLS=4,GAP=16;
+let D=null,layout=null,sel=null,antes={},folhas=[],pessoas={},ESCALA=2,H=400;
+const cv=$("cv"),cx=cv.getContext("2d");
+
+function montarLayout(){
+  W=(cv.clientWidth||640)<700?330:640; // celular: planta mais estreita (salas empilhadas, bonecos maiores)
+  const porSetor={};D.mesas.forEach(m=>(porSetor[m.setor]=porSetor[m.setor]||[]).push(m));
+  const salas=[];ORDEM.forEach(s=>{if(porSetor[s])salas.push({setor:s,nome:D.setores[s]||s,mesas:porSetor[s]})});
+  salas.push({setor:"copa",nome:"Copa · café e reunião",mesas:[]});
+  let x=GAP,y=GAP,linhaH=0,linha=[];const desks={},linhas=[linha];
+  salas.forEach(sa=>{
+    const n=sa.mesas.length,c=sa.setor==="copa"?2:Math.min(n,COLS),r=sa.setor==="copa"?1:Math.ceil(n/COLS);
+    sa.w=c*SLOT_W+12;sa.h=r*SLOT_H+26;
+    if(x+sa.w>W-GAP){x=GAP;y+=linhaH+GAP+6;linhaH=0;linha=[];linhas.push(linha)}
+    linha.push(sa);
+    sa.x=x;sa.y=y;x+=sa.w+GAP;linhaH=Math.max(linhaH,sa.h);sa.porta={x:sa.x+sa.w/2,y:sa.y+sa.h};
+    sa.mesas.forEach((m,i)=>{const dx=sa.x+6+(i%COLS)*SLOT_W,dy=sa.y+22+Math.floor(i/COLS)*SLOT_H;
+      desks[m.id]={x:dx,y:dy,sala:sa,assento:{x:dx+SLOT_W/2,y:dy+24}}});
+  });
+  H=y+linhaH+GAP+8;
+  linhas.forEach(l=>{const fundo=Math.max(...l.map(sa=>sa.y+sa.h));l.forEach(sa=>sa.corr=fundo+GAP/2+2)}); // corredor por fileira
+  const copa=salas[salas.length-1];
+  copa.lugares=[[30,30],[50,30],[70,30],[90,40],[110,34],[60,50],[100,52],[125,48]].map(([a,b])=>({x:copa.x+a,y:copa.y+b}));
+  layout={salas,desks,copa};
+  const larg=cv.clientWidth||640;ESCALA=Math.max(1,larg/W);
+  const dpr=window.devicePixelRatio||1;cv.width=Math.round(W*ESCALA*dpr);cv.height=Math.round(H*ESCALA*dpr);
+  cv.style.height=(H*ESCALA)+"px";cx.setTransform(ESCALA*dpr,0,0,ESCALA*dpr,0,0);cx.imageSmoothingEnabled=false;
+  // pessoas: uma por mesa que não é vaga
+  const novos={};
+  D.mesas.forEach(m=>{const d=desks[m.id];if(!d)return;
+    const p=pessoas[m.id]||{pausa:0};  // a planta mudou: todo mundo volta para a própria mesa
+    Object.assign(p,{mesa:m,casa:d.assento,x:d.assento.x,y:d.assento.y,rota:[],naCopa:false});novos[m.id]=p});
+  pessoas=novos;
 }
-async function atualizar(){
+function rota(de,ate,salaDe,salaAte){
+  const pts=[{x:de.x,y:salaDe.porta.y-4},{x:salaDe.porta.x,y:salaDe.porta.y-4},{x:salaDe.porta.x,y:salaDe.corr}];
+  if(salaDe.corr!==salaAte.corr){pts.push({x:6,y:salaDe.corr},{x:6,y:salaAte.corr})}
+  pts.push({x:salaAte.porta.x,y:salaAte.corr},{x:salaAte.porta.x,y:salaAte.porta.y-4},{x:ate.x,y:salaAte.porta.y-4},{x:ate.x,y:ate.y});
+  return pts;
+}
+const COR_EST={trabalhando:"#34d399",livre:"#64748b",atencao:"#fbbf24",vaga:"#fbbf24",desligado:"#334155",ok:"#34d399",erro:"#fb7185"};
+function situ(id){return (D.situacao||{})[id]||{estado:"livre",texto:""}}
+function px(x,y,w,h,c){cx.fillStyle=c;cx.fillRect(Math.round(x),Math.round(y),w,h)}
+function boneco(x,y,cor,est,t,sentado,andando){
+  const cin=est==="desligado";const pele=cin?"#5b6475":"#f2c9a0",cab=cin?"#3a4252":"#3b2a20",cam=cin?"#475063":cor;
+  x=Math.round(x-5);y=Math.round(y-18);
+  const b=est==="trabalhando"&&sentado?(Math.floor(t/180)%2):0;
+  px(x+2,y,6,2,cab);px(x+1,y+2,8,5,pele);px(x+1,y+1,8,2,cab);
+  px(x+3,y+4,1,1,"#111");px(x+6,y+4,1,1,"#111");
+  px(x+1,y+7,8,7,cam);
+  if(sentado){px(x-1+b,y+9,2,3,pele);px(x+9-b,y+9,2,3,pele)}else{px(x-1,y+8,2,4,cam);px(x+9,y+8,2,4,cam)}
+  const p=andando?Math.floor(t/140)%2:0;
+  px(x+2,y+14,2,4-p,"#1e293b");px(x+6,y+14,2,3+p,"#1e293b");
+  if(est==="desligado"&&Math.floor(t/700)%2){cx.fillStyle="#94a3b8";cx.font="6px monospace";cx.fillText("z",x+11,y+2)}
+}
+function mesa(d,m,s,t){
+  const x=d.x,y=d.y,vaga=s.estado==="vaga";
+  if(vaga){cx.strokeStyle="#fbbf24";cx.setLineDash([2,2]);cx.strokeRect(x+4.5,y+2.5,SLOT_W-9,SLOT_H-12);cx.setLineDash([])}
+  if(sel===m.id){cx.strokeStyle=m.cor;cx.lineWidth=1;cx.strokeRect(x+2.5,y+.5,SLOT_W-5,SLOT_H-7)}
+  // cadeira
+  px(x+29,y+20,12,10,vaga?"#3b3f4a":"#2b3446");
+  const p=pessoas[m.id];const sentado=p&&Math.hypot(p.x-p.casa.x,p.y-p.casa.y)<1;
+  if(!vaga&&p&&sentado)boneco(p.x,p.y,m.cor,s.estado,t,true,false);
+  // mesa e monitor
+  px(x+10,y+28,50,8,"#6b4a2f");px(x+10,y+36,50,2,"#4a3220");px(x+12,y+38,3,8,"#4a3220");px(x+55,y+38,3,8,"#4a3220");
+  const tela=s.estado==="trabalhando"?(Math.floor(t/400)%2?m.cor:"#e2e8f0"):s.estado==="atencao"?"#fbbf24":s.estado==="erro"?"#fb7185":"#0f172a";
+  px(x+40,y+18,16,11,"#1f2937");px(x+41,y+19,14,8,tela);px(x+47,y+29,2,1,"#1f2937");
+  if(s.estado==="trabalhando"){for(let i=0;i<3;i++)px(x+42,y+20+i*2,4+((Math.floor(t/200)+i*3)%8),1,"#0b1220")}
+  if(vaga){cx.fillStyle="#fbbf24";cx.font="bold 7px monospace";cx.fillText("VAGA",x+16,y+24)}
+  // nome
+  cx.fillStyle=vaga?"#a3864a":s.estado==="desligado"?"#56627a":"#cbd5e1";cx.font="6px system-ui,sans-serif";cx.textAlign="center";
+  cx.fillText(m.nome.length>16?m.nome.slice(0,15)+"…":m.nome,x+SLOT_W/2,y+SLOT_H-11);cx.textAlign="left";
+  // balão
+  if(!vaga&&p&&sentado&&(s.estado==="trabalhando"||s.estado==="atencao"||s.estado==="erro")){
+    const bx=x+19,by=y-4;px(bx,by,18,9,"#f8fafc");px(bx+3,by+9,3,2,"#f8fafc");
+    if(s.estado==="trabalhando"){const n=Math.floor(t/300)%4;for(let i=0;i<n;i++)px(bx+3+i*4,by+4,2,2,"#0f172a")}
+    else{cx.fillStyle=s.estado==="erro"?"#e11d48":"#b45309";cx.font="bold 8px monospace";cx.fillText("!",bx+7,by+8)}
+  }
+  // luz de estado
+  px(x+6,y+4,3,3,COR_EST[s.estado]||"#64748b");
+}
+function copa(sa,t){
+  px(sa.x+20,sa.y+38,40,10,"#6b4a2f");px(sa.x+20,sa.y+48,40,2,"#4a3220"); // mesa de reunião
+  px(sa.x+sa.w-24,sa.y+20,12,16,"#475569");px(sa.x+sa.w-22,sa.y+22,8,5,"#0ea5e9");px(sa.x+sa.w-20,sa.y+30,4,4,"#78350f"); // cafeteira
+  px(sa.x+8,sa.y+sa.h-16,6,10,"#166534");px(sa.x+6,sa.y+sa.h-20,10,6,"#22c55e"); // planta
+}
+function desenhar(t){
+  if(!D||!layout)return;
+  cx.clearRect(0,0,W,H);px(0,0,W,H,"#0d1424");
+  for(let i=0;i<W;i+=16)for(let j=0;j<H;j+=16)if((i/16+j/16)%2)px(i,j,16,16,"#0f1729");
+  layout.salas.forEach(sa=>{
+    px(sa.x,sa.y,sa.w,sa.h,sa.setor==="copa"?"#1b2433":"#152036");
+    cx.strokeStyle="#33476b";cx.lineWidth=2;cx.strokeRect(sa.x,sa.y,sa.w,sa.h);
+    px(sa.porta.x-9,sa.porta.y-1,18,3,"#0d1424");
+    cx.fillStyle="#8ea3c7";cx.font="bold 7px system-ui,sans-serif";cx.fillText(sa.nome.toUpperCase(),sa.x+6,sa.y+11);
+    if(sa.setor==="copa")copa(sa,t);
+  });
+  D.mesas.forEach(m=>{const d=layout.desks[m.id];if(d)mesa(d,m,situ(m.id),t)});
+  Object.values(pessoas).forEach(p=>{const s=situ(p.mesa.id);if(s.estado==="vaga")return;
+    if(Math.hypot(p.x-p.casa.x,p.y-p.casa.y)>=1)boneco(p.x,p.y,p.mesa.cor,s.estado,t,false,p.rota.length>0)});
+  folhas.forEach(f=>{const k=Math.min(1,(t-f.t0)/1200),x=f.a.x+(f.b.x-f.a.x)*k,y=f.a.y+(f.b.y-f.a.y)*k-Math.sin(k*Math.PI)*30;
+    px(x-3,y-4,6,8,"#f8fafc");px(x-2,y-2,4,1,"#94a3b8");px(x-2,y,4,1,"#94a3b8")});
+  folhas=folhas.filter(f=>t-f.t0<1200);
+}
+function mover(dt){
+  Object.values(pessoas).forEach(p=>{
+    const s=situ(p.mesa.id).estado,d=layout.desks[p.mesa.id];if(!d||s==="vaga")return;
+    if(p.rota.length){const a=p.rota[0],dx=a.x-p.x,dy=a.y-p.y,dist=Math.hypot(dx,dy),v=dt*0.045;
+      if(dist<=v){p.x=a.x;p.y=a.y;p.rota.shift()}else{p.x+=dx/dist*v;p.y+=dy/dist*v}return}
+    const voltar=()=>{p.rota=rota({x:p.x,y:p.y},p.casa,layout.copa,d.sala);p.naCopa=false};
+    if(p.naCopa){if(s==="trabalhando"||s==="atencao"||(p.pausa-=dt)<=0)voltar();return}
+    if(s==="livre"&&p.mesa.id!=="jarvis"&&Math.random()<dt/90000){
+      const vagos=layout.copa.lugares.filter(l=>!Object.values(pessoas).some(o=>o.naCopa&&o.alvo===l));if(!vagos.length)return;
+      const l=vagos[Math.floor(Math.random()*vagos.length)];p.alvo=l;p.naCopa=true;p.pausa=8000+Math.random()*15000;
+      p.rota=rota(p.casa,l,d.sala,layout.copa)}
+  });
+}
+let ult=performance.now();
+function loop(t){mover(Math.min(100,t-ult));ult=t;desenhar(t);requestAnimationFrame(loop)}
+
+function detalhes(id){
+  sel=id;const m=(D.mesas||[]).find(x=>x.id===id);if(!m){$("det").innerHTML='<h2>Detalhes</h2><div class="vazio">Clique em uma mesa.</div>';return}
+  const s=situ(id),edit=m.tipo!=="fixa";
+  const opts=Object.entries(D.setores).map(([k,v])=>`<option value="${k}"${k===m.setor?" selected":""}>${esc(v)}</option>`).join("");
+  $("det").innerHTML=`<h2>Detalhes</h2><div class="nm"><i style="background:${esc(m.cor)}"></i>${esc(m.nome)}</div>
+   <div class="fn">${esc(m.funcao)}</div><div class="st"><span class="tag ${esc(s.estado)}">${esc(s.estado)}</span> ${esc(s.texto)}</div>
+   ${m.tipo==="fixa"?'<div class="vazio">Agente que já trabalha no Jarvis. Dá para renomear e trocar a cor.</div>':
+     '<div class="vazio">Mesa planejada: ainda não é um agente de verdade. Anote aqui o que ele vai fazer; quando quiser contratar, é só pedir ao Jarvis.</div>'}
+   <form id="fm"><label>Nome<input name="nome" maxlength="40" value="${esc(m.nome)}"></label>
+    <label>Função<input name="funcao" maxlength="120" value="${esc(m.funcao)}"></label>
+    ${edit?`<label>Setor<select name="setor">${opts}</select></label>`:""}
+    <label>Cor<input name="cor" type="color" value="${esc(m.cor)}"></label>
+    ${edit?`<label>Anotações (o que ele vai fazer)<textarea name="notas" maxlength="1000">${esc(m.notas||"")}</textarea></label>`:""}
+    <div class="linha"><button class="btn pri">Salvar</button>${edit?'<button type="button" class="btn per" id="apg">Apagar mesa</button>':""}</div>
+    <div class="msg" id="fmMsg"></div></form>`;
+  $("fm").onsubmit=e=>{e.preventDefault();salvar(Object.assign({id},Object.fromEntries(new FormData($("fm")))))};
+  if($("apg"))$("apg").onclick=async()=>{if(!confirm(`Apagar a mesa "${m.nome}"?`))return;
+    const r=await post("/api/escritorio/apagar",{id});if(r.ok){sel=null;await atualizar(true);detalhes(null)}else $("fmMsg").textContent=r.erro};
+}
+function novaMesa(){
+  sel=null;const opts=Object.entries(D.setores).filter(([k])=>k!=="comando").map(([k,v])=>`<option value="${k}"${k==="crescimento"?" selected":""}>${esc(v)}</option>`).join("");
+  $("det").innerHTML=`<h2>Nova mesa</h2><div class="vazio">Ex.: "Grupo de benefícios", que divulga descontos e promoções. Ela entra como <b>vaga</b>
+   e vira agente de verdade quando você pedir ao Jarvis.</div>
+   <form id="fm"><label>Nome<input name="nome" maxlength="40" placeholder="Grupo de benefícios" required></label>
+    <label>Função<input name="funcao" maxlength="120" placeholder="Divulga descontos e promoções no grupo"></label>
+    <label>Setor<select name="setor">${opts}</select></label><label>Cor<input name="cor" type="color" value="#22d3ee"></label>
+    <label>Anotações<textarea name="notas" maxlength="1000" placeholder="Onde publica, com que frequência, quem aprova…"></textarea></label>
+    <div class="linha"><button class="btn pri">Criar mesa</button></div><div class="msg" id="fmMsg"></div></form>`;
+  $("fm").onsubmit=e=>{e.preventDefault();salvar(Object.fromEntries(new FormData($("fm"))))};
+}
+async function post(u,b){try{const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return await r.json()}catch(e){return{ok:false,erro:"sem conexão"}}}
+async function salvar(b){const r=await post("/api/escritorio/mesa",b);
+  if(!r.ok){$("fmMsg").className="msg er";$("fmMsg").textContent=r.erro||"erro";return}
+  await atualizar(true);detalhes(r.id);$("fmMsg").textContent="✓ salvo"}
+
+async function atualizar(relayout){
   let d;try{const r=await fetch("/api/escritorio");if(r.status===401){location.href="/";return}d=await r.json()}catch(e){return}
-  const rod=d.rodando||[];
-  $("pRod").textContent=rod.length?`⏳ ${rod.length} trabalhando`:"💤 livre";$("pRod").className="pill"+(rod.length?" on":"");
-  $("pHer").textContent=d.hermes_ligado?(d.hermes?"☤ Hermes trabalhando":"☤ Hermes livre"):"☤ Hermes desligado";
-  $("pHer").className="pill"+(d.hermes?" ouro":"");
-  $("pN8n").textContent=d.n8n?"⚙ rotinas ligadas":"⚙ rotinas desligadas";$("pN8n").className="pill"+(d.n8n?" on":"");
-  const cmd=$("s-jarvis");cmd.classList.toggle("ativa",rod.length>0);
-  $("projAtivos").innerHTML=rod.length?rod.map(r=>`<span class="chip">📁 ${esc(r.projeto)} · ${tempo(r.segundos)}</span>`).join("")
-    :`<span class="chip" style="color:var(--m)">projeto atual: ${esc(d.projeto||"nenhum")}</span>`;
-  const hs=$("s-hermes");hs.classList.toggle("ativa",!!d.hermes);hs.classList.toggle("desligado",!d.hermes_ligado);
-  $("b-hermes").textContent=d.hermes?"atendendo um pedido…":d.hermes_ligado?"disponível":"desligado (./hermes-configurar.sh)";
-  EQUIPE.forEach(([n])=>{const a=(d.agentes||{})[n],s=$("s-"+n);s.classList.remove("ativa","ok","erro");
-    if(!a){$("b-"+n).textContent="livre";$("p-"+n).textContent="";$("t-"+n).textContent="";return}
-    s.classList.add(a.estado==="ativo"?"ativa":a.estado);
-    $("b-"+n).textContent=a.estado==="ativo"?(a.acao||a.descricao||"trabalhando…"):(a.estado==="ok"?"✓ concluiu: ":"✕ erro: ")+(a.descricao||"");
-    $("p-"+n).textContent=a.projeto?"📁 "+a.projeto:"";$("t-"+n).textContent=a.estado==="ativo"?tempo(a.segundos):""});
-  const at=d.atendimento||{},rc=$("s-recepcao");
-  rc.classList.toggle("ativa",!!(at.configurado&&at.ligado&&at.mensagens_hoje));
-  $("i-recepcao").innerHTML=!at.configurado?'<span class="num">desligado · <code>./whatsapp-configurar.sh</code></span>':
-    `<span class="num">${at.ligado?"🤖 robô ligado":"⏸ robô pausado"}</span><span class="num"><b>${at.mensagens_hoje||0}</b>mensagens hoje</span>`+
-    `<span class="num"><b>${at.respostas_hoje||0}</b>respostas</span><span class="num"><b>${at.humano_hoje||0}</b>para você</span>`+
-    ((at.aguardando||[]).length?`<span class="fila">🙋 precisam de você: ${esc(at.aguardando.map(x=>x.nome||x.numero).join(", "))}</span>`:"");
-  const rs=d.rotinas||[],emCurso=rs.filter(r=>r.ok===null||r.ok===undefined),ult=rs.find(r=>r.ok!==null&&r.ok!==undefined);
-  $("s-n8n").classList.toggle("ativa",d.n8n&&emCurso.length>0);
-  $("i-n8n").innerHTML=!d.n8n?"desligado · <code>./automacoes-configurar.sh</code>":
-    emCurso.length?`<b>rodando:</b> ${esc(emCurso.map(r=>r.rotina).join(", "))}`:
-    ult?`<b>última:</b> ${esc(ult.rotina)} ${ult.ok?"✅":"❌"} · ${esc((ult.fim||ult.quando||"").slice(5,16))}`:"ligado · nenhuma rotina rodou ainda";
+  const mudou=!D||JSON.stringify(D.mesas)!==JSON.stringify(d.mesas);D=d;
+  if(mudou||relayout)montarLayout();
+  // Jarvis passa trabalho: folha voando da mesa do Jarvis para quem começou agora
+  const jd=layout.desks.jarvis;
+  D.mesas.forEach(m=>{const s=situ(m.id).estado;if(s==="trabalhando"&&antes[m.id]&&antes[m.id]!=="trabalhando"&&m.id!=="jarvis"&&jd&&layout.desks[m.id])
+    folhas.push({a:{x:jd.assento.x,y:jd.assento.y-10},b:{x:layout.desks[m.id].assento.x,y:layout.desks[m.id].assento.y-10},t0:performance.now()});antes[m.id]=s});
+  const trab=D.mesas.filter(m=>["trabalhando","atencao","erro"].includes(situ(m.id).estado));
+  $("pRod").textContent=trab.length?`⏳ ${trab.length} ocupado(s)`:"💤 todos livres";$("pRod").className="pill"+(trab.length?" on":"");
+  $("pN8n").textContent=D.n8n?"⚙ rotinas ligadas":"⚙ rotinas desligadas";$("pN8n").className="pill"+(D.n8n?" on":"");
+  $("ativos").innerHTML=trab.length?trab.map(m=>`<div data-id="${esc(m.id)}"><b style="color:${esc(m.cor)}">${esc(m.nome)}</b> · ${esc(situ(m.id).texto)}</div>`).join("")
+    :'<div class="vazio">Ninguém trabalhando agora.</div>';
+  $("ativos").querySelectorAll("[data-id]").forEach(e=>e.onclick=()=>detalhes(e.dataset.id));
+  if(sel&&!$("fm"))detalhes(sel);
+  else if(sel){const st=document.querySelector("#det .st");const s=situ(sel);if(st)st.innerHTML=`<span class="tag ${esc(s.estado)}">${esc(s.estado)}</span> ${esc(s.texto)}`}
+  const rs=D.rotinas||[];
   $("rotinas").innerHTML=rs.length?rs.map(r=>{const st=r.ok===true?"✅":r.ok===false?"❌":"⏳";
-    return `<div class="rot"><div class="lin"><span class="st">${st}</span><span class="nm">${esc(r.rotina)}</span><span class="q">${esc((r.fim||r.quando||"").slice(5,16))}</span></div>
+    return `<div class="rot">${st} <b>${esc(r.rotina)}</b><span class="q">${esc((r.fim||r.quando||"").slice(5,16))}</span>
       <div class="ac">${esc(r.acao)}${r.projeto?" · "+esc(r.projeto):""}</div>
       ${r.resultado&&r.resultado!=="iniciada"?`<details><summary>resultado</summary><pre>${esc(r.resultado)}</pre></details>`:""}</div>`}).join("")
-    :`<div class="vazio">Nenhuma rotina rodou ainda.${d.n8n?"":" Ligue com <code>./automacoes-configurar.sh</code> na VPS."}</div>`;
+    :`<div class="vazio">Nenhuma rotina rodou ainda.${D.n8n?"":" Ligue com <code>./automacoes-configurar.sh</code> na VPS."}</div>`;
 }
-montar();atualizar();setInterval(atualizar,2000);
+cv.addEventListener("click",e=>{if(!layout)return;const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;
+  const m=D.mesas.find(m=>{const d=layout.desks[m.id];return d&&x>=d.x&&x<d.x+SLOT_W&&y>=d.y-6&&y<d.y+SLOT_H});
+  if(m){detalhes(m.id);if(innerWidth<1000)$("det").scrollIntoView({behavior:"smooth"})}});
+$("novaMesa").onclick=()=>{if(D){novaMesa();if(innerWidth<1000)$("det").scrollIntoView({behavior:"smooth"})}};
+$("abrirN8n").href=`${location.protocol}//${location.hostname}:5678/`;
+addEventListener("resize",()=>{if(D)montarLayout()});
+atualizar().then(()=>requestAnimationFrame(loop));setInterval(atualizar,2000);
 </script>
 </body>
 </html>

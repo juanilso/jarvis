@@ -26,6 +26,7 @@ import kb  # noqa: E402
 import hermes_cliente as hermes  # noqa: E402
 import rotinas  # noqa: E402
 import atendimento  # noqa: E402
+import escritorio  # noqa: E402
 import atend_config  # noqa: E402
 atendimento.iniciar_fila()  # mensagens que o robô inicia saem por uma fila protegida
 import vigia_whatsapp  # noqa: E402
@@ -650,10 +651,17 @@ class Handler(BaseHTTPRequestHandler):
             agora = time.time()
             agentes = {n: dict(e, segundos=int(agora - e["desde"])) for n, e in ESCRITORIO.items()
                        if e.get("estado") == "ativo" or agora - e.get("fim", agora) < 60}
-            return self._json({"agentes": agentes, "rodando": pool.resumo(), "hermes": hermes.ocupado(), "ollama": core.OLLAMA["ocupado"] > 0, "ias": [n for n, v in core.IAS_OCUPADAS.items() if v > 0],
-                               "atendimento": atendimento.resumo(),
-                               "hermes_ligado": hermes.configurado(), "rotinas": rotinas.listar(20),
-                               "n8n": bool(os.environ.get("JARVIS_GATILHO_TOKEN")), "projeto": estado.ler()["projeto"]})
+            ias = [n for n, v in core.IAS_OCUPADAS.items() if v > 0] + (["ollama"] if core.OLLAMA["ocupado"] > 0 else [])
+            ctx = {"agentes": agentes, "rodando": pool.resumo(), "hermes": hermes.ocupado(), "ias": ias,
+                   "atendimento": atendimento.resumo(), "hermes_ligado": hermes.configurado(), "rotinas": rotinas.listar(20),
+                   "n8n": bool(os.environ.get("JARVIS_GATILHO_TOKEN"))}
+            try:
+                sit = escritorio.situacao(ctx)
+            except Exception as e:  # noqa: BLE001 (o escritório nunca derruba o painel)
+                sit = {"jarvis": {"estado": "erro", "texto": f"erro ao ler o escritório: {e}"}}
+            ctx.pop("atendimento")
+            return self._json(dict(ctx, mesas=escritorio.mesas(), situacao=sit, setores=escritorio.SETORES,
+                                   projeto=estado.ler()["projeto"]))
         if url.path == "/escritorio":
             caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), "escritorio.html")
             with open(caminho, encoding="utf-8") as f:
@@ -937,6 +945,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
+        if url.path in ("/api/escritorio/mesa", "/api/escritorio/apagar"):
+            try:
+                if url.path.endswith("apagar"):
+                    escritorio.apagar_mesa(str(dados.get("id") or ""))
+                    return self._json({"ok": True})
+                return self._json({"ok": True, "id": escritorio.salvar_mesa(dados)})
+            except ValueError as e:
+                return self._json({"ok": False, "erro": str(e)}, 400)
         if url.path == "/api/atendente":
             import atendente
             n = self._linha(url)

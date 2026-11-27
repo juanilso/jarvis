@@ -92,7 +92,8 @@ RUN install -m 755 /opt/jarvis-bots/jarvis-busca /usr/local/bin/jarvis-busca \
  && install -m 755 /opt/jarvis-bots/jarvis-memoria /usr/local/bin/jarvis-memoria \
  && install -m 755 /opt/jarvis-bots/jarvis-servidor /usr/local/bin/jarvis-servidor \
  && install -m 755 /opt/jarvis-bots/jarvis-navegador-pc-mcp /usr/local/bin/jarvis-navegador-pc-mcp \
- && install -m 755 /opt/jarvis-bots/jarvis-atendimento /usr/local/bin/jarvis-atendimento
+ && install -m 755 /opt/jarvis-bots/jarvis-atendimento /usr/local/bin/jarvis-atendimento \
+ && install -m 755 /opt/jarvis-bots/ffmpeg-gentil /usr/local/bin/ffmpeg
 RUN chmod +x /usr/local/bin/primeiro-uso /usr/local/bin/jarvis-extras \
  && echo 'alias jarvis-auto="claude --dangerously-skip-permissions"' >> /home/dev/.bashrc \
  && echo '[ -f ~/.jarvis-ok ] || echo ">> Primeira vez? Rode: primeiro-uso"' >> /home/dev/.bashrc

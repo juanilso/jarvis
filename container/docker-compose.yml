@@ -58,6 +58,7 @@ services:
       - dev-home:/home/dev/.cache          # modelo de transcrição fica salvo aqui
     depends_on: [dev]
     mem_limit: 3g
+    cpus: "${JARVIS_CPUS_VIDEO:-1.0}"   # vídeo/áudio pesado não trava a VPS (ajuste no .env; não passe do nº de núcleos)
     restart: unless-stopped
 
   # Acesso web (VS Code no navegador): docker compose --profile web up -d
@@ -119,6 +120,7 @@ services:
       - "127.0.0.1:8081:8081"   # prévia dos sites (botão 👁 no painel)
     depends_on: [dev]
     mem_limit: 4g
+    cpus: "${JARVIS_CPUS_VIDEO:-1.0}"   # vídeo/áudio pesado não trava a VPS (ajuste no .env; não passe do nº de núcleos)
     restart: unless-stopped
 
   # Hermes Agent (Nous Research, MIT) como AJUDANTE do Jarvis: ./hermes-configurar.sh

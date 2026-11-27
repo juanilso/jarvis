@@ -140,7 +140,8 @@ def transcrever(caminho):
     with _whisper["lock"]:
         if _whisper["model"] is None:
             from faster_whisper import WhisperModel  # carregado só quando necessário
-            _whisper["model"] = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+            _whisper["model"] = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8",  # não ocupa a VPS toda
+                                             cpu_threads=int(os.environ.get("JARVIS_WHISPER_THREADS") or max(1, (os.cpu_count() or 2) // 2)))
         segmentos, _ = _whisper["model"].transcribe(audio, language="pt", vad_filter=True)
         return " ".join(s.text.strip() for s in segmentos).strip()
 

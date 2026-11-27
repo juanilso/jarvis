@@ -565,7 +565,7 @@ def _quadros(pecas, final, W, H, total):
 
 
 # ------------------------------------------------------------------ gerar tudo
-def gerar(tipo, id_, usar_trailer=True, cfg=None):
+def _gerar(tipo, id_, usar_trailer=True, cfg=None):
     cfg = cfg or config()
     TRABALHO.update(rodando=True, etapa="buscando os dados no TMDB", erro="", resultado=None)
     try:
@@ -696,3 +696,11 @@ def gerar_fundo(tipo, id_, usar_trailer=True, avisar=True, link=None):
                 rotinas.avisar_telegram(f"🎬 Não consegui gerar o vídeo: {type(e).__name__}: {str(e)[:200]}")
     TRABALHO.update(rodando=True, etapa="começando", erro="", resultado=None)
     threading.Thread(target=rodar, daemon=True).start()
+
+
+def gerar(tipo, id_, usar_trailer=True, cfg=None):
+    """Uma renderização pesada por vez (se os jogos estiverem gerando, espera)."""
+    import pesado
+    TRABALHO.update(rodando=True, etapa="na fila: esperando outro vídeo terminar", erro="", resultado=None)
+    with pesado.um_por_vez():
+        return _gerar(tipo, id_, usar_trailer, cfg)
