@@ -296,6 +296,48 @@ def iniciar(texto, veio_de_audio):
     return None
 
 
+_PARAR = re.compile(r"^\W*(?:para|pare|parar|cancela|cancelar|interrompe|interromper|chega|espera|aguarda)\b", re.I)
+
+
+def maos_livres_audio(caminho, aberta, modo="normal"):
+    """Uma fala captada no modo mãos livres. modo: normal | tocando (ele está falando: você quer interromper)
+    | trabalhando (ele está executando um pedido). Devolve {"acao": ..., "texto": ..., "sem": semelhança da voz}."""
+    import voz_dono
+    cfg = voz_dono.config()
+    so_dono = bool(cfg["ligado"] and cfg.get("assinatura"))
+    sem = None
+    if so_dono:
+        try:
+            ok, sem = voz_dono.verificar(caminho)
+        except Exception as e:  # noqa: BLE001 (se o reconhecimento falhar, segue sem ele)
+            print("reconhecimento de voz falhou:", e, flush=True)
+            ok = True
+        if not ok:
+            return {"acao": "outra_voz", "sem": sem}
+    if modo == "tocando" and not cfg.get("interromper", True):
+        return {"acao": "ignorar", "sem": sem}
+    try:
+        texto = core.transcrever(caminho, dica="Jarvis.")
+    except Exception as e:  # noqa: BLE001
+        print("erro na transcrição:", e, flush=True)
+        return {"acao": "ignorar", "erro": "falha na transcrição", "sem": sem}
+    # interromper a fala dele: com a sua voz reconhecida, qualquer frase sua; sem reconhecimento, só com "Jarvis, ..."
+    acao, pedido = core.maos_livres(texto, aberta or (modo == "tocando" and so_dono))
+    if modo == "trabalhando":  # ele está executando: só "Jarvis, para" (ou cancela/espera) faz efeito
+        if acao == "pedido" and _PARAR.search(pedido) and len(pedido.split()) <= 5:
+            pool.de(estado.ler()["projeto"]).parar()
+            publicar({"tipo": "sistema", "texto": "⏹ Parado por voz."})
+            return {"acao": "parou", "texto": pedido, "sem": sem}
+        return {"acao": "ocupado" if acao in ("pedido", "chamou") else acao, "texto": pedido or texto, "sem": sem}
+    if acao != "pedido":
+        return {"acao": acao, "texto": texto, "sem": sem}
+    if modo == "tocando":
+        pedido = "(Interrompi sua fala para corrigir/acrescentar) " + pedido
+    erro = iniciar(pedido, veio_de_audio=True)
+    return {"acao": "pedido", "texto": pedido.replace("(Interrompi sua fala para corrigir/acrescentar) ", ""), "erro": erro,
+            "sem": sem, "interrompeu": modo == "tocando"}
+
+
 def iniciar_com_anexos(texto, nomes, veio_de_audio=False):
     """Mensagem do painel com imagens/vídeos: prepara os anexos (quadros e fala do vídeo) e roda."""
     import anexos
@@ -647,6 +689,9 @@ class Handler(BaseHTTPRequestHandler):
                                                      "relatorio", "proposta", "rodando")})
         if url.path == "/api/whatsapp/faq":
             return self._json({"texto": atendimento.ler_faq(), "caminho": atendimento.FAQ})
+        if url.path == "/api/voz-dono":
+            import voz_dono
+            return self._json(voz_dono.publico())
         if url.path == "/api/escritorio":
             agora = time.time()
             agentes = {n: dict(e, segundos=int(agora - e["desde"])) for n, e in ESCRITORIO.items()
@@ -886,6 +931,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": msg})
             except projetos.Erro as e:
                 return self._json({"erro": str(e)}, 400)
+        if url.path == "/api/voz-dono/amostra":  # cadastro da sua voz: uma frase por vez (wav no corpo)
+            import voz_dono
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                f.write(self._corpo())
+                caminho = f.name
+            try:
+                n = urllib.parse.parse_qs(url.query).get("n", ["0"])[0]
+                if n == "teste":
+                    sem, passa = voz_dono.semelhanca(caminho)
+                    return self._json({"ok": True, "sem": sem, "passa": passa})
+                return self._json({"ok": True, "segundos": voz_dono.salvar_amostra(n, caminho)})
+            except (ValueError, OSError, RuntimeError) as e:
+                return self._json({"ok": False, "erro": str(e)}, 400)
+            finally:
+                os.unlink(caminho)
         if url.path in ("/api/audio", "/api/atendente/audio"):
             tipo_ct = self.headers.get("Content-Type") or ""
             sufixo = ".mp4" if "mp4" in tipo_ct else ".wav" if "wav" in tipo_ct else ".webm"
@@ -894,21 +954,18 @@ class Handler(BaseHTTPRequestHandler):
             with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as f:
                 f.write(self._corpo())
                 caminho = f.name
+            if maos:
+                try:
+                    return self._json(maos_livres_audio(caminho, q_a.get("aberta", ["0"])[0] == "1", q_a.get("modo", ["normal"])[0]))
+                finally:
+                    os.unlink(caminho)
             try:
-                texto = core.transcrever(caminho, dica="Jarvis." if maos else None)
+                texto = core.transcrever(caminho)
             except Exception as e:  # noqa: BLE001
                 print("erro na transcrição:", e, flush=True)
-                if maos:
-                    return self._json({"acao": "ignorar", "erro": "falha na transcrição"})
                 return self._json({"erro": "Não consegui transcrever o áudio."}, 500)
             finally:
                 os.unlink(caminho)
-            if maos:  # mãos livres: só age se chamaram o Jarvis (ou se a conversa está aberta)
-                acao_m, pedido_m = core.maos_livres(texto, q_a.get("aberta", ["0"])[0] == "1")
-                if acao_m != "pedido":
-                    return self._json({"acao": acao_m, "texto": texto})
-                erro = iniciar(pedido_m, veio_de_audio=True)
-                return self._json({"acao": "pedido", "texto": pedido_m, "erro": erro})
             if not texto:
                 return self._json({"erro": "Não entendi o áudio. Pode repetir?"}, 400)
             if url.path == "/api/atendente/audio":  # conversa por voz com a Juliana
@@ -956,6 +1013,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "erro": str(e)[:300]}, 400)
             return self._json({"erro": "ação desconhecida"}, 404)
         dados = json.loads(self._corpo() or b"{}")
+        if url.path in ("/api/voz-dono/concluir", "/api/voz-dono/config", "/api/voz-dono/apagar"):
+            import voz_dono
+            try:
+                acao_v = url.path.rsplit("/", 1)[1]
+                r = (voz_dono.concluir_cadastro() if acao_v == "concluir" else voz_dono.apagar() if acao_v == "apagar"
+                     else voz_dono.salvar(dados))
+                return self._json(dict(r, ok=True))
+            except (ValueError, OSError, RuntimeError) as e:
+                return self._json({"ok": False, "erro": f"{e}"}, 400)
         if url.path in ("/api/escritorio/mesa", "/api/escritorio/apagar"):
             try:
                 if url.path.endswith("apagar"):

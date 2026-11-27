@@ -111,6 +111,23 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.57: mãos livres reconhece a sua voz, modo espera/ativo e interrupção
+
+**Sua voz** (🧠 Cérebro › 🎧 Mãos livres e reconhecimento da minha voz)
+- Grave 3 frases e conclua: a partir daí só a **sua** voz aciona o Jarvis (TV, visitas e a própria voz dele são ignoradas).
+- Roda no seu servidor: modelo aberto WeSpeaker (~26 MB, baixado do Hugging Face no primeiro cadastro), sem serviço externo.
+- "Testar" mostra quanto a fala se parece com a sua; o limite é ajustável (o cadastro já sugere um).
+
+**Espera e ativo**
+- Em espera, só atende "Ok Jarvis, …".
+- Ativo: depois de "Jarvis" sozinho, ou quando **ele te faz uma pergunta**, você tem alguns segundos (3 por padrão, ajustável)
+  para começar a responder sem dizer "Jarvis". Passou o tempo, volta para a espera. Resposta sem pergunta já volta para a espera.
+
+**Interromper**
+- Enquanto ele fala: comece a falar; a voz dele abaixa na hora e, se for você, ele para e recebe a correção
+  (sem voz cadastrada, diga "Jarvis, …").
+- Enquanto ele trabalha num pedido: "Jarvis, para" cancela; depois é só dizer o que mudar.
+
 ## Jarvis 1.56: mãos livres (fale "Jarvis, …" sem apertar nada)
 
 No painel, toque no **🎧** (ao lado do microfone) uma vez. A partir daí:

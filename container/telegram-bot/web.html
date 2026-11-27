@@ -146,8 +146,14 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 .chG{font-size:11px;letter-spacing:2px;color:var(--c2);margin-top:8px}.chL{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:8px 10px}
 .chL b{font-weight:600;font-size:14px}.chL small{color:var(--m);font-size:12px;display:block}.chL .bt{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.chL .bt button{min-height:32px;padding:4px 10px;font-size:12px}
 .chL .ed{grid-column:1/-1;display:none;gap:6px;flex-wrap:wrap}.chL.editando .ed{display:flex}.chL .ed input{flex:1;min-width:200px}.chOk{color:#86efac}.chNao{color:#fca5a5}
-#chaves,#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
-#chaves.aberto,#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
+#mvoz .caixa{width:min(680px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px 22px;position:relative;display:flex;flex-direction:column;gap:10px}
+#mvoz h2{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0}#mvoz .fechar{position:absolute;right:12px;top:10px}
+#mvoz label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--m)}#mvoz label.mvC{flex-direction:row;align-items:center;gap:8px;color:var(--t)}
+#mvoz select{min-height:38px}#mvoz .lin{display:flex;gap:8px;flex-wrap:wrap}
+.mvF{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13.5px}
+.mvF small{grid-column:1/-1;color:var(--m);font-size:12px}.mvF.ok{border-color:rgba(52,211,153,.5)}.mvF.ok small{color:#86efac}
+#mvoz,#chaves,#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#mvoz.aberto,#chaves.aberto,#gestao.aberto,#kb.aberto,#guia.aberto,#cerebro.aberto,#filmes.aberto{display:flex}
 #kb .caixa{width:min(980px,100%);background:#06111b;border:1px solid var(--ln2);border-radius:12px;padding:18px;position:relative}
 #kb .caixa>h2,#kb .caixa>h3{font:500 15px var(--mono);letter-spacing:.2em;color:var(--c2);margin:0 0 12px}#kb .caixa>h3{font-size:11px;color:var(--c);margin:14px 0 6px}
 #kb .lin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#kb input[type=text]{flex:1;min-width:160px;padding:8px 10px;font:inherit;color:var(--t);background:#081420;border:1px solid var(--ln);border-radius:6px}
@@ -499,6 +505,27 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica" id="fmStatus"></div>
   <div id="fmVideos" class="lin"></div>
 </div></div>
+<div id="mvoz"><div class="caixa">
+  <button class="fechar" id="mvFechar" title="Fechar">✕</button>
+  <h2>🎧 MÃOS LIVRES</h2>
+  <p class="waDica">Ligue no 🎧 ao lado do microfone. Em <b>espera</b>, ele só atende quando você diz <b>“Ok Jarvis, …”</b>.
+    Quando ele te faz uma pergunta, você tem alguns segundos para responder sem dizer “Jarvis”. Enquanto ele fala, você pode interromper.</p>
+  <div class="chG">SUA VOZ</div>
+  <div id="mvEstado" class="waDica"></div>
+  <div class="waDica">Para cadastrar, grave as 3 frases em voz normal, no lugar onde você costuma usar (perto do PC ou do celular).
+    O reconhecimento roda no seu servidor; o áudio não vai para nenhum serviço externo.</div>
+  <div id="mvFrases"></div>
+  <div class="lin"><button id="mvConcluir" disabled>✅ Concluir cadastro</button><button id="mvTestar">🎙 Testar</button><button id="mvApagar">🗑 Apagar cadastro</button></div>
+  <div id="mvTesteR" class="waDica"></div>
+  <label class="mvC"><input type="checkbox" id="mvSo"> Só responder à minha voz</label>
+  <label>Quão parecida precisa ser: <b id="mvLimV"></b><input type="range" id="mvLim" min="0.3" max="0.8" step="0.01"></label>
+  <div class="waDica">Se ele não reconhecer você, baixe um pouco. Se aceitar outra pessoa, suba.</div>
+  <div class="chG">CONVERSA</div>
+  <label>Tempo para responder quando ele pergunta algo<select id="mvJan"><option value="3">3 segundos</option><option value="5">5 segundos</option><option value="8">8 segundos</option><option value="15">15 segundos</option></select></label>
+  <label class="mvC"><input type="checkbox" id="mvInt"> Deixar eu interromper enquanto ele fala</label>
+  <div class="waDica">Sem a voz cadastrada, para interromper diga “Jarvis, …”. Com ela, qualquer frase sua interrompe.
+    Enquanto ele trabalha num pedido, “Jarvis, para” cancela. “Pode dormir” volta para a espera.</div>
+</div></div>
 <div id="chaves"><div class="caixa">
   <button class="fechar" id="chFechar" title="Fechar">✕</button>
   <h2>🔑 CHAVES E CONEXÕES</h2>
@@ -520,6 +547,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <button class="fechar" id="cbFechar" title="Fechar">✕</button>
   <h2>🧠 CÉREBRO DO JARVIS</h2>
   <button id="cbChaves" style="align-self:flex-start">🔑 Chaves e conexões (trocar, testar, remover)</button>
+  <button id="btnMaos" style="align-self:flex-start">🎧 Mãos livres e reconhecimento da minha voz</button>
   <p class="waDica">O Jarvis planeja cada demanda e escolhe o modelo e o esforço de cada agente. Aqui você define os limites.</p>
   <label>Modelo do Jarvis (orquestrador)<select id="cbModelo"><option value="opus">Opus 5.5 (recomendado)</option><option value="sonnet">Sonnet 5.5 (mais barato)</option><option value="haiku">Haiku 5.5 (só para testes)</option><option value="fable">Fable 5.2 (o mais forte, sempre)</option></select></label>
   <label>Esforço do Jarvis<select id="cbEsforco"><option value="auto">Automático (alto para planejar e começar; médio para continuar e validar)</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option><option value="xhigh">Extra-alto</option><option value="max">Máximo</option></select></label>
@@ -798,13 +826,13 @@ async function painel(){
 
 /* ---------- eventos ---------- */
 let hermesFala=false;
-function tocar(src,el,quem){
+function tocar(src,el,quem,texto){
   const a=document.createElement("audio");a.controls=true;a.src=src;el.appendChild(a);
-  if(window.MAOS)MAOS.respostaComAudio(a);
+  if(window.MAOS)MAOS.respostaComAudio(a,texto);
   if(ctx&&ctx.state==="running"){try{const s=ctx.createMediaElementSource(a);s.connect(analyser);}catch(e){}}
   a.onplay=()=>{hermesFala=quem==="hermes";setModo("falando",hermesFala?"Hermes":"")};
   a.onended=a.onpause=()=>{hermesFala=false;setModo(ocupado?"pensando":"espera")};
-  if(carregado)a.play().catch(()=>{if(window.MAOS)MAOS.respostaSemAudio()});
+  if(carregado)a.play().catch(()=>{if(window.MAOS)MAOS.respostaSemAudio(texto)});
 }
 let runDet=null,inicioRun=0,ver=0;
 function linhaFeed(t){const f=$("feed");const d=document.createElement("div");d.className="fl";d.textContent=t;f.appendChild(d);while(f.children.length>5)f.firstChild.remove()}
@@ -823,7 +851,7 @@ function mostrar(ev){
   if(ev.tipo==="usuario")add("msg eu",esc(ev.texto)+htmlAnexos(ev.anexos)+h);
   else if(ev.tipo==="agente_inicio"){add("ev",`${ev.emoji} ${esc(ev.agente)} › ${esc(ev.descricao)}`);agente(ev);if(carregado)setModo("pensando",`${ev.agente}: ${ev.descricao}`)}
   else if(ev.tipo==="agente_fim"){add("ev "+(ev.erro?"erro":"ok"),`${ev.emoji} ${esc(ev.agente)} ${ev.erro?"✕ erro":"✓ concluiu"} (${ev.segundos}s)`);agente(ev)}
-  else if(ev.tipo==="erro"){add("msg jv err","⚠ "+esc(ev.texto)+h);if(window.MAOS)MAOS.respostaSemAudio()}
+  else if(ev.tipo==="erro"){add("msg jv err","⚠ "+esc(ev.texto)+h);if(window.MAOS)MAOS.respostaSemAudio("")}
   else if(ev.tipo==="sistema")add("ev",esc(ev.texto));
   else if(ev.tipo==="info"){add("msg jv",fmt(ev.texto)+miniPrints(ev)+h);if(carregado)painel()}
   else if(ev.tipo==="ollama"){add("msg jv ollama",'<div class="quem">🦙 OLLAMA</div>'+fmt(ev.texto)+h)}
@@ -832,7 +860,7 @@ function mostrar(ev){
   else if(ev.tipo==="resposta"){
     const custo=ev.custo?`<div class="hora">custo US$ ${Number(ev.custo).toFixed(4)}</div>`:"";
     const d=add("msg jv",(ev.erro?"⚠ ":"")+fmt(ev.texto)+miniPrints(ev)+custo+h);
-    if(ev.voz)tocar(ev.voz,d);else if(window.MAOS)MAOS.respostaSemAudio();
+    if(ev.voz)tocar(ev.voz,d,"",ev.texto);else if(window.MAOS)MAOS.respostaSemAudio(ev.texto);
     if(carregado)painel();
   }
 }
@@ -1312,24 +1340,28 @@ $("mic").onclick=async()=>{
   }catch(e){add("ev erro","Não consegui acessar o microfone: "+esc(e.message))}
 };
 
-/* ---------- mãos livres: "Jarvis, ..." sem apertar o microfone ----------
-   O navegador fica ouvindo; quando você fala, grava só aquele trecho e manda para o servidor transcrever.
-   Só vira pedido se começar com "Jarvis" ou se a conversa estiver aberta (logo depois de ele responder).
-   Enquanto ele pensa e fala, não escuta (para não ouvir a própria voz). "Pode dormir" fecha a conversa. */
+/* ---------- mãos livres: "Ok Jarvis, ..." sem apertar o microfone ----------
+   ESPERA: ignora tudo que não começar com "Jarvis" (e, com a voz cadastrada, tudo que não for a sua voz).
+   ATIVO: logo depois de "Jarvis" ou quando ele te faz uma pergunta, você tem alguns segundos para começar a falar
+   sem dizer "Jarvis". Passou o tempo, volta para a espera.
+   Enquanto ele fala, dá para interromper (com a voz cadastrada, qualquer frase sua; sem ela, "Jarvis, ...").
+   Enquanto ele trabalha, "Jarvis, para" interrompe. "Pode dormir" volta para a espera. */
 window.MAOS=(()=>{
-  const JANELA=45000,PREROLL=0.45,FIM_SIL=1.3,MAX_SEG=60,MIN_SEG=0.55;
-  let st=null,ac=null,proc=null,ligado=false,estadoM="off",abertaAte=0,esperando=false,esperaDesde=0,wl=null;
-  let piso=0.004,falando=false,acima=0,silencio=0,buf=[],pre=[],durFala=0,tAviso=null;
+  const PREROLL=0.45,FIM_SIL=1.2,MAX_SEG=60,MIN_SEG=0.5;
+  let st=null,ac=null,proc=null,ligado=false,abertaAte=0,enviando=false,esperando=false,esperaDesde=0,wl=null,pausado=false;
+  let piso=0.004,falando=false,acima=0,silencio=0,buf=[],pre=[],durFala=0,tAviso=null,abertaNoInicio=false,modoFala="normal";
+  let cfg={janela:3,ligado:false,interromper:true,cadastrada:false},atual=null,interrompido=false,tocando=false;
   const btn=$("maos"),av=document.createElement("div");av.id="maosAviso";document.body.appendChild(av);
   function aviso(t,ms){av.textContent=t;av.style.display=t?"block":"none";clearTimeout(tAviso);if(t&&ms)tAviso=setTimeout(()=>{av.style.display="none"},ms)}
   function bip(fs,dur=0.09){try{const c=ac||new AudioContext();let t=c.currentTime;fs.forEach(f=>{const o=c.createOscillator(),g=c.createGain();
     o.frequency.value=f;o.type="sine";g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.18,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dur+0.02);t+=dur+0.03})}catch(e){}}
   const aberta=()=>Date.now()<abertaAte;
-  function pintar(){btn.className=!ligado?"":esperando?"on pausa":falando?"on falando":aberta()?"on aberta":"on";
-    btn.title=!ligado?"Mãos livres: diga “Jarvis, …” e fale a demanda, sem apertar nada":esperando?"Mãos livres: esperando o Jarvis responder":
-      aberta()?"Conversa aberta: pode falar direto (sem dizer Jarvis)":"Mãos livres ligado: diga “Jarvis, …”"}
-  function abrir(){abertaAte=Date.now()+JANELA;pintar()}
+  function pintar(){btn.className=!ligado?"":falando?"on falando":enviando||esperando?"on pausa":aberta()?"on aberta":"on";
+    btn.title=!ligado?"Mãos livres: diga “Ok Jarvis, …” e fale a demanda, sem apertar nada":esperando?"Jarvis respondendo (dá para interromper falando)":
+      aberta()?"Pode falar: ele está esperando sua resposta":"Em espera: diga “Ok Jarvis, …”"+(cfg.ligado?" (só a sua voz)":"")}
+  function abrir(seg){abertaAte=Date.now()+seg*1000;pintar()}
+  function fechar(){abertaAte=0;pintar()}
   function wav(amostras,taxa){ // reamostra para 16 kHz mono 16 bits
     const alvo=16000,r=taxa/alvo,n=Math.floor(amostras.length/r),b=new ArrayBuffer(44+n*2),v=new DataView(b);
     const s=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
@@ -1337,32 +1369,43 @@ window.MAOS=(()=>{
     v.setUint32(24,alvo,true);v.setUint32(28,alvo*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,"data");v.setUint32(40,n*2,true);
     for(let i=0;i<n;i++){let x=amostras[Math.floor(i*r)];x=Math.max(-1,Math.min(1,x));v.setInt16(44+i*2,x<0?x*0x8000:x*0x7fff,true)}
     return new Blob([b],{type:"audio/wav"})}
-  async function enviar(pedacos){
-    const total=pedacos.reduce((a,p)=>a+p.length,0),tudo=new Float32Array(total);let o=0;pedacos.forEach(p=>{tudo.set(p,o);o+=p.length});
-    esperando=true;esperaDesde=Date.now();pintar();aviso("⏳ entendendo…");
-    let j={};try{const r=await fetch("/api/audio?maos=1&aberta="+(aberta()?1:0),{method:"POST",headers:{"Content-Type":"audio/wav"},body:wav(tudo,ac.sampleRate)});j=await r.json()}catch(e){j={acao:"ignorar"}}
-    if(j.acao==="pedido"&&!j.erro){bip([660,880]);aviso("🗣 "+j.texto,5000);abertaAte=0;return} // continua esperando a resposta
-    esperando=false;
-    if(j.acao==="pedido"&&j.erro){bip([330,250],0.15);aviso("⚠ "+j.erro,6000);abrir()}
-    else if(j.acao==="chamou"){bip([520,780]);aviso("🎧 Pode falar…",4000);abrir()}
-    else if(j.acao==="dormir"){bip([700,450]);aviso("💤 Até já. Me chame com “Jarvis”.",4000);abertaAte=0}
-    else aviso("");
+  const juntar=p=>{const t=new Float32Array(p.reduce((a,x)=>a+x.length,0));let o=0;p.forEach(x=>{t.set(x,o);o+=x.length});return t};
+  function semTxt(j){return j.sem!=null?` (voz ${Math.round(j.sem*100)}%)`:""}
+  async function enviar(pedacos,modo,abertaFlag){
+    enviando=true;pintar();if(modo==="normal")aviso("⏳ entendendo…");
+    let j={};try{const r=await fetch(`/api/audio?maos=1&modo=${modo}&aberta=${abertaFlag?1:0}`,{method:"POST",headers:{"Content-Type":"audio/wav"},body:wav(juntar(pedacos),ac.sampleRate)});j=await r.json()}catch(e){j={acao:"ignorar"}}
+    enviando=false;
+    if(modo==="tocando"&&atual){if(j.acao==="pedido"){interrompido=true;atual.pause()}else atual.volume=1}
+    if(j.acao==="pedido"&&!j.erro){bip([660,880]);aviso((j.interrompeu?"✋ ":"🗣 ")+j.texto,5000);fechar();esperando=true;esperaDesde=Date.now()}
+    else if(j.acao==="pedido"){bip([330,250],0.15);aviso("⚠ "+j.erro,6000);abrir(cfg.janela+3)}
+    else if(j.acao==="chamou"){bip([520,780]);aviso("🎧 Pode falar…",4000);abrir(Math.max(cfg.janela,3)+3)}
+    else if(j.acao==="dormir"){bip([700,450]);aviso("💤 Em espera. Me chame com “Ok Jarvis”.",4000);fechar()}
+    else if(j.acao==="parou"){bip([700,450]);aviso("⏹ Parei. Pode falar o que precisa.",5000);esperando=false;abrir(cfg.janela+5)}
+    else if(j.acao==="ocupado"){bip([440],0.12);aviso("⏳ Ainda estou trabalhando. Diga “Jarvis, para” para interromper.",6000)}
+    else if(j.acao==="outra_voz"){if(modo==="normal")aviso("🔇 não é a sua voz"+semTxt(j),2500)}
+    else if(modo==="normal")aviso("");
     pintar()}
   function processar(e){
+    if(pausado||enviando)return;
     const x=e.inputBuffer.getChannelData(0);
-    if(esperando){if(Date.now()-esperaDesde>15*60000){esperando=false;pintar()}return} // nunca fica preso
+    if(esperando&&Date.now()-esperaDesde>15*60000)esperando=false; // nunca fica preso
+    const modo=esperando?(tocando?"tocando":"trabalhando"):"normal";
+    if(modo==="tocando"&&!cfg.interromper&&!falando)return;
     let s=0;for(let i=0;i<x.length;i++)s+=x[i]*x[i];const rms=Math.sqrt(s/x.length),seg=x.length/ac.sampleRate;
-    const lim=Math.max(piso*3.2,0.012);const copia=new Float32Array(x);
+    const lim=Math.max(piso*3.2,0.012)*(modo==="tocando"?2.2:1);const copia=new Float32Array(x);
     if(!falando){
       pre.push(copia);while(pre.length*seg>PREROLL)pre.shift();
-      if(rms>lim){if(++acima>=2){falando=true;buf=pre.slice();pre=[];silencio=0;durFala=0;pintar()}}
-      else{acima=0;piso=piso*0.97+rms*0.03}
+      if(rms>lim){if(++acima>=(modo==="tocando"?3:2)){falando=true;modoFala=modo;abertaNoInicio=aberta();buf=pre.slice();pre=[];silencio=0;durFala=0;
+        if(modo==="tocando"&&atual)atual.volume=0.25; // abaixa a voz dele enquanto confere se é você
+        pintar()}}
+      else{acima=0;if(modo!=="tocando")piso=piso*0.97+rms*0.03}
       return}
     buf.push(copia);durFala+=seg;
     silencio=rms<lim*0.7?silencio+seg:0;
     if(silencio>=FIM_SIL||durFala>=MAX_SEG){falando=false;acima=0;const fala=durFala-silencio;pintar();
-      if(fala>=MIN_SEG)enviar(buf);buf=[]}
+      if(fala>=MIN_SEG)enviar(buf,modoFala,abertaNoInicio);else if(modoFala==="tocando"&&atual)atual.volume=1;buf=[]}
   }
+  async function carregarCfg(){try{const r=await fetch("/api/voz-dono");if(r.ok)cfg=Object.assign(cfg,await r.json())}catch(e){}}
   async function ligar(){
     if(!navigator.mediaDevices){add("ev erro","O mãos livres precisa de HTTPS (Tailscale) ou localhost.");return}
     try{st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
@@ -1370,24 +1413,73 @@ window.MAOS=(()=>{
     ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state!=="running")await ac.resume();
     const src=ac.createMediaStreamSource(st);proc=ac.createScriptProcessor(4096,1,1);const mudo=ac.createGain();mudo.gain.value=0;
     src.connect(proc);proc.connect(mudo);mudo.connect(ac.destination);proc.onaudioprocess=processar;
-    ligado=true;esperando=false;falando=false;abertaAte=0;prepararAudio();
+    ligado=true;esperando=enviando=falando=false;abertaAte=0;prepararAudio();await carregarCfg();
     try{wl=await navigator.wakeLock.request("screen")}catch(e){}
-    bip([520,780]);aviso("🎧 Mãos livres ligado. Diga “Jarvis, …”",5000);pintar();
+    bip([520,780]);aviso(cfg.cadastrada?"🎧 Em espera. Diga “Ok Jarvis, …”"+(cfg.ligado?" (só a sua voz)":""):"🎧 Em espera. Diga “Ok Jarvis, …”. Cadastre sua voz em 🧠 Cérebro › 🎧",6000);pintar();
     try{localStorage.setItem("jarvisMaos","1")}catch(e){}}
-  function desligar(){ligado=false;esperando=false;falando=false;abertaAte=0;
+  function desligar(){ligado=false;esperando=enviando=falando=false;abertaAte=0;
     try{proc&&(proc.onaudioprocess=null);st&&st.getTracks().forEach(t=>t.stop());ac&&ac.close()}catch(e){}
     st=ac=proc=null;try{wl&&wl.release()}catch(e){}wl=null;aviso("");pintar();
     try{localStorage.removeItem("jarvisMaos")}catch(e){}}
   btn.onclick=()=>ligado?desligar():ligar();
   document.addEventListener("visibilitychange",async()=>{if(ligado&&document.visibilityState==="visible"&&!wl){try{wl=await navigator.wakeLock.request("screen")}catch(e){}}});
-  let tocando=false;document.addEventListener("play",()=>tocando=true,true);document.addEventListener("ended",()=>tocando=false,true);document.addEventListener("pause",()=>tocando=false,true);
-  setInterval(()=>{if(!ligado)return;if(!esperando&&!falando)pintar();
-    if(esperando&&!ocupado&&!tocando&&Date.now()-esperaDesde>25000)retomar()},1000); // pedido que não gerou resposta: volta a ouvir
-  function retomar(){if(!ligado||!esperando)return;esperando=false;abrir();bip([880],0.06);aviso("🎧 Pode responder…",3000)}
+  document.addEventListener("play",e=>{tocando=true},true);
+  const parouTocar=()=>{tocando=!![...document.querySelectorAll("audio")].find(a=>!a.paused&&!a.ended)};
+  document.addEventListener("ended",parouTocar,true);document.addEventListener("pause",parouTocar,true);
+  let ultimoTexto="";
+  const temPergunta=t=>/\?/.test(String(t||"").slice(-400));
+  function terminou(){ // ele acabou de responder: se perguntou algo, você tem alguns segundos para responder sem "Jarvis"
+    if(!ligado||!esperando)return;esperando=false;atual=null;
+    if(temPergunta(ultimoTexto)){abrir(cfg.janela);bip([880],0.06);aviso(`🎧 Pode responder (${cfg.janela}s)…`,cfg.janela*1000)}
+    else{fechar();aviso("")}}
+  setInterval(()=>{if(!ligado)return;if(!falando)pintar();
+    if(esperando&&!enviando&&!ocupado&&!tocando&&Date.now()-esperaDesde>25000)terminou()},1000); // pedido que não gerou resposta
   try{if(localStorage.getItem("jarvisMaos"))aviso("🎧 Toque no fone para voltar ao mãos livres",6000)}catch(e){}
-  return{respostaComAudio(a){if(!ligado||!esperando)return;a.addEventListener("ended",retomar);a.addEventListener("error",retomar);
-           a.addEventListener("pause",()=>{if(a.ended||!a.currentTime)return;setTimeout(()=>{if(a.paused)retomar()},800)})},
-         respostaSemAudio(){if(ligado&&esperando)setTimeout(retomar,300)},get ligado(){return ligado}}
+  return{respostaComAudio(a,texto){if(!ligado||!esperando)return;ultimoTexto=texto;atual=a;interrompido=false;
+           a.addEventListener("ended",terminou);a.addEventListener("error",terminou);
+           a.addEventListener("pause",()=>{if(interrompido||a.ended||!a.currentTime)return;setTimeout(()=>{if(a.paused&&!interrompido)terminou()},800)})},
+         respostaSemAudio(texto){if(ligado&&esperando){ultimoTexto=texto;setTimeout(terminou,300)}},
+         pausar(v){pausado=!!v;if(v){falando=false;buf=[];aviso("");pintar()}},
+         recarregar:carregarCfg,wav,get ligado(){return ligado}}
+})();
+
+/* ---------- 🎧 cadastro da sua voz e ajustes do mãos livres ---------- */
+const MV=(()=>{
+  let gr=null,d={};
+  async function carregar(){try{d=await (await fetch("/api/voz-dono")).json()}catch(e){d={}}desenhar()}
+  function desenhar(){
+    $("mvEstado").innerHTML=d.cadastrada?`✅ Voz cadastrada em ${esc(d.cadastro&&d.cadastro.quando||"")}`+
+      (d.cadastro&&d.cadastro.semelhanca_entre_frases?` · suas frases se parecem ${d.cadastro.semelhanca_entre_frases.map(x=>Math.round(x*100)+"%").join(", ")}`:""):
+      "Nenhuma voz cadastrada: o Jarvis responde a qualquer pessoa que disser “Jarvis”.";
+    $("mvSo").checked=!!d.ligado;$("mvSo").disabled=!d.cadastrada;$("mvLim").value=d.limiar||0.5;$("mvLimV").textContent=Math.round((d.limiar||0.5)*100)+"%"+(d.sugerido?` (sugerido ${Math.round(d.sugerido*100)}%)`:"");
+    $("mvJan").value=String(d.janela||3);$("mvInt").checked=d.interromper!==false;$("mvTestar").disabled=$("mvApagar").disabled=!d.cadastrada;
+    $("mvFrases").innerHTML=(d.frases||[]).map((f,i)=>`<div class="mvF" id="mvF${i+1}"><span>${i+1}. “${esc(f)}”</span><button data-n="${i+1}">🎙 Gravar</button><small></small></div>`).join("");
+    $("mvFrases").querySelectorAll("button").forEach(b=>b.onclick=()=>gravar(b,b.dataset.n));
+    $("mvConcluir").disabled=true}
+  async function capturar(){const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    const c=new (window.AudioContext||window.webkitAudioContext)(),src=c.createMediaStreamSource(s),p=c.createScriptProcessor(4096,1,1),m=c.createGain();m.gain.value=0;
+    const pcs=[];p.onaudioprocess=e=>pcs.push(new Float32Array(e.inputBuffer.getChannelData(0)));src.connect(p);p.connect(m);m.connect(c.destination);
+    return{parar(){p.onaudioprocess=null;s.getTracks().forEach(t=>t.stop());const t=new Float32Array(pcs.reduce((a,x)=>a+x.length,0));let o=0;pcs.forEach(x=>{t.set(x,o);o+=x.length});
+      const w=MAOS.wav(t,c.sampleRate);c.close();return w}}}
+  async function gravar(b,n){
+    if(gr){const w=gr.r.parar(),alvo=gr.b,nn=gr.n;gr=null;alvo.textContent="⏳";
+      const j=await (await fetch("/api/voz-dono/amostra?n="+nn,{method:"POST",headers:{"Content-Type":"audio/wav"},body:w})).json().catch(()=>({ok:false,erro:"sem conexão"}));
+      if(nn==="teste"){alvo.textContent="🎙 Testar";$("mvTesteR").textContent=j.ok?`Semelhança: ${Math.round(j.sem*100)}% → ${j.passa?"✅ reconheceu você":"❌ não reconheceu (baixe o limite)"}`:"⚠ "+j.erro;return}
+      const sm=alvo.parentNode.querySelector("small");alvo.textContent=j.ok?"✓ refazer":"🎙 Gravar";sm.textContent=j.ok?`ok (${j.segundos}s de fala)`:"⚠ "+j.erro;
+      alvo.parentNode.classList.toggle("ok",!!j.ok);$("mvConcluir").disabled=$("mvFrases").querySelectorAll(".mvF.ok").length<3;return}
+    try{gr={r:await capturar(),b,n};b.textContent="⏹ Parar"}catch(e){alert("Não consegui acessar o microfone: "+e.message)}}
+  async function post(u,body){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})})).json().catch(()=>({ok:false,erro:"sem conexão"}))}
+  async function salvar(){const j=await post("/api/voz-dono/config",{ligado:$("mvSo").checked,limiar:+$("mvLim").value,janela:+$("mvJan").value,interromper:$("mvInt").checked});
+    if(j.ok){d=j;desenhar();MAOS.recarregar()}}
+  $("mvLim").oninput=()=>{$("mvLimV").textContent=Math.round($("mvLim").value*100)+"%"};
+  ["mvSo","mvLim","mvJan","mvInt"].forEach(id=>$(id).onchange=salvar);
+  $("mvConcluir").onclick=async()=>{$("mvConcluir").textContent="⏳ analisando (na 1ª vez baixa o modelo, ~26 MB)…";
+    const j=await post("/api/voz-dono/concluir");$("mvConcluir").textContent="✅ Concluir cadastro";
+    if(j.ok){d=j;desenhar();MAOS.recarregar();$("mvTesteR").textContent="Pronto! Agora só a sua voz aciona o Jarvis. Use Testar para conferir."}else $("mvTesteR").textContent="⚠ "+j.erro};
+  $("mvApagar").onclick=async()=>{if(!confirm("Apagar o cadastro da sua voz?"))return;const j=await post("/api/voz-dono/apagar");if(j.ok){d=j;desenhar();MAOS.recarregar()}};
+  $("mvTestar").onclick=()=>gravar($("mvTestar"),"teste");
+  $("btnMaos").onclick=()=>{$("cerebro").classList.remove("aberto");$("mvoz").classList.add("aberto");MAOS.pausar(true);$("mvTesteR").textContent="";carregar()};
+  $("mvFechar").onclick=()=>{if(gr){gr.r.parar();gr=null}$("mvoz").classList.remove("aberto");MAOS.pausar(false)};
 })();
 
 /* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */
