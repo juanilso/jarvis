@@ -111,6 +111,12 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.55.1: VPS com pouca memória
+
+- `telegram` e `jarvisweb` aceitam limite de memória no `.env` (`JARVIS_MEM_TELEGRAM`, `JARVIS_MEM_WEB`).
+  Com limite menor que a memória da VPS, um vídeo grande demais é encerrado sozinho em vez de travar o servidor inteiro.
+- VPS de 4 GB sem swap: crie 4 GB de swap e use `JARVIS_MEM_WEB=1500m`, `JARVIS_MEM_TELEGRAM=1200m`, `JARVIS_CPUS_VIDEO=2`.
+
 ## Jarvis 1.55: escritório com bonequinhos + vídeo não trava mais a VPS
 
 **🏢 Escritório** (botão no painel ou `/escritorio`): planta em pixel art onde cada agente é um funcionário na mesa.
