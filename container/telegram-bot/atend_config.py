@@ -47,6 +47,9 @@ RECURSOS = {"pagamentos": True, "teste": True, "consulta": True, "jogos": True,
             "ia_caprichada": False}  # usa o modelo mais forte (entende melhor, custa mais) no atendimento  # o Jarvis cria versões diferentes de cada mensagem automática (evita texto repetido)  # False: o robô segue respondendo mesmo quando você responde (cale com #eu)
 VOZ = {"modo": "quando_audio",          # nunca | quando_audio (cliente mandou áudio ou pediu) | sempre
        "texto_junto": "quando_precisa"}  # sempre | quando_precisa (link, Pix, código) | nunca
+DONO = {"numero": "",      # seu WhatsApp pessoal (ou o próprio número do atendimento: ela fala na conversa "você")
+        "avisos": True,     # a Juliana te avisa por lá quando um cliente precisa de você, o WhatsApp cai etc.
+        "conversar": True}  # o que você escreve/fala nessa conversa vai para a Juliana (e ela responde por lá)
 VOZ_OPCOES = {"modo": ("nunca", "quando_audio", "sempre"), "texto_junto": ("sempre", "quando_precisa", "nunca")}
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
@@ -67,7 +70,8 @@ def carregar():
     return {"mensagens": {**MENSAGENS, **{k: v for k, v in (salvo.get("mensagens") or {}).items() if k in MENSAGENS and v}},
             "recursos": {**RECURSOS, **{k: bool(v) for k, v in (salvo.get("recursos") or {}).items() if k in RECURSOS}},
             "protecao": {**PROTECAO, **{k: v for k, v in (salvo.get("protecao") or {}).items() if k in PROTECAO}},
-            "voz": {**VOZ, **{k: v for k, v in (salvo.get("voz") or {}).items() if v in VOZ_OPCOES.get(k, ())}}}
+            "voz": {**VOZ, **{k: v for k, v in (salvo.get("voz") or {}).items() if v in VOZ_OPCOES.get(k, ())}},
+            "dono": {**DONO, **{k: v for k, v in (salvo.get("dono") or {}).items() if k in DONO}}}
 
 
 def salvar(novo):
@@ -81,6 +85,12 @@ def salvar(novo):
     for k, v in (novo.get("voz") or {}).items():
         if v in VOZ_OPCOES.get(k, ()):
             atual["voz"][k] = v
+    for k, v in (novo.get("dono") or {}).items():
+        if k == "numero":
+            n = re.sub(r"\D", "", str(v or ""))[:15]
+            atual["dono"]["numero"] = "55" + n if len(n) in (10, 11) else n  # sem o código do país: Brasil
+        elif k in DONO:
+            atual["dono"][k] = bool(v)
     for k, v in (novo.get("protecao") or {}).items():
         if k not in PROTECAO:
             continue
@@ -103,6 +113,10 @@ def salvar(novo):
 
 def voz():
     return carregar()["voz"]
+
+
+def dono():
+    return carregar()["dono"]
 
 
 def recurso(nome):

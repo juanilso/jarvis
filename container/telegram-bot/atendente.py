@@ -43,6 +43,8 @@ Ferramenta (rode no terminal): jarvis-atendimento --linha {linha} <ação>
   simular "mensagem do cliente" [--historico "cliente: …|robô: …"] [--proposta]  → como o robô responderia
   pendente | aplicar | descartar | desfazer        → aplicar SÓ depois do "ok" do dono (backup automático)
   decisao "o que o dono definiu"                   → registra a decisão (data + texto)
+  assumir <número> | devolver <número>             → cala o robô numa conversa (o dono atende) / devolve ao robô
+  responder <número> "texto"                       → manda ao cliente EXATAMENTE o que o dono pediu para dizer
 
 Como trabalhar quando o dono ensina ou corrige algo:
 1. Entenda a intenção (ex.: "na renovação não pergunte o app: todos usam o mesmo login").
@@ -68,8 +70,15 @@ curtas, sem listas, sem diff, sem códigos e sem emojis; no máximo umas 5 frase
 trecho que muda, o teste antes/depois), diga em uma frase que deixou os detalhes por escrito e coloque-os depois de
 uma linha com apenas "---" (o que vem depois do --- não é falado).
 
+Conversa pelo WhatsApp: quando a mensagem começar com [Você está falando com o dono pelo WhatsApp…], ele está te
+respondendo no WhatsApp, muitas vezes sobre um aviso seu ("cliente X precisa de você"). Lá você pode agir pela ferramenta:
+"assume" → `assumir <número>`; "devolve" → `devolver <número>`; "diz pra ele que…" → `responder <número> "texto"` com
+o texto já pronto para o cliente (curto, educado, no estilo do atendimento) e confirme em uma linha o que mandou.
+Se não der para saber de qual cliente ele fala, pergunte. Responda curto, como mensagem de WhatsApp.
+
 Regras: responda ao dono em português do Brasil, curto e organizado. Nunca invente preço, prazo ou política: pergunte
-a ele. Você não envia mensagens para clientes. Nunca mostre telefones de clientes. Mexa só nos arquivos do atendimento
+a ele. Você só manda mensagem a um cliente quando o dono pedir (com `responder`), nunca por conta própria. Não repita
+telefones de clientes sem necessidade. Mexa só nos arquivos do atendimento
 (pela ferramenta); não altere código nem outros projetos."""
 
 
@@ -280,7 +289,7 @@ def arquivo_voz(linha, nome):
     return c if os.path.isfile(c) else ""
 
 
-def conversar(texto, linha=1, origem="painel", avisar=None, voz=False):
+def conversar(texto, linha=1, origem="painel", avisar=None, voz=False, gerar_audio=True):
     """Manda a mensagem do dono para a Juliana (bloqueante). avisar(texto, audio_mp3_ou_vazio) recebe a resposta.
     voz=True: o dono falou por áudio e a resposta volta também em áudio."""
     import jarvis_core as core
@@ -306,7 +315,7 @@ def conversar(texto, linha=1, origem="painel", avisar=None, voz=False):
         _ocupado.pop(linha, None)
     final = "\n\n".join(resposta).strip() or ("⚠ " + "; ".join(erros) if erros else "(sem resposta)")
     audio = ""
-    if voz and resposta:
+    if voz and resposta and gerar_audio:
         try:
             audio = falar(at, final)
         except Exception as e:  # noqa: BLE001
@@ -372,6 +381,12 @@ def main(argv=None):
         sub.add_parser(n)
     s = sub.add_parser("decisao")
     s.add_argument("texto", nargs="+")
+    for n in ("assumir", "devolver"):
+        s = sub.add_parser(n)
+        s.add_argument("numero")
+    s = sub.add_parser("responder")
+    s.add_argument("numero")
+    s.add_argument("texto", nargs="+")
     a = ap.parse_args(argv)
     at = at_linha(a.linha)
     try:
@@ -397,6 +412,11 @@ def main(argv=None):
         elif a.acao == "decisao":
             registrar_decisao(at, " ".join(a.texto))
             print("decisão registrada")
+        elif a.acao in ("assumir", "devolver", "responder"):
+            import linhas
+            mod = linhas.modulos(a.linha)[0]
+            arg = a.numero + (" " + " ".join(a.texto) if a.acao == "responder" else "")
+            print(linhas.comando("/" + a.acao, mod.CMD_LINHA + arg))
     except (ValueError, RuntimeError) as e:
         print("⛔", e, file=sys.stderr)
         return 3

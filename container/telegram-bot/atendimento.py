@@ -812,11 +812,165 @@ def qr_png():
 
 
 # ------------------------------------------------------------------ regras do atendimento
-def _avisar_dono(texto):
+def _avisar_dono(texto, whatsapp=None):
+    """Avisa você no Telegram e, se configurado, a Juliana manda também no seu WhatsApp (whatsapp= texto próprio)."""
     import linhas
     import rotinas
     rotulo = NOME or (linhas.nome(1) if linhas.ativa(2) else "")
     rotinas.avisar_telegram(f"【{rotulo}】 {texto}" if rotulo else texto)
+    if whatsapp is not False:
+        threading.Thread(target=lambda: mandar_ao_dono(whatsapp or _sem_comandos(texto), aviso=True), daemon=True).start()
+
+
+# ------------------------------------------------------------------ a Juliana fala com você pelo WhatsApp
+JULIANA = "👩‍💼 *Juliana*"
+
+
+def _sem_comandos(texto):
+    """Tira do aviso as instruções de comandos do Telegram (no WhatsApp você só responde para ela)."""
+    linhas_ = [x for x in texto.splitlines() if not re.search(r"(^|\s)/(assumir|devolver|whatsapp|atendente|juliana)\b", x)]
+    return "\n".join(linhas_).strip()
+
+
+def _norm_tel(n):
+    """Compara números do Brasil com ou sem o 9 extra (o WhatsApp às vezes guarda sem)."""
+    n = re.sub(r"\D", "", n or "")
+    if n.startswith("55") and len(n) == 13 and n[4] == "9":
+        n = n[:4] + n[5:]
+    return n
+
+
+def _meu_numero(e=None):
+    """Número do próprio WhatsApp do atendimento (cache de 1 h)."""
+    e = e or _ler_estado()
+    m = e.get("meu_numero") or {}
+    if m.get("n") and time.time() - m.get("t", 0) < 3600:
+        return m["n"]
+    n = (status_whatsapp() or {}).get("numero") or m.get("n") or ""
+    if n:
+        with _lock:
+            e2 = _ler_estado()
+            e2["meu_numero"] = {"n": n, "t": time.time()}
+            _salvar_estado(e2)
+    return n
+
+
+def e_dono(chat, telefone="", e=None):
+    num = _norm_tel(C.dono().get("numero"))
+    if not num or not chat:
+        return False
+    e = e or _ler_estado()
+    candidatos = {chat.split("@")[0], telefone or "", e.get("telefones", {}).get(chat, "")}
+    return any(c and _norm_tel(c) == num for c in candidatos) or chat == (e.get("chat_dono") or {}).get(num)
+
+
+def _chat_dono():
+    num = re.sub(r"\D", "", C.dono().get("numero") or "")
+    if not num:
+        return ""
+    e = _ler_estado()
+    salvo = (e.get("chat_dono") or {}).get(_norm_tel(num))
+    if salvo:
+        return salvo
+    chat = f"{num}@c.us"
+    try:  # o WhatsApp diz qual é o ID certo (com ou sem o 9)
+        r = waha(f"/api/contacts/check-exists?phone={num}&session={SESSAO}", tempo=15)
+        if r.get("numberExists") and r.get("chatId"):
+            chat = r["chatId"]
+    except Exception:  # noqa: BLE001
+        pass
+    with _lock:
+        e = _ler_estado()
+        e.setdefault("chat_dono", {})[_norm_tel(num)] = chat
+        _salvar_estado(e)
+    return chat
+
+
+def mandar_ao_dono(texto, aviso=False, voz=False):
+    """A Juliana manda uma mensagem para você no WhatsApp. Devolve (ok, detalhe)."""
+    d = C.dono()
+    if not d.get("numero"):
+        return False, "configure o seu número em 📱 → Juliana no seu WhatsApp"
+    if aviso and not d.get("avisos", True):
+        return False, "avisos pelo WhatsApp desligados"
+    if not WAHA_KEY:
+        return False, "WhatsApp não configurado neste serviço"
+    try:
+        chat = _chat_dono()
+        if voz:
+            enviar_voz(chat, texto)
+        else:
+            enviar(chat, f"{JULIANA}\n{texto}"[:3500], proteger=False)
+        if aviso:
+            with _lock:
+                e = _ler_estado()
+                e["avisos_dono"] = (e.get("avisos_dono", []) + [{"t": time.time(), "x": texto[:1500]}])[-8:]
+                _salvar_estado(e)
+        return True, chat.split("@")[0]
+    except Exception as x:  # noqa: BLE001
+        print("juliana → dono: não consegui mandar:", type(x).__name__, str(x)[:150], flush=True)
+        return False, f"{type(x).__name__}: {str(x)[:150]}"
+
+
+def _eco_dono(e, chat, texto, dados):
+    """Mensagem que a própria Juliana mandou voltando (na conversa com você mesmo, tudo chega como 'sua')."""
+    if texto.startswith(JULIANA) or str(dados.get("origem") or "").lower() == "api":
+        return True
+    ids = {x[0] for x in e.get("ids_robo", [])}
+    mid = str(dados.get("id") or "")
+    if mid and (mid in ids or any(mid.endswith(i) or i.endswith(mid) for i in ids if i)):
+        return True
+    return _hash(texto) in {x[0] for x in e.get("enviadas", {}).get(chat, []) if x[1] > time.time() - 600}
+
+
+def _dono_para_juliana(chat, texto, de_mim, dados):
+    """Você escreveu (ou mandou áudio) na conversa com a Juliana: vai para ela, e ela responde por lá."""
+    e = _ler_estado()
+    proprio = _norm_tel(_meu_numero(e)) == _norm_tel(C.dono().get("numero"))
+    if de_mim and not proprio:
+        return {"responder": False, "motivo": "eco da Juliana (conversa com o dono)"}
+    if de_mim and _eco_dono(e, chat, texto, dados):
+        return {"responder": False, "motivo": "eco da Juliana (conversa com o dono)"}
+    if not C.dono().get("conversar", True) or not texto:
+        return {"responder": False, "motivo": "conversa do dono (Juliana não responde por aqui)"}
+    voz = texto.startswith("[ÁUDIO")
+    if voz:
+        m = re.match(r"\[ÁUDIO[^:]*:\s*(.*)\]\s*$", texto, re.S)
+        texto = (m.group(1) if m else texto).strip()
+    import atendente
+    if atendente.ocupado(LINHA):
+        enviar(chat, f"{JULIANA}\nSó um instante, ainda estou terminando a sua mensagem anterior. 🙏", proteger=False)
+        return {"responder": False, "motivo": "Juliana ocupada"}
+    avisos = [a for a in e.get("avisos_dono", []) if a["t"] > time.time() - 6 * 3600]
+    contexto = ""
+    if avisos:
+        contexto = ("[Você está falando com o dono pelo WhatsApp. Avisos que você mandou a ele nas últimas horas "
+                    "(com os números dos clientes, para você agir se ele pedir):\n"
+                    + "\n".join(f"- {time.strftime('%H:%M', time.localtime(a['t']))}: {a['x'][:600]}" for a in avisos[-4:])
+                    + "]\n\n")
+    else:
+        contexto = "[Você está falando com o dono pelo WhatsApp.]\n\n"
+
+    def rodar():
+        try:
+            final = atendente.conversar(contexto + texto, LINHA, "whatsapp", None, voz=voz, gerar_audio=False)
+        except Exception as x:  # noqa: BLE001
+            enviar(chat, f"{JULIANA}\n⚠ Não consegui responder agora ({type(x).__name__}). Tenta de novo em instantes?",
+                   proteger=False)
+            return
+        falado, _, detalhes = final.partition("\n---")
+        if voz and falado.strip():
+            try:
+                enviar_voz(chat, falado.strip())
+            except Exception:  # noqa: BLE001
+                enviar(chat, f"{JULIANA}\n{falado.strip()}", proteger=False)
+            if detalhes.strip():
+                time.sleep(1.5)
+                enviar(chat, f"{JULIANA} · detalhes\n{detalhes.strip()}"[:3500], proteger=False)
+        else:
+            enviar(chat, f"{JULIANA}\n{final.replace(chr(10) + '---', chr(10) + chr(10) + '📋', 1)}"[:3500], proteger=False)
+    threading.Thread(target=rodar, daemon=True).start()
+    return {"responder": False, "motivo": "mensagem sua para a Juliana"}
 
 
 def _vigia():
@@ -904,7 +1058,10 @@ def _chamar_dono(e, chat, nome, motivo):
     _avisar_dono(f"📞 Atendimento: {nome or numero} ({numero}) precisa de você.\nMotivo: {motivo}\n\n{resumo}\n\n"
                  f"O robô continua conversando até você responder pelo WhatsApp; aí ele se cala e volta sozinho "
                  f"{int(_seg_humano() // 60)} min depois da sua última mensagem.\n"
-                 f"Calar agora: /assumir {CMD_LINHA}{numero} · devolver depois: /devolver {CMD_LINHA}{numero}")
+                 f"Calar agora: /assumir {CMD_LINHA}{numero} · devolver depois: /devolver {CMD_LINHA}{numero}",
+                 whatsapp=f"📞 {nome or 'Um cliente'} ({numero}) precisa de você.\nMotivo: {motivo}\n\n{resumo}\n\n"
+                          "Me responda aqui: *assume* (eu calo o robô nessa conversa), *devolve*, ou me diga o que "
+                          "responder para o cliente que eu mando.")
     return True
 
 
@@ -1196,7 +1353,7 @@ def atender(dados):
     ts = float(dados.get("timestamp") or time.time())
     if ts > 1e12:
         ts /= 1000
-    if dados.get("tem_midia") and not de_mim and texto != DIAG and time.time() - ts < 300 \
+    if dados.get("tem_midia") and (not de_mim or e_dono(chat, telefone)) and texto != DIAG and time.time() - ts < 300 \
             and not chat.endswith("@g.us") and "@newsletter" not in chat and not chat.startswith("status@") \
             and C.recurso("ler_midia") is not False:
         e_m = _ler_estado()  # antes da trava: transcrever/ver demora e não pode segurar os outros atendimentos
@@ -1256,6 +1413,8 @@ def atender(dados):
         return {"responder": False, "motivo": "ignorado (grupo, status ou canal)"}
     if time.time() - ts > 300:  # histórico reenviado na reconexão: não é conversa de agora (vale para você também)
         return {"responder": False, "motivo": "mensagem antiga (reconexão)"}
+    if e_dono(chat, telefone):  # a sua conversa com a Juliana (nunca é tratada como cliente)
+        return _dono_para_juliana(chat, texto, de_mim, dados)
     with _lock:
         e = _ler_estado()
         if de_mim:
@@ -1565,6 +1724,19 @@ def comando(cmd, arg, local=False):
             return rot + f"🚫 {n} bloqueado: o robô não responde mais esse número (você continua podendo falar com ele)."
         return rot + (f"✅ {partes[0]} desbloqueado: o robô volta a responder." if desbloquear(partes[0])
                       else f"Esse número não estava bloqueado. Veja /bloqueados")
+    if cmd == "/responder":  # a Juliana manda ao cliente o que o dono mandou dizer
+        m = re.match(r"\s*\+?([\d\s().\-]{8,})\s+(.+)$", arg or "", re.S)
+        if not m:
+            return "Use: /responder <número> <texto>"
+        chat = _achar_chat(m.group(1))
+        texto_c = m.group(2).strip()[:2000]
+        enviar(chat, texto_c)
+        with _lock:
+            e = _ler_estado()
+            _guardar(chat, "dono", texto_c)
+            _evento(e, chat, "👩‍💼 a Juliana mandou o que você pediu", texto_c)
+            _salvar_estado(e)
+        return f"✅ Mandei para {_numero(_ler_estado(), chat)}."
     if cmd == "/assumir":
         return assumir(arg)
     if cmd == "/devolver":

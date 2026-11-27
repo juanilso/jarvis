@@ -111,6 +111,17 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.58: a Juliana fala com você pelo WhatsApp
+
+Em 📱 WhatsApp → **👩‍💼 A Juliana fala com você pelo WhatsApp**: coloque o seu número e toque em "Mandar um oi de teste".
+- **Avisos**: quando um cliente precisa de você (o "!" do escritório), quando o WhatsApp cai ou sai o relatório do
+  treinador, ela te manda mensagem no WhatsApp (e continua avisando no Telegram).
+- **Responder**: o que você escrever ou falar (áudio) nessa conversa vai para ela. Áudio seu → resposta em áudio.
+  - "assume" → ela cala o robô naquela conversa; "devolve" → devolve ao robô;
+  - "diz pra ele que…" → ela manda ao cliente exatamente isso (só quando você pede).
+- Pode ser o seu número pessoal ou o próprio número do atendimento (aí ela fala na conversa com você mesmo).
+- Essa conversa nunca é tratada como cliente.
+
 ## Jarvis 1.57: mãos livres reconhece a sua voz, modo espera/ativo e interrupção
 
 **Sua voz** (🧠 Cérebro › 🎧 Mãos livres e reconhecimento da minha voz)

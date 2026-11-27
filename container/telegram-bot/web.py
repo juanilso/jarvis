@@ -879,6 +879,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(vigia_whatsapp.checar(consertar=True, avisar=False))
             if a == "atend_salvar":
                 return self._json({"ok": True, "config": atend_config.salvar(d.get("config") or {})})
+            if a == "dono_testar":  # a Juliana manda um "oi" no seu WhatsApp
+                ok, det = atendimento.mandar_ao_dono(
+                    "Oi! Sou a Juliana, do seu atendimento. 👋 A partir de agora te aviso por aqui quando um cliente "
+                    "precisar de você. Pode me responder aqui mesmo, por texto ou áudio.")
+                return self._json({"ok": ok, "msg": det})
             if a in ("painel_salvar", "painel_testar"):
                 import painel_api
                 if a == "painel_salvar":

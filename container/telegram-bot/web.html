@@ -422,6 +422,16 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica">Com essa opção <b>desligada</b>, o robô continua respondendo mesmo depois de você; para calar uma conversa, escreva
     <code>#eu</code> nela (o cliente vê). Ligada: ele se cala sozinho e volta depois dos minutos sem resposta sua. <code>#bot</code> devolve na hora.</div>
   <div class="waDica">O robô inteiro liga e desliga no botão <b>⏸ Pausar robô</b> lá em cima.</div>
+  <h3>👩‍💼 A JULIANA FALA COM VOCÊ PELO WHATSAPP</h3>
+  <div class="waCfg">
+    <label>Seu WhatsApp (com DDD)<input id="donoNum" inputmode="tel" placeholder="5511999998888"></label>
+    <label><input type="checkbox" id="donoAvisos"> Me avisar por lá (cliente precisando de mim, WhatsApp caiu, relatório do treinador)</label>
+    <label><input type="checkbox" id="donoConversar"> O que eu responder lá (texto ou áudio) vai para a Juliana, e ela me responde por lá</label>
+  </div>
+  <div class="waDica">Pode ser o seu número pessoal ou o próprio número do atendimento (aí ela fala com você na conversa
+    “Você”/“Eu” do WhatsApp). Ela continua avisando no Telegram também. Responda o aviso com <b>assume</b>, <b>devolve</b>
+    ou com o que ela deve dizer ao cliente.
+    <button id="donoTestar" type="button" style="margin-left:6px">📨 Mandar um oi de teste</button> <span id="donoMsg"></span></div>
   <h3>🔊 RESPOSTAS EM ÁUDIO</h3>
   <div class="waCfg">
     <label>Responder em áudio<select id="vzModo"><option value="quando_audio">Quando o cliente manda áudio (ou pede)</option><option value="sempre">Sempre</option><option value="nunca">Nunca</option></select></label>
@@ -1188,12 +1198,16 @@ $("vzOuvir").onclick=async()=>{$("vzInfo").textContent="⏳ gerando o áudio de 
   const a=$("vzAudio");a.src=URL.createObjectURL(await r.blob());a.style.display="";a.play().catch(()=>{});$("vzInfo").textContent="Teste com: "+(r.headers.get("X-Origem")==="elevenlabs"?"ElevenLabs":"voz gratuita (sem ElevenLabs configurada)")};
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
   if(c.voz){$("vzModo").value=c.voz.modo;$("vzTexto").value=c.voz.texto_junto}vzCarregar();
+  if(c.dono){$("donoNum").value=c.dono.numero||"";$("donoAvisos").checked=c.dono.avisos!==false;$("donoConversar").checked=c.dono.conversar!==false}
   $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;$("recVariar").checked=c.recursos.variar!==false;$("recIA").checked=!!c.recursos.ia_caprichada;$("recMidia").checked=c.recursos.ler_midia!==false;$("recJogos").checked=c.recursos.jogos!==false;
   const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prAgrupar").value=p.agrupar_seg??7;$("prMinuto").value=p.max_por_minuto;
   $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
   $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
     <button class="waRestaura" data-k="${k}" style="margin-top:4px">↺ voltar ao padrão</button></details>`).join("");
   $("waModelos").querySelectorAll(".waRestaura").forEach(b=>b.onclick=()=>{$("waModelos").querySelector(`textarea[data-k="${b.dataset.k}"]`).value=atPadrao[b.dataset.k]||""})}
+$("donoTestar").onclick=async()=>{$("donoMsg").textContent="⏳ salvando e mandando…";
+  await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked}}});
+  const r=await api("/api/whatsapp/acao",{acao:"dono_testar"});$("donoMsg").textContent=r&&r.ok?"✔ enviado para "+r.msg+". Responda lá para testar.":"⚠ "+((r&&r.msg)||"falhou")};
 $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa (até 30 s)…";const r=await api("/api/whatsapp/acao",{acao:"diagnostico"});
   $("waDiagRes").innerHTML=(r.passos||[]).map(p=>`<div>${p.ok?"✅":"❌"} <b>${esc(p.titulo)}</b>${p.detalhe?" — "+esc(p.detalhe):""}</div>`).join("")+
     (r.ok?"<div style='margin-top:4px'>Tudo certo nesse caminho. Se um cliente não recebeu resposta, veja ÚLTIMOS EVENTOS.</div>":"")};
@@ -1201,7 +1215,8 @@ $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("text
   const r=await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{recursos:{pagamentos:$("recPag").checked,teste:$("recTeste").checked,consulta:$("recCons").checked,calar_quando_respondo:$("recCalar").checked,variar:$("recVariar").checked,ia_caprichada:$("recIA").checked,ler_midia:$("recMidia").checked,jogos:$("recJogos").checked},
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,agrupar_seg:$("prAgrupar").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},
-    voz:{modo:$("vzModo").value,texto_junto:$("vzTexto").value},mensagens:m}});
+    voz:{modo:$("vzModo").value,texto_junto:$("vzTexto").value},mensagens:m,
+    dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked}}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
 async function waAbrirLinha(){$("wa").classList.add("aberto");cfgCarregar();atCarregar();trCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)}
