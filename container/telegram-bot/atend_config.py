@@ -50,7 +50,10 @@ VOZ = {"modo": "quando_audio",          # nunca | quando_audio (cliente mandou �
 DONO = {"numero": "",      # seu WhatsApp pessoal (ou o próprio número do atendimento: ela fala na conversa "você")
         "avisos": True,     # a Juliana te avisa por lá quando um cliente precisa de você, o WhatsApp cai etc.
         "conversar": True,  # o que você escreve/fala nessa conversa vai para o agente (e ele responde por lá)
-        "agente": "juliana"}  # quem responde a VOCÊ neste número: "juliana" (atendimento) ou "reginaldo" (pessoal)
+        "agente": "juliana",  # quem responde a VOCÊ neste número: "juliana" (atendimento) ou "reginaldo" (pessoal)
+        "outros": [],        # outras pessoas que falam com o Reginaldo: [{"numero": "55…", "nome": "Maria (esposa)"}]
+        "grupo": "", "grupo_nome": "",  # grupo do WhatsApp onde o Reginaldo responde (vocês + este número)
+        "grupo_so_nome": False}  # no grupo, só responde quando alguém chamar "Reginaldo"
 VOZ_OPCOES = {"modo": ("nunca", "quando_audio", "sempre"), "texto_junto": ("sempre", "quando_precisa", "nunca")}
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
@@ -96,6 +99,17 @@ def salvar(novo):
         elif k == "agente":
             if v in ("juliana", "reginaldo"):
                 atual["dono"]["agente"] = v
+        elif k == "outros":
+            lista = []
+            for x in (v or [])[:10]:
+                n = re.sub(r"\D", "", str((x or {}).get("numero") or ""))[:15]
+                if len(n) >= 10:
+                    lista.append({"numero": "55" + n if len(n) in (10, 11) else n, "nome": str(x.get("nome") or "")[:40].strip()})
+            atual["dono"]["outros"] = lista
+        elif k == "grupo":
+            atual["dono"]["grupo"] = str(v or "") if re.fullmatch(r"[\w.\-]{5,60}@g\.us", str(v or "")) or not v else atual["dono"]["grupo"]
+        elif k == "grupo_nome":
+            atual["dono"]["grupo_nome"] = str(v or "")[:60]
         elif k in DONO:
             atual["dono"][k] = bool(v)
     for k, v in (novo.get("protecao") or {}).items():

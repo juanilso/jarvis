@@ -682,6 +682,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(png)))
             self.end_headers()
             return self.wfile.write(png)
+        if url.path == "/api/whatsapp/grupos":  # grupos em que este número recebeu mensagem (para o grupo do Reginaldo)
+            return self._json({"grupos": atendimento.grupos_vistos()})
         if url.path == "/api/atendimento/config":
             return self._json(dict(atend_config.carregar(), nomes=atend_config.NOMES_MENSAGENS,
                                    padrao=atend_config.MENSAGENS))

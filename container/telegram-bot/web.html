@@ -442,7 +442,14 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
     <label>Seu WhatsApp (com DDD)<input id="donoNum" inputmode="tel" placeholder="5511999998888"></label>
     <label><input type="checkbox" id="donoAvisos"> Me avisar por lá (cliente precisando de mim, WhatsApp caiu, relatório do treinador)</label>
     <label><input type="checkbox" id="donoConversar"> O que eu responder lá (texto ou áudio) vai para a Juliana, e ela me responde por lá</label>
+    <div id="regExtra">
+    <label>Outras pessoas que falam com o Reginaldo (uma por linha: número e nome)<textarea id="donoOutros" rows="2" placeholder="5511999998888 Maria (esposa)"></textarea></label>
+    <label>Grupo do Reginaldo (vocês + este número)<select id="donoGrupo"><option value="">— nenhum —</option></select></label>
+    <label><input type="checkbox" id="donoGrupoNome"> No grupo, só responder quando alguém chamar “Reginaldo”</label>
+    </div>
   </div>
+  <div class="waDica" id="regDica">Grupo: crie no WhatsApp um grupo com você, sua esposa e este número, mande um “oi” nele,
+    toque em 🔄 e escolha o grupo na lista. <button id="donoGrupoAtualizar" type="button">🔄 procurar grupos</button></div>
   <div class="waDica">Pode ser o seu número pessoal ou o próprio número do atendimento (aí ela fala com você na conversa
     “Você”/“Eu” do WhatsApp). Ela continua avisando no Telegram também. Responda o aviso com <b>assume</b>, <b>devolve</b>
     ou com o que ela deve dizer ao cliente.
@@ -1265,15 +1272,26 @@ $("vzOuvir").onclick=async()=>{$("vzInfo").textContent="⏳ gerando o áudio de 
 async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
   if(c.voz){$("vzModo").value=c.voz.modo;$("vzTexto").value=c.voz.texto_junto}vzCarregar();
   $("waModo").value=c.modo||"atendimento";
-  if(c.dono){$("donoAgente").value=c.dono.agente||"juliana";$("donoNum").value=c.dono.numero||"";$("donoAvisos").checked=c.dono.avisos!==false;$("donoConversar").checked=c.dono.conversar!==false}
+  if(c.dono){$("donoAgente").value=c.dono.agente||"juliana";$("donoNum").value=c.dono.numero||"";
+    $("donoOutros").value=(c.dono.outros||[]).map(o=>o.numero+" "+o.nome).join("\n");$("donoGrupoNome").checked=!!c.dono.grupo_so_nome;
+    $("donoGrupo").innerHTML='<option value="">— nenhum —</option>'+(c.dono.grupo?`<option value="${esc(c.dono.grupo)}" selected>${esc(c.dono.grupo_nome||c.dono.grupo)}</option>`:"");regVer();$("donoAvisos").checked=c.dono.avisos!==false;$("donoConversar").checked=c.dono.conversar!==false}
   $("recPag").checked=c.recursos.pagamentos;$("recTeste").checked=c.recursos.teste;$("recCons").checked=c.recursos.consulta;$("recCalar").checked=c.recursos.calar_quando_respondo!==false;$("recVariar").checked=c.recursos.variar!==false;$("recIA").checked=!!c.recursos.ia_caprichada;$("recMidia").checked=c.recursos.ler_midia!==false;$("recJogos").checked=c.recursos.jogos!==false;
   const p=c.protecao;$("prDig").checked=p.digitando;$("prMin").value=p.atraso_min;$("prMax").value=p.atraso_max;$("prAgrupar").value=p.agrupar_seg??7;$("prMinuto").value=p.max_por_minuto;
   $("prInt").value=p.intervalo_proativas;$("prHora").value=p.max_proativas_hora;$("prSilIni").value=p.silencio_inicio;$("prSilFim").value=p.silencio_fim;
   $("waModelos").innerHTML=Object.entries(c.nomes).map(([k,n])=>`<details><summary>${esc(n)}</summary><textarea data-k="${k}">${esc(c.mensagens[k]||"")}</textarea>
     <button class="waRestaura" data-k="${k}" style="margin-top:4px">↺ voltar ao padrão</button></details>`).join("");
   $("waModelos").querySelectorAll(".waRestaura").forEach(b=>b.onclick=()=>{$("waModelos").querySelector(`textarea[data-k="${b.dataset.k}"]`).value=atPadrao[b.dataset.k]||""})}
+function donoCfg(){const g=$("donoGrupo").selectedOptions[0];
+  return{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked,agente:$("donoAgente").value,
+    outros:$("donoOutros").value.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/^([+\d\s().-]{10,})\s+(.*)$/);return m?{numero:m[1],nome:m[2]}:{numero:l,nome:""}}),
+    grupo:$("donoGrupo").value,grupo_nome:$("donoGrupo").value&&g?(g.dataset.n||g.textContent):"",grupo_so_nome:$("donoGrupoNome").checked}}
+function regVer(){const r=$("donoAgente").value==="reginaldo";$("regExtra").style.display=r?"":"none";$("regDica").style.display=r?"":"none"}
+$("donoAgente").onchange=regVer;
+$("donoGrupoAtualizar").onclick=async()=>{const r=await api("/api/whatsapp/grupos");const atual=$("donoGrupo").value;
+  const gs=(r&&r.grupos)||[];$("donoGrupo").innerHTML='<option value="">— nenhum —</option>'+gs.map(g=>`<option value="${esc(g.id)}" data-n="${esc(g.nome||"Grupo do Reginaldo")}"${g.id===atual?" selected":""}>${esc(g.nome||"(grupo sem nome)")} · última: ${esc(g.autor||"")} “${esc(g.texto||"")}” ${esc(g.quando)}</option>`).join("");
+  if(!gs.length)alert("Nenhum grupo ainda. Mande um “oi” no grupo (de você ou da sua esposa) e toque de novo.")};
 $("donoTestar").onclick=async()=>{$("donoMsg").textContent="⏳ salvando e mandando…";
-  await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{modo:$("waModo").value,dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked,agente:$("donoAgente").value}}});
+  await api("/api/whatsapp/acao",{acao:"atend_salvar",config:{modo:$("waModo").value,dono:donoCfg()}});
   const r=await api("/api/whatsapp/acao",{acao:"dono_testar"});$("donoMsg").textContent=r&&r.ok?"✔ enviado para "+r.msg+". Responda lá para testar.":"⚠ "+((r&&r.msg)||"falhou")};
 $("waDiag").onclick=async()=>{$("waDiagRes").innerHTML="⏳ testando cada etapa (até 30 s)…";const r=await api("/api/whatsapp/acao",{acao:"diagnostico"});
   $("waDiagRes").innerHTML=(r.passos||[]).map(p=>`<div>${p.ok?"✅":"❌"} <b>${esc(p.titulo)}</b>${p.detalhe?" — "+esc(p.detalhe):""}</div>`).join("")+
@@ -1283,7 +1301,7 @@ $("atSalvar").onclick=async()=>{const m={};$("waModelos").querySelectorAll("text
     protecao:{digitando:$("prDig").checked,atraso_min:$("prMin").value,atraso_max:$("prMax").value,agrupar_seg:$("prAgrupar").value,max_por_minuto:$("prMinuto").value,
       intervalo_proativas:$("prInt").value,max_proativas_hora:$("prHora").value,silencio_inicio:$("prSilIni").value,silencio_fim:$("prSilFim").value},
     voz:{modo:$("vzModo").value,texto_junto:$("vzTexto").value},mensagens:m,
-    modo:$("waModo").value,dono:{numero:$("donoNum").value,avisos:$("donoAvisos").checked,conversar:$("donoConversar").checked,agente:$("donoAgente").value}}});
+    modo:$("waModo").value,dono:donoCfg()}});
   $("atMsg").textContent=r.ok?"✔ salvo — vale na próxima mensagem":"erro ao salvar"};
 async function waAbrirLinha(){$("wa").classList.add("aberto");cfgCarregar();atCarregar();trCarregar();const f=await api("/api/whatsapp/faq");$("waFaq").value=f.texto||"";$("waSalvo").textContent=f.caminho?"arquivo: "+f.caminho:"";
   waAtualizar();clearInterval(waTimer);waTimer=setInterval(waAtualizar,4000)}

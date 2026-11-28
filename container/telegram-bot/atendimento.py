@@ -926,6 +926,76 @@ def _eco_dono(e, chat, texto, dados):
 REGINALDO = "🧑‍💼 *Reginaldo*"
 
 
+def _pessoa_do_reginaldo(chat, telefone, de_mim, nome, dados):
+    """Quem está falando com o Reginaldo (fora o dono no privado): {"nome", "papel"} ou None.
+    Vale no grupo configurado (vocês + este número) e no privado das outras pessoas cadastradas."""
+    c = C.carregar()
+    d = c["dono"]
+    if _agente_do_dono() != "reginaldo":
+        return None
+    if chat.endswith("@g.us"):
+        if not d.get("grupo") or chat != d["grupo"] or de_mim:
+            return None
+        autor = _norm_tel(str(dados.get("autor_tel") or dados.get("autor") or "").split("@")[0])
+        if autor and autor == _norm_tel(d.get("numero")):
+            return {"nome": nome or "dono", "papel": "dono"}
+        for o in d.get("outros") or []:
+            if autor and autor == _norm_tel(o["numero"]):
+                return {"nome": o.get("nome") or nome, "papel": "autorizado"}
+        # o fluxo do n8n não diz quem escreveu no grupo: o grupo é só de vocês, então vale o nome do WhatsApp
+        return {"nome": nome or "alguém do grupo", "papel": "grupo"}
+    tel = {_norm_tel(chat.split("@")[0]), _norm_tel(telefone)}
+    for o in d.get("outros") or []:
+        if _norm_tel(o["numero"]) in tel:
+            return {"nome": o.get("nome") or nome or o["numero"], "papel": "autorizado"}
+    return None
+
+
+def _com_autor(texto, p):
+    papel = {"dono": "o dono", "autorizado": "pessoa autorizada pelo dono", "grupo": "no grupo da família"}[p["papel"]]
+    return f"[De: {p['nome']} ({papel})] {texto}"
+
+
+def _grupo_visto(chat, nome, texto):
+    with _lock:
+        e = _ler_estado()
+        g = e.setdefault("grupos_vistos", {})
+        g[chat] = {"t": time.time(), "autor": nome[:40], "x": texto[:40], "nome": (g.get(chat) or {}).get("nome", "")}
+        if len(g) > 30:
+            for k in sorted(g, key=lambda k: g[k]["t"])[:-30]:
+                g.pop(k)
+        _salvar_estado(e)
+
+
+def grupos_vistos():
+    e = _ler_estado()
+    out = []
+    for gid, v in sorted((e.get("grupos_vistos") or {}).items(), key=lambda kv: -kv[1]["t"])[:15]:
+        nome = v.get("nome")
+        if not nome:
+            try:
+                r = waha(f"/api/{SESSAO}/groups/{gid}", tempo=10)
+                nome = (r or {}).get("subject") or ((r or {}).get("groupMetadata") or {}).get("subject") or ""
+            except Exception:  # noqa: BLE001
+                nome = ""
+        out.append({"id": gid, "nome": nome, "autor": v.get("autor"), "texto": v.get("x"),
+                    "quando": time.strftime("%d/%m %H:%M", time.localtime(v["t"]))})
+    return out
+
+
+def _grupo_reginaldo(chat, texto, p):
+    if not texto:
+        return {"responder": False, "motivo": "grupo: mensagem vazia"}
+    if C.carregar()["dono"].get("grupo_so_nome") and not re.search(r"\breginaldo\b", texto, re.I):
+        return {"responder": False, "motivo": "grupo: não chamaram o Reginaldo"}
+    import pessoal
+    r_conf = pessoal.confirmacao(texto)
+    if r_conf and p["papel"] == "dono":
+        enviar(chat, f"🔐 *Jarvis · cofre*\n{r_conf}", proteger=False)
+        return {"responder": False, "motivo": "confirmação do cofre"}
+    return _para_reginaldo(chat, _com_autor(texto, p), texto.startswith("[ÁUDIO"))
+
+
 def _agente_do_dono():
     """Quem responde a você neste número: o Reginaldo (modo pessoal ou escolhido) ou a Juliana."""
     c = C.carregar()
@@ -934,6 +1004,7 @@ def _agente_do_dono():
 
 def _para_reginaldo(chat, texto, voz):
     import reginaldo
+    texto = re.sub(r"\[ÁUDIO[^:]*:\s*(.*?)\]\s*$", r"\1", texto, flags=re.S) if voz else texto
     if reginaldo.ocupado():
         enviar(chat, f"{REGINALDO}\nSó um instante, estou terminando a sua mensagem anterior.", proteger=False)
         return {"responder": False, "motivo": "Reginaldo ocupado"}
@@ -1397,11 +1468,12 @@ def atender(dados):
     ts = float(dados.get("timestamp") or time.time())
     if ts > 1e12:
         ts /= 1000
-    if dados.get("tem_midia") and (not de_mim or e_dono(chat, telefone)) and texto != DIAG and time.time() - ts < 300 \
-            and not chat.endswith("@g.us") and "@newsletter" not in chat and not chat.startswith("status@") \
+    p_reg = _pessoa_do_reginaldo(chat, telefone, de_mim, nome, dados)  # você, sua esposa ou o grupo de vocês
+    if dados.get("tem_midia") and (not de_mim or e_dono(chat, telefone) or p_reg) and texto != DIAG and time.time() - ts < 300 \
+            and (not chat.endswith("@g.us") or p_reg) and "@newsletter" not in chat and not chat.startswith("status@") \
             and C.recurso("ler_midia") is not False:
         e_m = _ler_estado()  # antes da trava: transcrever/ver demora e não pode segurar os outros atendimentos
-        if e_m.get("ligado", True) and not bloqueado(chat, telefone, e_m):
+        if (e_m.get("ligado", True) or p_reg) and not bloqueado(chat, telefone, e_m):
             try:
                 lido = ler_midia(dados, chat)
             except Exception as e:  # noqa: BLE001
@@ -1453,6 +1525,10 @@ def atender(dados):
                 return {"responder": False, "motivo": "evento repetido"}
             e1["ids_vistos"] = (vistos + [[mid, time.time()]])[-300:]
             _salvar_estado(e1)
+    if chat.endswith("@g.us") and not de_mim and time.time() - ts < 300:
+        _grupo_visto(chat, nome, texto)
+    if p_reg and chat.endswith("@g.us") and time.time() - ts < 300:  # o grupo de vocês com o Reginaldo
+        return _grupo_reginaldo(chat, texto, p_reg)
     if not chat or chat.endswith("@g.us") or chat.startswith("status@") or "@newsletter" in chat or "@broadcast" in chat:
         return {"responder": False, "motivo": "ignorado (grupo, status ou canal)"}
     if time.time() - ts > 300:  # histórico reenviado na reconexão: não é conversa de agora (vale para você também)
@@ -1463,6 +1539,10 @@ def atender(dados):
         return {"responder": False, "motivo": "número do assistente pessoal: só responde a você"}
     if e_dono(chat, telefone):  # a sua conversa com a Juliana ou o Reginaldo (nunca é tratada como cliente)
         return _dono_para_juliana(chat, texto, de_mim, dados, agente=_agente_do_dono())
+    if p_reg:  # outra pessoa autorizada (ex.: sua esposa) no privado: fala com o Reginaldo
+        if de_mim:
+            return {"responder": False, "motivo": "eco do Reginaldo"}
+        return _para_reginaldo(chat, _com_autor(texto, p_reg), texto.startswith("[ÁUDIO"))
     with _lock:
         e = _ler_estado()
         if de_mim:

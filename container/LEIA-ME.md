@@ -111,6 +111,15 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.61: Reginaldo para a família (vocês dois e o grupo)
+
+Em 📱 WhatsApp (número 2), com "quem responde" = **Reginaldo**:
+- **Outras pessoas que falam com o Reginaldo**: ex. `5511999998888 Maria (esposa)`. Ela conversa com ele no privado.
+- **Grupo do Reginaldo**: crie um grupo com vocês dois e este número, mande um "oi", toque em 🔄 e escolha o grupo.
+  Opção: só responder no grupo quando chamarem "Reginaldo".
+- Os clientes continuam com o robô e a Juliana. A esposa usa lista de compras, agenda e lembretes; e-mail, roteiros
+  do trabalho e cofre continuam só para você. Os códigos do cofre vão só para o seu privado.
+
 ## Jarvis 1.60.1: Juliana e Reginaldo no mesmo número
 
 Em 📱 WhatsApp (número 2) › "Quando VOCÊ escreve para este número, quem responde" › **Reginaldo**: os clientes continuam

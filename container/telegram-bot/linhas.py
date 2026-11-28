@@ -130,7 +130,9 @@ def dados_do_waha(corpo):
     return {"acao": "atender", "evento": corpo.get("event"), "chat": p.get("from"),
             "nome": d.get("notifyName") or "", "texto": p.get("body") or "", "de_mim": bool(p.get("fromMe")),
             "tem_midia": bool(p.get("hasMedia")), "midia": p.get("media") or {}, "timestamp": p.get("timestamp"), "id": p.get("id"),
-            "origem": p.get("source") or "", "telefone": chave.get("senderPn") or chave.get("remoteJidAlt") or ""}
+            "origem": p.get("source") or "", "telefone": chave.get("senderPn") or chave.get("remoteJidAlt") or "",
+            "autor": p.get("participant") or chave.get("participant") or "",
+            "autor_tel": chave.get("participantPn") or chave.get("participantAlt") or ""}
 
 
 def _separar(cmd, arg):
