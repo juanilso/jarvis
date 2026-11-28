@@ -111,6 +111,12 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.61.1: número certo na configuração do agente
+
+- O "oi de teste" agora fala como o agente escolhido (Juliana ou Reginaldo) e diz de qual número saiu.
+- Se o painel pedir o número 2 e ele não estiver ligado (falta WHATSAPP2=1), aparece um erro em vez de salvar no número 1.
+- O título da seção mostra qual número você está configurando.
+
 ## Jarvis 1.61: Reginaldo para a família (vocês dois e o grupo)
 
 Em 📱 WhatsApp (número 2), com "quem responde" = **Reginaldo**:

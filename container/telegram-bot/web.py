@@ -410,6 +410,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
         atendimento, vigia_whatsapp, atend_config = linhas.modulos(self._linha(url))  # número do WhatsApp (?linha=2)
+        if self._linha(url) == "2" and not linhas.ativa(2) and url.path.startswith(("/api/whatsapp", "/api/atendimento")):
+            return self._json({"erro": "O número 2 não está ligado neste serviço (falta WHATSAPP2=1). Na VPS: "
+                                       "./whatsapp2-configurar.sh e reinicie o painel."}, 409)
         if url.path == "/":
             return self._html(HTML if self._logado() else LOGIN)
         if url.path.startswith("/static/"):
@@ -771,6 +774,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         url = urllib.parse.urlparse(self.path)
         atendimento, vigia_whatsapp, atend_config = linhas.modulos(self._linha(url))  # número do WhatsApp (?linha=2)
+        if self._linha(url) == "2" and not linhas.ativa(2) and url.path.startswith(("/api/whatsapp", "/api/atendimento")):
+            return self._json({"erro": "O número 2 não está ligado neste serviço (falta WHATSAPP2=1). Na VPS: "
+                                       "./whatsapp2-configurar.sh e reinicie o painel."}, 409)
         if url.path == "/login":
             senha = urllib.parse.parse_qs(self._corpo().decode()).get("senha", [""])[0]
             if SENHA and hmac.compare_digest(senha, SENHA):
@@ -898,11 +904,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(vigia_whatsapp.checar(consertar=True, avisar=False))
             if a == "atend_salvar":
                 return self._json({"ok": True, "config": atend_config.salvar(d.get("config") or {})})
-            if a == "dono_testar":  # a Juliana manda um "oi" no seu WhatsApp
-                ok, det = atendimento.mandar_ao_dono(
-                    "Oi! Sou a Juliana, do seu atendimento. 👋 A partir de agora te aviso por aqui quando um cliente "
-                    "precisar de você. Pode me responder aqui mesmo, por texto ou áudio.")
-                return self._json({"ok": ok, "msg": det})
+            if a == "dono_testar":  # o agente deste número manda um "oi" no seu WhatsApp
+                rotulo = linhas.nome(atendimento.LINHA) if linhas.ativa(2) else "o atendimento"
+                if atendimento._agente_do_dono() == "reginaldo":
+                    texto_oi = (f"Oi! Aqui é o Reginaldo, seu assistente pessoal, falando pelo {rotulo}. 👋 Pode me chamar "
+                                "por aqui, por texto ou áudio: lista de compras, agenda, e-mail e o que mais precisar.")
+                else:
+                    texto_oi = (f"Oi! Sou a Juliana, do atendimento ({rotulo}). 👋 A partir de agora te aviso por aqui quando "
+                                "um cliente precisar de você. Pode me responder aqui mesmo, por texto ou áudio.")
+                ok, det = atendimento.mandar_ao_dono(texto_oi)
+                meu = atendimento._meu_numero() if ok else ""
+                return self._json({"ok": ok, "msg": f"{det} (saiu do número {atendimento.LINHA}"
+                                                    + (f", {meu}" if meu else "") + ")" if ok else det})
             if a in ("painel_salvar", "painel_testar"):
                 import painel_api
                 if a == "painel_salvar":

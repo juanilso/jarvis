@@ -430,7 +430,7 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div class="waDica">Com essa opção <b>desligada</b>, o robô continua respondendo mesmo depois de você; para calar uma conversa, escreva
     <code>#eu</code> nela (o cliente vê). Ligada: ele se cala sozinho e volta depois dos minutos sem resposta sua. <code>#bot</code> devolve na hora.</div>
   <div class="waDica">O robô inteiro liga e desliga no botão <b>⏸ Pausar robô</b> lá em cima.</div>
-  <h3>📞 PARA QUE SERVE ESTE NÚMERO</h3>
+  <h3 id="waModoTit">📞 PARA QUE SERVE ESTE NÚMERO</h3>
   <div class="waCfg"><label>Uso<select id="waModo"><option value="atendimento">Atendimento de clientes (robô + Juliana)</option>
     <option value="pessoal">Assistente pessoal (Reginaldo): só conversa com você</option></select></label></div>
   <div class="waDica">Para manter os clientes com a Juliana e falar com o Reginaldo pelo mesmo número, deixe
@@ -1269,9 +1269,10 @@ $("vzSalvar").onclick=async()=>{const o=$("vzVoz").selectedOptions[0];const r=aw
 $("vzOuvir").onclick=async()=>{$("vzInfo").textContent="⏳ gerando o áudio de teste…";const r=await fetch("/api/voz/testar",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
   if(!r.ok){let j={};try{j=await r.json()}catch(e){}$("vzInfo").textContent="⚠ "+(j.erro||"falhou");return}
   const a=$("vzAudio");a.src=URL.createObjectURL(await r.blob());a.style.display="";a.play().catch(()=>{});$("vzInfo").textContent="Teste com: "+(r.headers.get("X-Origem")==="elevenlabs"?"ElevenLabs":"voz gratuita (sem ElevenLabs configurada)")};
-async function atCarregar(){const c=await api("/api/atendimento/config");if(!c||!c.recursos)return;atPadrao=c.padrao||{};
+async function atCarregar(){const c=await api("/api/atendimento/config");if(c&&c.erro){alert(c.erro);return}if(!c||!c.recursos)return;atPadrao=c.padrao||{};
   if(c.voz){$("vzModo").value=c.voz.modo;$("vzTexto").value=c.voz.texto_junto}vzCarregar();
   $("waModo").value=c.modo||"atendimento";
+  $("waModoTit").textContent=`📞 PARA QUE SERVE ESTE NÚMERO (você está configurando o NÚMERO ${waLinha})`;
   if(c.dono){$("donoAgente").value=c.dono.agente||"juliana";$("donoNum").value=c.dono.numero||"";
     $("donoOutros").value=(c.dono.outros||[]).map(o=>o.numero+" "+o.nome).join("\n");$("donoGrupoNome").checked=!!c.dono.grupo_so_nome;
     $("donoGrupo").innerHTML='<option value="">— nenhum —</option>'+(c.dono.grupo?`<option value="${esc(c.dono.grupo)}" selected>${esc(c.dono.grupo_nome||c.dono.grupo)}</option>`:"");regVer();$("donoAvisos").checked=c.dono.avisos!==false;$("donoConversar").checked=c.dono.conversar!==false}
