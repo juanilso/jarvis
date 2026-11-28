@@ -193,7 +193,7 @@ function detalhes(id){
   const s=situ(id),edit=m.tipo!=="fixa";
   const opts=Object.entries(D.setores).map(([k,v])=>`<option value="${k}"${k===m.setor?" selected":""}>${esc(v)}</option>`).join("");
   $("det").innerHTML=`<h2>Detalhes</h2><div class="nm"><i style="background:${esc(m.cor)}"></i>${esc(m.nome)}</div>
-   <div class="fn">${esc(m.funcao)}</div><div class="st"><span class="tag ${esc(s.estado)}">${esc(s.estado)}</span> ${esc(s.texto)}</div>
+   <div class="fn">${esc(m.funcao)}</div>${id==="pessoal"?'<div><a class="btn" href="/#reginaldo">📝 Abrir anotações, pesquisas e lista</a></div>':""}<div class="st"><span class="tag ${esc(s.estado)}">${esc(s.estado)}</span> ${esc(s.texto)}</div>
    ${m.tipo==="fixa"?'<div class="vazio">Agente que já trabalha no Jarvis. Dá para renomear e trocar a cor.</div>':
      '<div class="vazio">Mesa planejada: ainda não é um agente de verdade. Anote aqui o que ele vai fazer; quando quiser contratar, é só pedir ao Jarvis.</div>'}
    <form id="fm"><label>Nome<input name="nome" maxlength="40" value="${esc(m.nome)}"></label>

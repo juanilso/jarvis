@@ -111,6 +111,16 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.62: Reginaldo pesquisa, anota e mostra tudo no painel
+
+- **Pesquisa**: mande uma foto (ex.: um tênis) e peça "onde vende e quanto custa?" ou faça uma pergunta. Ele vê a foto
+  de verdade (fica salva para ele), pesquisa na internet e traz lojas do Brasil, preço, link e características.
+- **Anotações**: "Reginaldo, anota que…", "guarda isso", "o que eu anotei sobre…". Toda pesquisa com resultado também
+  vira anotação (#pesquisa), com a foto e os links.
+- **Ver tudo**: 🧠 Cérebro › 🧑‍💼 Reginaldo › 📝 Anotações e pesquisas (busca, filtro, fotos, links). Atalho direto:
+  `https://<seu-painel>:8090/#reginaldo` (salve na tela inicial do celular). No 🏢 Escritório, a mesa do Reginaldo
+  também tem o botão.
+
 ## Jarvis 1.61.2: vídeo de filme com trailer usa pouca memória
 
 O corte do trailer decodificava os 6 trechos ao mesmo tempo e, com o limite de memória do painel, o sistema encerrava

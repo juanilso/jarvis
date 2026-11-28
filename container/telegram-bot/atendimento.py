@@ -1421,8 +1421,9 @@ def motivo_n8n_jarvis(desde):
             "(rode ./n8n-token-sincronizar.sh). Para o diagnóstico mostrar o erro sozinho: ./n8n-api-configurar.sh")
 
 
-def ler_midia(dados, chat):
-    """Áudio → o que o cliente falou; imagem/vídeo → o que aparece. Devolve o texto para o histórico, ou None."""
+def ler_midia(dados, chat, guardar=None):
+    """Áudio → o que o cliente falou; imagem/vídeo → o que aparece. Devolve o texto para o histórico, ou None.
+    guardar: pasta onde a imagem fica salva (só para o Reginaldo, que precisa VER a foto para pesquisar)."""
     import tempfile
     conteudo, m = _baixar_midia(dados, chat)
     if not conteudo:
@@ -1442,6 +1443,12 @@ def ler_midia(dados, chat):
             if not imgs:
                 return None
             figurinha = tipo == "image/webp" and not nome_arq
+            if guardar and not figurinha:
+                os.makedirs(guardar, exist_ok=True)
+                destino = os.path.join(guardar, time.strftime("whatsapp-%Y%m%d-%H%M%S") + ext)
+                with open(destino, "wb") as g:
+                    g.write(conteudo)
+                return f"[IMAGEM ENVIADA: {destino} (abra o arquivo para ver)]"
             desc = _ver(imgs, "É uma figurinha: diga em uma linha a emoção/ideia dela." if figurinha else "Descreva a imagem.")
             return f"[{'FIGURINHA' if figurinha else 'IMAGEM'} DO CLIENTE: {desc.strip()}]"
         if tipo.startswith("video/"):
@@ -1475,7 +1482,9 @@ def atender(dados):
         e_m = _ler_estado()  # antes da trava: transcrever/ver demora e não pode segurar os outros atendimentos
         if (e_m.get("ligado", True) or p_reg) and not bloqueado(chat, telefone, e_m):
             try:
-                lido = ler_midia(dados, chat)
+                para_reg = p_reg or (e_dono(chat, telefone) and _agente_do_dono() == "reginaldo")
+                import pessoal
+                lido = ler_midia(dados, chat, guardar=pessoal.ANEXOS if para_reg else None)
             except Exception as e:  # noqa: BLE001
                 lido = None
                 print("atendimento: não consegui ler a mídia:", type(e).__name__, str(e)[:150], flush=True)

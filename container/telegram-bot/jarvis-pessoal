@@ -64,6 +64,30 @@ def main(argv=None):
     ro = sub.add_parser("roteiro").add_subparsers(dest="acao", required=True)
     ro.add_parser("listar")
     ro.add_parser("ver").add_argument("nome")
+    # anotações
+    no = sub.add_parser("nota").add_subparsers(dest="acao", required=True)
+    s = no.add_parser("add")
+    s.add_argument("--titulo", default="")
+    s.add_argument("--texto", default="")
+    s.add_argument("--tag", action="append", default=[])
+    s.add_argument("--anexo", action="append", default=[])
+    s.add_argument("--link", action="append", default=[])
+    s.add_argument("--quem", default="dono")
+    s = no.add_parser("buscar")
+    s.add_argument("termo", nargs="+")
+    s.add_argument("--quem")
+    s = no.add_parser("listar")
+    s.add_argument("--tag")
+    s.add_argument("--quem")
+    s.add_argument("--limite", type=int, default=20)
+    no.add_parser("ver").add_argument("id")
+    s = no.add_parser("mais")
+    s.add_argument("id")
+    s.add_argument("--texto", default="")
+    s.add_argument("--tag", action="append", default=[])
+    s.add_argument("--anexo", action="append", default=[])
+    s.add_argument("--link", action="append", default=[])
+    no.add_parser("apagar").add_argument("id")
     # repassar ao Reginaldo (usado pelo Jarvis)
     s = sub.add_parser("reginaldo", help="repassa uma demanda pessoal ao Reginaldo (ele responde ao dono)")
     s.add_argument("pedido", nargs="+")
@@ -109,6 +133,26 @@ def main(argv=None):
             else:
                 mostrar(P.cofre("/email/preparar", para=a.para, assunto=a.assunto, corpo=a.corpo, cc=a.cc, conta=a.conta,
                                 responder_uid=a.responder))
+        elif a.area == "nota":
+            def curta(n):
+                return {k: n[k] for k in ("id", "quando", "titulo", "tags", "quem")} | {
+                    "resumo": n["texto"][:200], "anexos": len(n["anexos"]), "links": n["links"][:3]}
+            if a.acao == "add":
+                n = P.nota_add(a.titulo, a.texto, a.tag, a.anexo, a.link, a.quem,
+                               "pesquisa" if "pesquisa" in [t.lower() for t in a.tag] else "nota")
+                print(f"anotado ({n['id']}): {n['titulo']}")
+            elif a.acao == "buscar":
+                mostrar([curta(n) for n in P.notas(" ".join(a.termo), quem=a.quem)] or "nada encontrado")
+            elif a.acao == "listar":
+                mostrar([curta(n) for n in P.notas(tag=a.tag, quem=a.quem, limite=a.limite)] or "nenhuma anotação")
+            elif a.acao == "ver":
+                mostrar(P.nota(a.id))
+            elif a.acao == "mais":
+                n = P.nota_editar(a.id, a.texto, a.tag, a.anexo, a.link)
+                print(f"atualizado ({n['id']}): {n['titulo']}")
+            else:
+                P.nota_apagar(a.id)
+                print("apagada (uma cópia fica guardada na lixeira)")
         elif a.area == "reginaldo":
             import os
             import urllib.request

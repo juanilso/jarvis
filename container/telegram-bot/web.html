@@ -158,6 +158,11 @@ textarea{flex:1;resize:none;padding:10px;height:46px;max-height:140px}
 .mvF{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13.5px}
 #mpes .itens div{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--ln);font-size:13.5px}
 #mpes .itens div.feito{opacity:.5;text-decoration:line-through}#mpes textarea{min-height:240px;font:13px/1.5 var(--mono)}
+#mpes .nota{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13.5px}
+#mpes .nota b{font-size:14px}#mpes .nota .meta{color:var(--m);font-size:12px;margin:2px 0 6px}
+#mpes .nota .txt{white-space:pre-wrap;max-height:9.5em;overflow:hidden;cursor:pointer}#mpes .nota .txt.aberta{max-height:none}
+#mpes .nota img{max-width:120px;max-height:120px;border-radius:8px;margin:6px 6px 0 0;cursor:zoom-in;object-fit:cover}
+#mpes .nota a{color:var(--c2);word-break:break-all}#mpes .nota .tg{display:inline-block;font:11px var(--mono);border:1px solid var(--ln);border-radius:10px;padding:0 7px;margin-right:4px}
 #mpes .pend{border:1px solid rgba(251,191,36,.45);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13px;white-space:pre-wrap}
 .mvF small{grid-column:1/-1;color:var(--m);font-size:12px}.mvF.ok{border-color:rgba(52,211,153,.5)}.mvF.ok small{color:#86efac}
 #mpes,#mvoz,#chaves,#gestao,#kb,#guia,#cerebro,#filmes{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
@@ -577,6 +582,14 @@ main{grid-template-columns:260px minmax(0,1fr) 290px}
   <div id="mpGoogleFluxo" style="display:none" class="waDica">1. <a id="mpGoogleLink" target="_blank" rel="noopener">Abra este link</a> e autorize.<br>
     2. A página vai dar erro (é normal). Copie o endereço dela e cole aqui:
     <div class="lin"><input id="mpGoogleUrl" placeholder="http://127.0.0.1:8765/?state=…&code=…"><button id="mpGoogleFim">Concluir</button></div></div>
+  <div class="chG">📝 ANOTAÇÕES E PESQUISAS</div>
+  <div class="waDica">Tudo que você pede para o Reginaldo anotar e as pesquisas que ele faz (com foto e links) ficam aqui.
+    No WhatsApp: “Reginaldo, anota que…”, “pesquisa esse tênis”, “o que eu anotei sobre…”.</div>
+  <div class="lin"><input id="mpNotaQ" placeholder="buscar nas anotações"><select id="mpNotaTag" style="max-width:150px">
+    <option value="">todas</option><option value="pesquisa">pesquisas</option></select><button id="mpNotaNova">＋ Anotar</button></div>
+  <div id="mpNotaForm" style="display:none"><input id="mpNotaTit" placeholder="título"><textarea id="mpNotaTxt" style="min-height:90px" placeholder="o que anotar"></textarea>
+    <div class="lin"><input id="mpNotaTags" placeholder="etiquetas (ex.: casa, carro)"><button id="mpNotaSalvar">💾 Salvar</button></div></div>
+  <div id="mpNotas"></div>
   <div class="chG">LISTA DE COMPRAS</div>
   <div class="lin"><input id="mpItem" placeholder="leite, pão, café"><button id="mpAdd">＋ Anotar</button><button id="mpLimpar">🗑 Limpar</button></div>
   <div class="itens" id="mpLista"></div>
@@ -1630,8 +1643,28 @@ ${esc(p.resumo)}</div>`).join(""):'<div class="waDica">Nada esperando o seu ok.<
   $("mpVozOuvir").onclick=async()=>{$("mpVozInfo").textContent="⏳ gerando…";const r=await fetch("/api/voz/testar?agente=reginaldo",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
     if(!r.ok){$("mpVozInfo").textContent="⚠ falhou";return}const a=$("mpVozAudio");a.src=URL.createObjectURL(await r.blob());a.style.display="";a.play().catch(()=>{});
     $("mpVozInfo").textContent="Teste com: "+(r.headers.get("X-Origem")==="elevenlabs"?"ElevenLabs":"voz gratuita masculina")};
-  $("btnPessoal").onclick=()=>{$("cerebro").classList.remove("aberto");$("mpes").classList.add("aberto");carregar();vozes()};
+  $("btnPessoal").onclick=()=>{$("cerebro").classList.remove("aberto");$("mpes").classList.add("aberto");carregar();vozes();carregarNotas()};
   $("mpFechar").onclick=()=>$("mpes").classList.remove("aberto");
+  let tNota=null;
+  async function carregarNotas(){
+    const q=encodeURIComponent($("mpNotaQ").value.trim()),t=encodeURIComponent($("mpNotaTag").value);
+    let d={};try{d=await (await fetch(`/api/pessoal/notas?q=${q}&tag=${t}`)).json()}catch(e){}
+    const ns=d.notas||[];
+    $("mpNotas").innerHTML=ns.length?ns.map(n=>`<div class="nota"><b>${n.tipo==="pesquisa"?"🔎 ":"📝 "}${esc(n.titulo)}</b>
+      <div class="meta">${esc(n.quando)}${n.quem&&n.quem!=="dono"?" · "+esc(n.quem):""} ${(n.tags||[]).map(x=>`<span class="tg">#${esc(x)}</span>`).join("")}</div>
+      ${n.texto?`<div class="txt">${esc(n.texto)}</div>`:""}
+      ${(n.anexos||[]).map(a=>/\.pdf$/i.test(a)?`<a href="/api/pessoal/anexo?n=${encodeURIComponent(a)}" target="_blank">📄 ${esc(a)}</a>`:`<img src="/api/pessoal/anexo?n=${encodeURIComponent(a)}" alt="" loading="lazy">`).join("")}
+      ${(n.links||[]).map(l=>`<div><a href="${esc(l)}" target="_blank" rel="noopener">${esc(l)}</a></div>`).join("")}
+      <div class="lin" style="justify-content:flex-end"><button data-apg="${esc(n.id)}">🗑</button></div></div>`).join(""):'<div class="waDica">Nada anotado ainda.</div>';
+    $("mpNotas").querySelectorAll(".txt").forEach(x=>x.onclick=()=>x.classList.toggle("aberta"));
+    $("mpNotas").querySelectorAll("img").forEach(x=>x.onclick=()=>window.open(x.src,"_blank"));
+    $("mpNotas").querySelectorAll("[data-apg]").forEach(b=>b.onclick=async()=>{if(!confirm("Apagar esta anotação?"))return;await post("nota_apagar",{id:b.dataset.apg});carregarNotas()})}
+  $("mpNotaQ").oninput=()=>{clearTimeout(tNota);tNota=setTimeout(carregarNotas,300)};$("mpNotaTag").onchange=carregarNotas;
+  $("mpNotaNova").onclick=()=>{const f=$("mpNotaForm");f.style.display=f.style.display==="none"?"block":"none";$("mpNotaTit").focus()};
+  $("mpNotaSalvar").onclick=async()=>{if(!$("mpNotaTit").value.trim()&&!$("mpNotaTxt").value.trim())return;
+    const r=await post("nota_add",{titulo:$("mpNotaTit").value,texto:$("mpNotaTxt").value,tags:$("mpNotaTags").value});
+    if(!r.ok)return alert(r.erro);$("mpNotaTit").value=$("mpNotaTxt").value=$("mpNotaTags").value="";$("mpNotaForm").style.display="none";carregarNotas()};
+  if(location.hash==="#reginaldo")setTimeout(()=>$("btnPessoal").click(),400); // atalho: painel/#reginaldo (dá para salvar no celular)
 })();
 
 /* ---------- holograma: imagens do cérebro e do rosto animadas ---------- */

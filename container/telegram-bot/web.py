@@ -700,6 +700,27 @@ class Handler(BaseHTTPRequestHandler):
                                                      "relatorio", "proposta", "rodando")})
         if url.path == "/api/whatsapp/faq":
             return self._json({"texto": atendimento.ler_faq(), "caminho": atendimento.FAQ})
+        if url.path == "/api/pessoal/notas":  # anotações e pesquisas do Reginaldo
+            import pessoal
+            q = urllib.parse.parse_qs(url.query)
+            return self._json({"notas": pessoal.notas(q.get("q", [""])[0] or None, q.get("tag", [""])[0] or None, limite=60)})
+        if url.path == "/api/pessoal/anexo":  # imagem/PDF de uma anotação
+            import pessoal
+            nome_a = os.path.basename(urllib.parse.parse_qs(url.query).get("n", [""])[0])
+            arq_a = os.path.join(pessoal.ANEXOS, nome_a)
+            if not nome_a or not os.path.isfile(arq_a):
+                return self._json({"erro": "anexo não encontrado"}, 404)
+            tipo_a = {"png": "image/png", "webp": "image/webp", "gif": "image/gif", "pdf": "application/pdf"}.get(
+                nome_a.rsplit(".", 1)[-1].lower(), "image/jpeg")
+            with open(arq_a, "rb") as f:
+                b = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", tipo_a)
+            self.send_header("Content-Length", str(len(b)))
+            self.send_header("Cache-Control", "private, max-age=86400")
+            self.end_headers()
+            self.wfile.write(b)
+            return
         if url.path == "/api/pessoal":  # assistente pessoal: cofre, pendências, lista, roteiros
             import pessoal
             out = {"ligado": bool(os.environ.get("COFRE_TOKEN")), "roteiros": pessoal.roteiros(),
@@ -1071,6 +1092,13 @@ class Handler(BaseHTTPRequestHandler):
                     r = pessoal.roteiro(str(dados.get("id") or ""))
                 elif a_p == "roteiro_salvar":
                     r = {"id": pessoal.salvar_roteiro(str(dados.get("titulo") or ""), dados.get("texto"), dados.get("id"))}
+                elif a_p == "nota_add":
+                    r = {"nota": pessoal.nota_add(str(dados.get("titulo") or ""), str(dados.get("texto") or ""),
+                                                  [t for t in str(dados.get("tags") or "").replace(",", " ").split() if t],
+                                                  quem="dono (painel)")}
+                elif a_p == "nota_apagar":
+                    pessoal.nota_apagar(str(dados.get("id") or ""))
+                    r = {}
                 elif a_p == "roteiro_apagar":
                     pessoal.apagar_roteiro(str(dados.get("id") or ""))
                     r = {}
