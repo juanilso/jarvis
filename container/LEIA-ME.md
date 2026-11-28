@@ -111,6 +111,12 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.61.2: vídeo de filme com trailer usa pouca memória
+
+O corte do trailer decodificava os 6 trechos ao mesmo tempo e, com o limite de memória do painel, o sistema encerrava
+o ffmpeg ("não consegui cortar o trailer:" sem detalhe). Agora corta um trecho por vez e junta sem recodificar
+(~360 MB no teste com trailer 1080p). Se o sistema ainda encerrar um processo, a mensagem diz que foi falta de memória.
+
 ## Jarvis 1.61.1: número certo na configuração do agente
 
 - O "oi de teste" agora fala como o agente escolhido (Juliana ou Reginaldo) e diz de qual número saiu.

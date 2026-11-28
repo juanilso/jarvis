@@ -288,31 +288,58 @@ def escolher_cortes(trocas, total, n=6, seg=2.3):
     return sorted(escolhidos)
 
 
+def _tem_audio(arq):
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", arq],
+                       capture_output=True, text=True, timeout=60)
+    return bool(r.stdout.strip())
+
+
+def _erro_ffmpeg(r):
+    if r.returncode < 0 or r.returncode == 137:
+        return ("o processo foi encerrado pelo sistema (provável falta de memória). Aumente JARVIS_MEM_WEB no .env "
+                "ou use um trailer menor")
+    return (r.stderr or "").strip()[-300:] or f"ffmpeg saiu com código {r.returncode}"
+
+
 def _fundo_trailer(trailer, W, H, saida):
+    """Corta 6 trechos do trailer, UM POR VEZ (pouca memória: antes os 6 trechos eram decodificados juntos e a VPS
+    matava o processo), e junta tudo sem recodificar."""
     total = duracao(trailer)
     if total < 8:
         raise RuntimeError("trailer curto demais ou inválido")
     cortes = escolher_cortes(cenas(trailer), total)
     seg = 2.3
-    filtros, rot = [], []
-    for k, t in enumerate(cortes):
-        filtros.append(f"[0:v]trim=start={t + 0.08:.2f}:duration={seg},setpts=PTS-STARTPTS,"
-                       f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},setsar=1[v{k}]")
-        filtros.append(f"[0:a]atrim=start={t + 0.08:.2f}:duration={seg},asetpts=PTS-STARTPTS,"
-                       f"afade=t=in:d=0.08,afade=t=out:st={seg - 0.15:.2f}:d=0.15[a{k}]")
-        rot.append(f"[v{k}][a{k}]")
-    filtros.append("".join(rot) + f"concat=n={len(cortes)}:v=1:a=1[v][a]")
-    r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", trailer, "-filter_complex", ";".join(filtros),
-                        "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-                        "-pix_fmt", "yuv420p", "-c:a", "aac", saida], capture_output=True, text=True, timeout=900)
-    if r.returncode != 0:  # trailer sem áudio: só imagem
-        filtros = [f for f in filtros if not f.startswith("[0:a]")]
-        filtros[-1] = "".join(f"[v{k}]" for k in range(len(cortes))) + f"concat=n={len(cortes)}:v=1:a=0[v]"
-        r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", trailer, "-filter_complex", ";".join(filtros),
-                            "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
-                            saida], capture_output=True, text=True, timeout=900)
+    audio = _tem_audio(trailer)
+    pasta = os.path.dirname(saida) or "."
+    partes = []
+    try:
+        for k, t in enumerate(cortes):
+            parte = os.path.join(pasta, f".corte-{k}.mp4")
+            vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},setsar=1,format=yuv420p"
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t + 0.08:.2f}", "-i", trailer]
+            if not audio:  # sem áudio no trailer: silêncio, para todos os trechos terem o mesmo formato
+                cmd += ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
+            cmd += ["-t", f"{seg}", "-map", "0:v:0", "-map", "0:a:0" if audio else "1:a:0", "-vf", vf,
+                    "-af", f"afade=t=in:d=0.08,afade=t=out:st={seg - 0.15:.2f}:d=0.15,aresample=44100",
+                    "-ac", "2", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-c:a", "aac", "-b:a", "160k",
+                    "-shortest", parte]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            if r.returncode != 0 or not os.path.exists(parte):
+                raise RuntimeError("não consegui cortar o trailer: " + _erro_ffmpeg(r))
+            partes.append(parte)
+        lista = os.path.join(pasta, ".cortes.txt")
+        with open(lista, "w", encoding="utf-8") as f:
+            f.writelines(f"file '{os.path.abspath(x)}'\n" for x in partes)
+        r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lista, "-c", "copy",
+                            "-movflags", "+faststart", saida], capture_output=True, text=True, timeout=300)
         if r.returncode != 0:
-            raise RuntimeError("não consegui cortar o trailer: " + r.stderr[-200:])
+            raise RuntimeError("não consegui juntar os cortes do trailer: " + _erro_ffmpeg(r))
+    finally:
+        for x in partes + [os.path.join(pasta, ".cortes.txt")]:
+            try:
+                os.unlink(x)
+            except OSError:
+                pass
     return saida, len(cortes) * seg
 
 
