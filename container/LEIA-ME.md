@@ -111,6 +111,12 @@ Antes de publicar mudanças, rode `python3 scripts/validar.py` (verifica os arqu
 - unslop (tirar a cara de IA de telas) e Floorplan são instalados pelo `jarvis-extras`.
 - Restauração: branches `versao-1.3.0` e `versao-1.4.0` no GitHub.
 
+## Jarvis 1.60.1: Juliana e Reginaldo no mesmo número
+
+Em 📱 WhatsApp (número 2) › "Quando VOCÊ escreve para este número, quem responde" › **Reginaldo**: os clientes continuam
+com o robô e a Juliana; só o seu número fala com o Reginaldo. Os avisos da Juliana desse número passam a chegar só no
+Telegram (para não misturar com a conversa do Reginaldo).
+
 ## Jarvis 1.60: Reginaldo, o assistente pessoal (WhatsApp 2, voz masculina)
 
 - **Reginaldo** é um agente próprio (sessão e memória dele). O Jarvis fica um nível acima: repassa as demandas pessoais

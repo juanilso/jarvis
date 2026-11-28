@@ -49,7 +49,8 @@ VOZ = {"modo": "quando_audio",          # nunca | quando_audio (cliente mandou �
        "texto_junto": "quando_precisa"}  # sempre | quando_precisa (link, Pix, código) | nunca
 DONO = {"numero": "",      # seu WhatsApp pessoal (ou o próprio número do atendimento: ela fala na conversa "você")
         "avisos": True,     # a Juliana te avisa por lá quando um cliente precisa de você, o WhatsApp cai etc.
-        "conversar": True}  # o que você escreve/fala nessa conversa vai para a Juliana (e ela responde por lá)
+        "conversar": True,  # o que você escreve/fala nessa conversa vai para o agente (e ele responde por lá)
+        "agente": "juliana"}  # quem responde a VOCÊ neste número: "juliana" (atendimento) ou "reginaldo" (pessoal)
 VOZ_OPCOES = {"modo": ("nunca", "quando_audio", "sempre"), "texto_junto": ("sempre", "quando_precisa", "nunca")}
 PROTECAO = {
     "digitando": True,           # marca como visto e mostra "digitando…" antes de responder
@@ -92,6 +93,9 @@ def salvar(novo):
         if k == "numero":
             n = re.sub(r"\D", "", str(v or ""))[:15]
             atual["dono"]["numero"] = "55" + n if len(n) in (10, 11) else n  # sem o código do país: Brasil
+        elif k == "agente":
+            if v in ("juliana", "reginaldo"):
+                atual["dono"]["agente"] = v
         elif k in DONO:
             atual["dono"][k] = bool(v)
     for k, v in (novo.get("protecao") or {}).items():

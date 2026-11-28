@@ -91,7 +91,8 @@ def linha_pessoal():
     import linhas
     for n in (2, 1):
         try:
-            if (n == 1 or linhas.ativa(2)) and linhas.modulos(n)[2].carregar().get("modo") == "pessoal":
+            c = linhas.modulos(n)[2].carregar() if (n == 1 or linhas.ativa(2)) else {}
+            if c and (c.get("modo") == "pessoal" or c["dono"].get("agente") == "reginaldo") and c["dono"].get("numero"):
                 return n
         except Exception:  # noqa: BLE001
             continue

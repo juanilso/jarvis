@@ -818,7 +818,7 @@ def _avisar_dono(texto, whatsapp=None):
     import rotinas
     rotulo = NOME or (linhas.nome(1) if linhas.ativa(2) else "")
     rotinas.avisar_telegram(f"【{rotulo}】 {texto}" if rotulo else texto)
-    if whatsapp is not False and C.carregar().get("modo") != "pessoal":
+    if whatsapp is not False and _agente_do_dono() == "juliana":
         threading.Thread(target=lambda: mandar_ao_dono(whatsapp or _sem_comandos(texto), aviso=True), daemon=True).start()
 
 
@@ -900,7 +900,7 @@ def mandar_ao_dono(texto, aviso=False, voz=False, de=None):
         if voz:
             enviar_voz(chat, texto)
         else:
-            enviar(chat, f"{de or (REGINALDO if C.carregar().get('modo') == 'pessoal' else JULIANA)}\n{texto}"[:3500], proteger=False)
+            enviar(chat, f"{de or (REGINALDO if _agente_do_dono() == 'reginaldo' else JULIANA)}\n{texto}"[:3500], proteger=False)
         if aviso:
             with _lock:
                 e = _ler_estado()
@@ -924,6 +924,12 @@ def _eco_dono(e, chat, texto, dados):
 
 
 REGINALDO = "🧑‍💼 *Reginaldo*"
+
+
+def _agente_do_dono():
+    """Quem responde a você neste número: o Reginaldo (modo pessoal ou escolhido) ou a Juliana."""
+    c = C.carregar()
+    return "reginaldo" if c.get("modo") == "pessoal" or c["dono"].get("agente") == "reginaldo" else "juliana"
 
 
 def _para_reginaldo(chat, texto, voz):
@@ -1455,8 +1461,8 @@ def atender(dados):
         if e_dono(chat, telefone):
             return _dono_para_juliana(chat, texto, de_mim, dados, agente="reginaldo")
         return {"responder": False, "motivo": "número do assistente pessoal: só responde a você"}
-    if e_dono(chat, telefone):  # a sua conversa com a Juliana (nunca é tratada como cliente)
-        return _dono_para_juliana(chat, texto, de_mim, dados)
+    if e_dono(chat, telefone):  # a sua conversa com a Juliana ou o Reginaldo (nunca é tratada como cliente)
+        return _dono_para_juliana(chat, texto, de_mim, dados, agente=_agente_do_dono())
     with _lock:
         e = _ler_estado()
         if de_mim:
